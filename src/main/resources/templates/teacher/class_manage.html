@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>班级管理 - 教学平台</title>
+  <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+  <style>
+    body { background-color: #0b0f19; color: #e0e0e0; padding: 40px; }
+    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .btn-blue { background: #4a90e2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; }
+    .btn-gray { background: #555; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; }
+    .btn-green { background: #2ecc71; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; }
+    .delete-link { color: #e24a4a; text-decoration: none; }
+    table { width: 100%; border-collapse: collapse; background: #1a1e29; margin-top: 20px; }
+    th, td { padding: 12px; border-bottom: 1px solid #333; text-align: left; }
+    th { color: #4a90e2; }
+    .invite-code { color: #f1c40f; font-family: monospace; font-size: 16px; }
+    .form-inline { display: flex; gap: 10px; margin-top: 20px; }
+    .form-inline input { padding: 8px; background: #0b0f19; border: 1px solid #444; color: white; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="header-box">
+  <h1 th:text="'班级管理 - ' + ${course.courseName}">班级管理</h1>
+  <div>
+    <a href="/teacher/course/manage" class="btn-gray">← 返回课程管理</a>
+  </div>
+</div>
+
+<!-- 创建班级表单 -->
+<div style="background: #1a1e29; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+  <h3>➕ 新建班级</h3>
+  <form action="/teacher/course/class/create" method="post" class="form-inline">
+    <input type="hidden" name="courseId" th:value="${course.courseId}">
+    <input type="text" name="className" placeholder="班级名称，如：周一班" required>
+    <button type="submit" class="btn-green">创建班级</button>
+  </form>
+</div>
+
+<!-- 班级列表 -->
+<h3>📋 班级列表</h3>
+<table>
+  <thead>
+  <tr>
+    <th>班级名称</th>
+    <th>邀请码</th>
+    <th>当前人数/上限</th>
+    <th>操作</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr th:each="cls : ${classes}">
+    <td th:text="${cls.className}">班级名称</td>
+    <td><span class="invite-code" th:text="${cls.inviteCode}">邀请码</span></td>
+    <td th:text="${cls.currentCount} + ' / ' + ${cls.maxCount}">人数</td>
+    <td>
+      <a th:href="@{/teacher/course/class/delete(courseId=${course.courseId}, classId=${cls.classId})}"
+         class="delete-link"
+         onclick="return confirm('确定删除该班级吗？')">删除</a>
+    </td>
+  </tr>
+  <tr th:if="${#lists.isEmpty(classes)}">
+    <td colspan="4" style="text-align: center; color: #555;">暂无班级，请创建班级</td>
+  </tr>
+  </tbody>
+</table>
+
+</body>
+</html>

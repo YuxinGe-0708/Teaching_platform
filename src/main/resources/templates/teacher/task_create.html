@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>发布作业 - 教师后台</title>
+  <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+  <style>
+    body { background-color: #0b0f19; color: #e0e0e0; padding: 50px; }
+    .form-container { max-width: 600px; background: #1a1e29; padding: 30px; border-radius: 8px; border: 1px solid #333; margin: 0 auto; }
+    input, select, textarea { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 20px; background: #0b0f19; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; }
+    textarea { min-height: 100px; resize: vertical; }
+    label { font-size: 14px; color: #a0a5b5; }
+    .btn-submit { background: #4a90e2; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; width: 100%; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: #888; text-decoration: none; }
+    h2 { margin-bottom: 20px; }
+    .tip { font-size: 12px; color: #666; margin-top: -15px; margin-bottom: 15px; }
+  </style>
+</head>
+<body>
+
+<a href="/teacher/task/manage" class="back-link">← 返回作业管理</a>
+
+<div class="form-container">
+  <h2>发布新作业/考试/实训</h2>
+  <form action="/teacher/task/create" method="post">
+
+    <label>选择课程 *</label>
+    <select name="courseId" required>
+      <option value="">请选择课程</option>
+      <option th:each="c : ${courses}" th:value="${c.courseId}" th:text="${c.courseName} + ' [' + ${c.courseCode} + ']'" th:selected="${c.courseId == selectedCourseId}"></option>
+    </select>
+
+    <label>作业标题 *</label>
+    <input type="text" name="title" placeholder="例如：第1次作业 - Java基础" required>
+
+    <label>任务类型 *</label>
+    <select name="taskType" required>
+      <option value="作业">📝 作业</option>
+      <option value="考试">📋 考试</option>
+      <option value="编程实训">💻 编程实训</option>
+    </select>
+
+    <label>满分分值</label>
+    <input type="number" name="fullScore" step="0.5" value="100" placeholder="默认100分">
+
+    <label>截止时间（选填）</label>
+    <input type="datetime-local" name="endTime">
+    <div class="tip">不填则无截止时间限制</div>
+
+    <label>作业说明/描述</label>
+    <textarea name="description" placeholder="请输入作业要求、题目说明、注意事项等"></textarea>
+
+    <button type="submit" class="btn-submit">确认发布</button>
+  </form>
+</div>
+
+</body>
+</html>

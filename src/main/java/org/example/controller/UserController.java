@@ -1,5 +1,6 @@
 package org.example.controller;
 
+import org.example.model.Course;
 import org.example.model.User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -8,16 +9,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.HttpSession;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 public class UserController {
 
-    // Simple in-memory user store for demonstration
+    // 内存模拟数据库
     private final Map<String, User> userDatabase = new HashMap<>();
     private static final Set<String> ALLOWED_ROLES = new HashSet<>(Arrays.asList("student", "teacher"));
 
@@ -35,39 +33,22 @@ public class UserController {
 
     @PostMapping("/register")
     public String registerUser(@RequestParam String username,
-                               @RequestParam String password,
-                               @RequestParam String role,
-                               Model model) {
+        @RequestParam String password,
+        @RequestParam String role,
+        Model model) {
         String normalizedUsername = username == null ? "" : username.trim();
         String normalizedRole = role == null ? "" : role.trim().toLowerCase();
 
         if (normalizedUsername.isEmpty() || password == null || password.trim().isEmpty()) {
             model.addAttribute("error", "用户名和密码不能为空！");
-            model.addAttribute("username", normalizedUsername);
-            model.addAttribute("role", normalizedRole);
-            return "register";
-        }
-        if (normalizedUsername.length() < 3 || normalizedUsername.length() > 20) {
-            model.addAttribute("error", "用户名长度需在 3 到 20 个字符之间！");
-            model.addAttribute("username", normalizedUsername);
-            model.addAttribute("role", normalizedRole);
-            return "register";
-        }
-        if (password.length() < 6 || password.length() > 32) {
-            model.addAttribute("error", "密码长度需在 6 到 32 个字符之间！");
-            model.addAttribute("username", normalizedUsername);
-            model.addAttribute("role", normalizedRole);
             return "register";
         }
         if (!ALLOWED_ROLES.contains(normalizedRole)) {
-            model.addAttribute("error", "身份选择无效，请重新选择！");
-            model.addAttribute("username", normalizedUsername);
+            model.addAttribute("error", "身份选择无效！");
             return "register";
         }
         if (userDatabase.containsKey(normalizedUsername)) {
             model.addAttribute("error", "用户名已存在！");
-            model.addAttribute("username", normalizedUsername);
-            model.addAttribute("role", normalizedRole);
             return "register";
         }
 
@@ -76,28 +57,22 @@ public class UserController {
     }
 
     @GetMapping("/login")
-    public String showLoginForm(@RequestParam(value = "registered", required = false) String registered,
-                                Model model) {
+    public String showLoginForm(@RequestParam(value = "registered", required = false) String registered, Model model) {
         if ("1".equals(registered)) {
-            model.addAttribute("success", "注册成功，请使用账号登录。");
+            model.addAttribute("success", "注册成功，请登录。");
         }
         return "login";
     }
 
     @PostMapping("/login")
     public String loginUser(@RequestParam String username,
-                            @RequestParam String password,
-                            HttpSession session,
-                            Model model) {
-        String normalizedUsername = username == null ? "" : username.trim();
-        if (normalizedUsername.isEmpty() || password == null || password.trim().isEmpty()) {
-            model.addAttribute("error", "请输入用户名和密码！");
-            return "login";
-        }
-
-        User user = userDatabase.get(normalizedUsername);
+        @RequestParam String password,
+        HttpSession session,
+        Model model) {
+        User user = userDatabase.get(username.trim());
         if (user != null && user.getPassword().equals(password)) {
             session.setAttribute("currentUser", user);
+            // 登录后直接跳到首页，首页会根据角色显示课程
             return "redirect:/home";
         }
         model.addAttribute("error", "用户名或密码错误！");
@@ -105,24 +80,22 @@ public class UserController {
     }
 
     @GetMapping("/home")
-    public String showHomePage(@RequestParam(value = "role", defaultValue = "student") String role, HttpSession session, Model model) {
+    public String showHomePage(HttpSession session, Model model) {
         User currentUser = (User) session.getAttribute("currentUser");
-        
-        String displayRole = role;
-        if (currentUser != null) {
-            displayRole = currentUser.getRole();
-            model.addAttribute("user", currentUser);
+        model.addAttribute("user", currentUser);
+
+        // 数据共享逻辑：从 TeacherController 获取课程数据
+        if (currentUser != null && "teacher".equals(currentUser.getRole())) {
+            // 教师：看到自己创建的课
+            List<Course> myCourses = TeacherController.courseDatabase.stream()
+                .filter(c -> currentUser.getUsername().equals(c.getTeacherId()))
+                .collect(Collectors.toList());
+            model.addAttribute("courses", myCourses);
         } else {
-            // For previewing without login
-            model.addAttribute("role", role);
+            // 学生或未登录：看到全平台所有的课
+            model.addAttribute("courses", TeacherController.courseDatabase);
         }
-        
-        if ("student".equals(displayRole)) {
-            model.addAttribute("courses", Arrays.asList("高等数学", "大学物理", "计算机科学导论"));
-        } else if ("teacher".equals(displayRole)) {
-            model.addAttribute("courses", Arrays.asList("数据结构与算法", "计算机网络"));
-        }
-        
+
         return "home";
     }
 

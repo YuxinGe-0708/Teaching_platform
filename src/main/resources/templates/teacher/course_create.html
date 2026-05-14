@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>创建课程 - 教师后台</title>
+  <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+  <style>
+    body { background-color: #0b0f19; color: #e0e0e0; padding: 50px; }
+    .form-container { max-width: 600px; background: #1a1e29; padding: 30px; border-radius: 8px; border: 1px solid #333; margin: 0 auto; }
+    input, textarea { width: 100%; padding: 10px; margin-top: 5px; margin-bottom: 20px; background: #0b0f19; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; }
+    textarea { min-height: 100px; resize: vertical; }
+    label { font-size: 14px; color: #a0a5b5; }
+    .btn-submit { background: #4a90e2; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; width: 100%; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: #888; text-decoration: none; }
+    h2 { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+<a href="/teacher/course/manage" class="back-link">← 返回课程管理</a>
+
+<div class="form-container">
+  <h2>创建新课程</h2>
+  <form action="/teacher/course/create" method="post">
+    <label>课程名称</label>
+    <input type="text" name="courseName" placeholder="例如：Java程序设计" required>
+
+    <label>课程代码</label>
+    <input type="text" name="courseCode" placeholder="例如：CS101" required>
+
+    <label>学分 (1.0 - 5.0)</label>
+    <input type="number" name="credit" step="0.5" value="2.0" required>
+
+    <label>课程描述</label>
+    <textarea name="description" placeholder="请输入课程简介、教学目标、适合人群等（选填）"></textarea>
+
+    <button type="submit" class="btn-submit">确认创建</button>
+  </form>
+</div>
+
+</body>
+</html>

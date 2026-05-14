@@ -148,12 +148,12 @@
             <a href="#" class="nav-item">在线考试</a>
         </th:block>
 
-        <!-- Teacher menus -->
+        <!-- Teacher menus - 新增"主页"作为默认 -->
         <th:block th:if="${(user != null and user.role == 'teacher') or role == 'teacher'}">
-            <a href="#" class="nav-item active">首页</a>
-            <a href="#" class="nav-item">已创建的课程管理</a>
-            <a href="#" class="nav-item">作业布置与批改</a>
-            <a href="#" class="nav-item">成绩统计</a>
+            <a href="/home" class="nav-item active" th:classappend="${currentPage == 'home' ? 'active' : ''}">主页</a>
+            <a href="/teacher/course/manage" class="nav-item" th:classappend="${currentPage == 'course' ? 'active' : ''}">课程管理</a>
+            <a href="/teacher/task/manage" class="nav-item" th:classappend="${currentPage == 'task' ? 'active' : ''}">作业管理</a>
+            <a href="/teacher/score/statistics" class="nav-item" th:classappend="${currentPage == 'score' ? 'active' : ''}">成绩统计</a>
         </th:block>
     </div>
 
@@ -176,11 +176,19 @@
     </div>
 
     <div class="course-list">
+        <!-- 注意：此时 course 是个对象，不再是字符串 -->
         <div class="course-card" th:each="course : ${courses}">
-            <h3 th:text="${course}">前端开发</h3>
-            <p>基于实践驱动的进阶实操课程...</p>
-            <a href="#">立即进入学习 ➔</a>
+            <h3 th:text="${course.courseName}">课程名称</h3>
+            <p th:text="'课程代码：' + ${course.courseCode} + ' | 学分：' + ${course.credit}"></p>
+            <p th:text="${course.description != null ? course.description : '暂无描述'}">课程描述</p>
+            <!-- 如果是教师且是本人，显示管理按钮 -->
+            <!-- 原来的：前往管理后台 → 改成 → 前往课程管理页面 -->
+            <a th:if="${user != null and user.role == 'teacher'}"
+               th:href="@{/teacher/course/manage(courseId=${course.courseId})}"
+               style="color: #f1c40f;">前往课程管理页面 ➔</a>
+            <a th:if="${user != null and user.role == 'student'}" href="#" style="color: #2ecc71;">申请加入课程 ➔</a>
         </div>
+        <div th:if="${#lists.isEmpty(courses)}" style="color: #8c92a5;">暂无可选课程。</div>
     </div>
 </div>
 </body>
