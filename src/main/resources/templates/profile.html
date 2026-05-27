@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人信息 - 教学平台</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-main, #f5f0e6);
+            color: var(--text-main, #1a1a1a);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-header, #264639);
+            padding: 0 40px;
+            height: 60px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            border-bottom: 2px solid var(--border-color, #121212);
+        }
+        .nav-menus {
+            display: flex;
+            gap: 30px;
+        }
+        .nav-item {
+            color: #1a1a1a;
+            text-decoration: none;
+            font-size: 15px;
+            line-height: 60px;
+            transition: color 0.3s;
+        }
+        .nav-item:hover {
+            color: #ffffff;
+        }
+        .nav-item.active {
+            color: var(--text-main, #1a1a1a);
+            border-bottom: 2px solid #ffffff;
+        }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .login-btn {
+            background-color: transparent;
+            color: var(--text-main, #1a1a1a);
+            border: 2px solid var(--text-header, #f5f0e6);
+            padding: 6px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .login-btn:hover {
+            background-color: var(--border-color, #1a1a1a); color: var(--bg-main, #f5f0e6); box-shadow: 4px 4px 0px var(--border-color);
+            color: var(--text-main, #1a1a1a);
+        }
+        .main-content {
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .profile-container {
+            background-color: var(--bg-card, #ffffff);
+            border: 2px solid var(--border-color, #121212); border-radius: 0; box-shadow: 4px 4px 0px var(--shadow-color, #121212);
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 6px 6px 0px var(--shadow-color, #121212);
+        }
+        .section-title {
+            font-size: 24px;
+            color: var(--text-main, #1a1a1a);
+            margin-bottom: 25px;
+            border-left: 6px solid var(--border-color, #121212);
+            padding-left: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+            font-size: 14px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-main, #f5f0e6);
+            border: 2px solid var(--border-color, #121212); border-radius: 0; box-shadow: 4px 4px 0px var(--shadow-color, #121212);
+            border-radius: 4px;
+            color: var(--text-main, #1a1a1a);
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .btn-submit {
+            background-color: var(--border-color, #1a1a1a); color: var(--bg-main, #f5f0e6); box-shadow: 4px 4px 0px var(--border-color);
+            color: var(--text-main, #ffffff);
+            border: none;
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+        .btn-submit:hover {
+            background-color: #357abd;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        .alert-success {
+            color: #3c763d;
+            background-color: #dff0d8;
+            border-color: #d6e9c6;
+        }
+        .alert-error {
+            color: #ff4d4d;
+            background-color: rgba(255, 77, 77, 0.1);
+            border-color: #ff4d4d;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="nav-menus">
+        <a th:href="@{/home}" class="nav-item">首页</a>
+    </div>
+
+    <div class="nav-right">
+        <span th:if="${user != null}" style="color: var(--text-main, #ffffff); font-size: 14px;">你好, <span th:text="${user.username}"></span></span>
+        <a th:href="@{/profile}" class="nav-item active" style="margin-left: 10px;">个人信息</a>
+        <a th:href="@{/logout}" class="login-btn" style="border-color: var(--accent-red); background: var(--accent-red); color: white; box-shadow: 3px 3px 0px #1a1a1a;">退出</a>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="profile-container">
+        <div class="section-title">个人信息设置</div>
+
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <form th:action="@{/profile}" method="post">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>用户名 (不可修改)</label>
+                    <input type="text" class="form-control" th:value="${user.username}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>角色身份</label>
+                    <input type="text" class="form-control" th:value="${user.role == 'student' ? '学生' : '教师'}" disabled>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>昵称</label>
+                    <input type="text" class="form-control" name="nickname" th:value="${user.nickname}" placeholder="随便起个名字">
+                </div>
+                <div class="form-group">
+                    <label>真实姓名</label>
+                    <input type="text" class="form-control" name="realName" th:value="${user.realName}" placeholder="你的真实姓名">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label th:text="${user.role == 'student' ? '学号' : '教工号'}">学号/教工号</label>
+                    <input type="text" class="form-control" name="idNumber" th:value="${user.idNumber}">
+                </div>
+                <div class="form-group">
+                    <label>电子邮箱</label>
+                    <input type="email" class="form-control" name="email" th:value="${user.email}" placeholder="example@domain.com">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>性别</label>
+                    <select name="gender" class="form-control">
+                        <option value="">未填写</option>
+                        <option value="male" th:selected="${user.gender == 'male'}">男</option>
+                        <option value="female" th:selected="${user.gender == 'female'}">女</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label th:text="${user.role == 'student' ? '就读学校' : '所属学校'}">学校</label>
+                    <input type="text" class="form-control" name="school" th:value="${user.school}" placeholder="所在学校">
+                </div>
+            </div>
+
+            <div class="form-row" th:if="${user.role == 'student'}">
+                <div class="form-group">
+                    <label>专业</label>
+                    <input type="text" class="form-control" name="major" th:value="${user.major}" placeholder="例如：计算机科学与技术">
+                </div>
+                <div class="form-group">
+                    <label>班级</label>
+                    <input type="text" class="form-control" name="className" th:value="${user.className}" placeholder="例如：计科101班">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>个性签名 / 个性宣言</label>
+                <textarea class="form-control" name="motto" rows="3" th:text="${user.motto}" placeholder="写下你的个性签名吧..."></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit">保存修改</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

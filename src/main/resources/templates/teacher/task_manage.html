@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>作业管理 - 教学平台</title>
+  <style>
+    body { background-color: #f5f0e6; color: #1a1a1a; padding: 40px; font-family: sans-serif; }
+    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #1a1a1a; padding-bottom: 20px; }
+    .btn-green { background: #1a1a1a; color: #f5f0e6; box-shadow: 3px 3px 0px #1a1a1a; padding: 10px 20px; text-decoration: none; border-radius: 0; display: inline-block; font-weight: bold; }
+    .btn-gray { background: #e0e0e0; color: #1a1a1a; box-shadow: 3px 3px 0px #1a1a1a; padding: 10px 20px; text-decoration: none; border: 2px solid #1a1a1a; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #ffffff; border: 2px solid #1a1a1a; box-shadow: 5px 5px 0px #1a1a1a; }
+    th, td { padding: 15px; border-bottom: 2px solid #1a1a1a; border-right: 2px solid #1a1a1a; text-align: left; }
+    th { color: #1a1a1a; background: #e0e0e0; font-weight: bold; }
+    .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; background: #e0e0e0; font-weight: bold; border: 1px solid #1a1a1a; }
+    .status-published { background: #2a634b; color: #fff; }
+    .action-link { color: #2a634b; text-decoration: underline; font-weight: bold; margin-right: 15px; }
+    .delete-link { color: #d94a4a; text-decoration: underline; font-weight: bold; }
+    .section { margin-bottom: 30px; }
+    .section-title { font-size: 20px; margin-bottom: 15px; border-left: 4px solid #1a1a1a; padding-left: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div class="header-box">
+  <h1>作业管理</h1>
+  <div><a href="/home" class="btn-gray">⬅ 返回主页</a></div>
+</div>
+<div class="section">
+  <div class="section-title">布置新作业</div>
+  <a href="/teacher/task/create" class="btn-green">➕ 发布新作业/考试/实训</a>
+</div>
+<div class="section">
+  <div class="section-title">已发布的作业/任务</div>
+  <table>
+    <thead><tr><th>作业标题</th><th>所属课程</th><th>类型</th><th>满分</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>
+    <tr th:each="t : ${tasks}">
+      <td th:text="${t.title}">作业标题</td>
+      <td><span th:each="c : ${courses}" th:if="${c.courseId == t.courseId}" th:text="${c.courseName}"></span></td>
+      <td th:text="${t.taskType}">类型</td>
+      <td th:text="${t.fullScore}">满分</td>
+      <td><span class="status-badge" th:classappend="${t.status == '已发布' ? 'status-published' : ''}" th:text="${t.status}">状态</span></td>
+      <td>
+        <a th:href="@{/teacher/task/detail/{taskId}(taskId=${t.taskId})}" class="action-link">查看/批改</a>
+        <a th:href="@{/teacher/task/delete(taskId=${t.taskId})}" class="delete-link" onclick="return confirm('确定删除该作业吗？')">删除</a>
+      </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(tasks)}"><td colspan="6" style="text-align: center; color: #555;">暂无作业，请点击上方按钮发布作业</td></tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

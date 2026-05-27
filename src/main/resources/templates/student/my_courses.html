@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>我的课程</title>
+    <style>
+        body { background-color: #f5f0e6; color: #1a1a1a; font-family: sans-serif; padding: 20px; }
+        .course-list { display: flex; flex-wrap: wrap; gap: 20px; }
+        .course-card { background: #ffffff; border: 2px solid #1a1a1a; padding: 15px; margin-bottom: 10px; box-shadow: 5px 5px 0px #1a1a1a; width: calc(33.333% - 20px); box-sizing: border-box; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
+        .course-card:hover { transform: translateY(-2px); box-shadow: 7px 7px 0px #1a1a1a; }
+        .btn-drop { background: #d94a4a; color: white; padding: 5px 10px; text-decoration: none; border-radius: 0; border: none; cursor: pointer; font-weight: bold;}
+        .header-link { color: #1a1a1a; margin-bottom: 20px; display: inline-block; font-weight: bold; text-decoration: none; border-bottom: 2px solid #1a1a1a; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <a href="/home" class="header-link">⬅ 返回主页</a>
+    <h2>我的已选课程</h2>
+
+    <div class="course-list">
+        <div th:each="course : ${courses}" class="course-card" th:onclick="'window.location.href=\'/student/course/detail/' + ${course.courseId} + '\''">
+            <h3 th:text="${course.courseName}"></h3>
+            <p>编号: <span th:text="${course.courseCode}"></span>  学分: <span th:text="${course.credit}"></span>  教师: <span th:text="${course.teacherId}"></span></p>
+            <p>进度/状态: <span th:text="${course.status}"></span></p>
+            <p>简介: <span th:text="${course.description}"></span></p>
+
+            <form action="/student/course/drop" method="post" style="display:inline;" onclick="event.stopPropagation();">
+                <input type="hidden" name="courseId" th:value="${course.courseId}">
+                <button type="submit" class="btn-drop">退选课程</button>
+            </form>
+        </div>
+    </div>
+
+    <div th:if="${#lists.isEmpty(courses)}" style="font-weight:bold;">您还没有选修任何课程。</div>
+</body>
+</html>

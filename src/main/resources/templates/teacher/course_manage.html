@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>课程管理 - 教学平台</title>
+  <style>
+    body { background-color: #f5f0e6; color: #1a1a1a; padding: 40px; font-family: sans-serif; }
+    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #1a1a1a; padding-bottom: 20px; }
+    .btn-green { background: #1a1a1a; color: #f5f0e6; box-shadow: 3px 3px 0px #1a1a1a; padding: 10px 20px; text-decoration: none; font-weight: bold; border: none; cursor: pointer; }
+    .btn-gray { background: #e0e0e0; color: #1a1a1a; box-shadow: 3px 3px 0px #1a1a1a; padding: 10px 20px; text-decoration: none; border: 2px solid #1a1a1a; font-weight: bold; }
+
+    .course-list { display: flex; flex-wrap: wrap; gap: 20px; }
+    .course-card { background: #ffffff; border: 2px solid #1a1a1a; padding: 25px; box-shadow: 5px 5px 0px #1a1a1a; width: calc(33.333% - 20px); box-sizing: border-box; transition: transform 0.3s, box-shadow 0.3s; }
+    .course-card:hover { transform: translateY(-2px); box-shadow: 7px 7px 0px #1a1a1a; }
+
+    .course-desc { color: #555; margin: 10px 0; font-size: 14px; }
+    .action-links { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .manage-link { color: #2a634b; text-decoration: underline; font-weight: bold; }
+    .edit-link { color: #d99a2a; text-decoration: underline; font-weight: bold; }
+    .delete-link { color: #d94a4a; text-decoration: underline; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<div class="header-box">
+  <h1>课程管理</h1>
+  <div>
+    <a href="/home" class="btn-gray">⬅ 返回主页</a>
+  </div>
+</div>
+
+<div style="margin-bottom: 30px;">
+  <a href="/teacher/course/create" class="btn-green">➕ 创建新课程</a>
+</div>
+
+<div class="course-list">
+  <div th:each="c : ${courses}" class="course-card">
+    <h2 th:text="${c.courseName} + ' [' + ${c.courseCode} + ']'">课程名称</h2>
+    <p style="color: #555;">学分：<span th:text="${c.credit}"></span></p>
+    <div class="course-desc" th:text="'课程描述：' + ${c.description}">课程描述</div>
+    <p style="color: #555; font-size: 12px;">
+      默认班级邀请码：<span th:text="${c.classes.size() > 0 ? c.classes[0].inviteCode : '暂无'}" style="color: #d99a2a; font-weight:bold;"></span>
+    </p>
+
+    <div class="action-links">
+      <a th:href="@{/teacher/task/create(courseId=${c.courseId})}" class="manage-link">布置作业</a>
+      <a th:href="@{/teacher/course/class/{courseId}(courseId=${c.courseId})}" class="manage-link">班级管理</a>
+      <a th:href="@{/teacher/course/edit/{id}(id=${c.courseId})}" class="edit-link">编辑课程</a>
+      <a th:href="@{/teacher/course/delete/{id}(id=${c.courseId})}"
+         class="delete-link"
+         onclick="return confirm('确定要删除这门课程吗？此操作不可恢复。')">删除课程</a>
+    </div>
+  </div>
+</div>
+
+<div th:if="${#lists.isEmpty(courses)}" style="text-align: center; margin-top: 50px; color: #555;">
+  <h3>你还没有创建过课程，点击上方按钮开始创建。</h3>
+</div>
+
+</body>
+</html>

@@ -9,61 +9,99 @@
         body, html {
             margin: 0;
             padding: 0;
-            background-color: #0b0f19;
-            color: #e0e0e0;
+            background-color: var(--bg-main, #f5f0e6);
+            color: var(--text-main, #1a1a1a);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
-        .header {
+        .page-layout {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #1a1e29;
-            padding: 0 40px;
-            height: 60px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            border-bottom: 1px solid #2a3040;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: var(--bg-header, #264639);
+            color: #f5f0e6;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid var(--border-color, #121212);
+        }
+        .sidebar-header {
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px;
+            border-bottom: 2px solid var(--border-color, #121212);
+            text-align: center;
         }
         .nav-menus {
             display: flex;
-            gap: 30px;
+            flex-direction: column;
+            padding: 20px 0;
+            flex: 1;
         }
         .nav-item {
-            color: #a0a5b5;
+            color: #e0e6e3;
             text-decoration: none;
-            font-size: 15px;
-            line-height: 60px;
-            transition: color 0.3s;
+            font-size: 16px;
+            padding: 15px 20px;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
         }
         .nav-item:hover {
-            color: #ffffff;
+            background-color: rgba(255,255,255,0.1);
         }
         .nav-item.active {
-            color: #fff;
-            border-bottom: 2px solid #3c78d8;
+            background-color: var(--bg-main, #f5f0e6);
+            color: var(--text-main, #1a1a1a);
+            border-left: 4px solid var(--accent-yellow, #d89632);
+            font-weight: bold;
         }
-        .nav-right {
+        .sidebar-footer {
+            padding: 20px;
+            border-top: 2px solid var(--border-color, #121212);
             display: flex;
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+        }
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 20px;
+            padding: 15px 40px;
+            background-color: var(--bg-main, #f5f0e6);
+            border-bottom: 2px solid var(--border-color, #121212);
+        }
+        .page-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--text-main, #1a1a1a);
+            margin: 0;
         }
         .login-btn {
-            background-color: transparent;
-            color: #fff;
-            border: 1px solid #4a90e2;
-            padding: 6px 16px;
-            border-radius: 4px;
+            background-color: var(--bg-card, #ffffff);
+            color: var(--text-main, #1a1a1a);
+            border: 2px solid var(--border-color, #121212);
+            padding: 8px 16px;
             text-decoration: none;
             font-size: 14px;
-            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 3px 3px 0 var(--border-color, #121212);
+            transition: transform 0.1s, box-shadow 0.1s;
         }
         .login-btn:hover {
-            background-color: #4a90e2;
-            color: #fff;
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0 var(--border-color, #121212);
         }
         .banner {
             width: 100%;
-            height: 400px;
-            background: linear-gradient(135deg, rgba(30,60,114,0.8) 0%, rgba(42,82,152,0.8) 100%), url('https://dummyimage.com/1920x400/1e3c72/fff&text=Space+Banner') no-repeat center center / cover;
+            height: 200px;
+            background: var(--bg-header, #264639);
+            border-bottom: 2px solid var(--border-color, #121212);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -72,26 +110,26 @@
             padding: 0 20px;
         }
         .banner h1 {
-            font-size: 40px;
-            color: #fff;
-            margin-bottom: 15px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            font-size: 32px;
+            color: #f5f0e6;
+            margin-bottom: 10px;
         }
         .banner p {
-            font-size: 18px;
-            color: #d0d5e0;
+            font-size: 16px;
+            color: #e0e6e3;
         }
         .main-content {
             padding: 40px;
             max-width: 1200px;
-            margin: 0 auto;
+            flex: 1;
         }
         .section-title {
             font-size: 24px;
-            color: #fff;
+            font-weight: bold;
+            color: var(--text-main, #1a1a1a);
             margin-bottom: 25px;
-            border-left: 4px solid #4a90e2;
-            padding-left: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color, #121212);
         }
         .course-list {
             display: flex;
@@ -99,87 +137,130 @@
             flex-wrap: wrap;
         }
         .course-card {
-            background-color: #1e2330;
-            border: 1px solid #2a3040;
-            border-radius: 8px;
+            background-color: var(--bg-card, #ffffff);
+            border: 2px solid var(--border-color, #121212);
+            border-radius: 0;
+            box-shadow: 6px 6px 0px var(--shadow-color, #121212);
             padding: 24px;
-            width: calc(33.333% - 20px);
+            width: calc(33.333% - 14px); /* Adjusted for gap */
             box-sizing: border-box;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: transform 0.1s, box-shadow 0.1s;
+            position: relative;
         }
         .course-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-            border-color: #4a90e2;
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px 0px var(--shadow-color, #121212);
+        }
+        .card-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: var(--accent-yellow, #d89632);
+            color: var(--border-color, #121212);
+            font-size: 12px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border: 2px solid var(--border-color, #121212);
+            box-shadow: 2px 2px 0 var(--border-color, #121212);
         }
         .course-card h3 {
-            margin-top: 0;
-            color: #fff;
-            font-size: 18px;
+            margin-top: 10px;
+            color: var(--text-main, #1a1a1a);
+            font-size: 20px;
             margin-bottom: 10px;
+            font-weight: bold;
         }
         .course-card p {
-            color: #8c92a5;
+            color: var(--muted, #555555);
             font-size: 14px;
             margin-bottom: 20px;
         }
-        .course-card a {
+        .course-link {
             display: inline-block;
-            color: #4a90e2;
+            background-color: var(--bg-main, #f5f0e6);
+            color: var(--text-main, #1a1a1a);
+            font-weight: bold;
             text-decoration: none;
             font-size: 14px;
+            padding: 6px 12px;
+            border: 2px solid var(--border-color, #121212);
+            box-shadow: 3px 3px 0 var(--border-color, #121212);
+            transition: transform 0.1s, box-shadow 0.1s;
         }
-        .course-card a:hover {
-            text-decoration: underline;
+        .course-link:hover {
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0 var(--border-color, #121212);
         }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <div class="nav-menus">
-        <!-- Student menus -->
-        <th:block th:if="${(user != null and user.role == 'student') or role == 'student'}">
-            <a href="#" class="nav-item active">首页</a>
-            <a href="#" class="nav-item">我的课程</a>
-            <a href="#" class="nav-item">课程选择与退课</a>
-            <a href="#" class="nav-item">班级管理</a>
-            <a href="#" class="nav-item">在线作业</a>
-            <a href="#" class="nav-item">在线考试</a>
-        </th:block>
+<div class="page-layout">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            TeachingPlatform
+        </div>
+        <div class="nav-menus">
+            <!-- Student menus -->
+            <th:block th:if="${(user != null and user.role == 'student') or role == 'student'}">
+                <a href="/home" class="nav-item active">主页</a>
+                <a href="/student/course/my" class="nav-item">我的课程</a>
+                <a href="/student/course/selection" class="nav-item">课程选择与退选</a>
+                <a href="/student/logs" class="nav-item">选退课日志</a>
+                <a href="#" class="nav-item">班级管理</a>
+            </th:block>
 
-        <!-- Teacher menus -->
-        <th:block th:if="${(user != null and user.role == 'teacher') or role == 'teacher'}">
-            <a href="#" class="nav-item active">首页</a>
-            <a href="#" class="nav-item">已创建的课程管理</a>
-            <a href="#" class="nav-item">作业布置与批改</a>
-            <a href="#" class="nav-item">成绩统计</a>
-        </th:block>
+            <!-- Teacher menus -->
+            <th:block th:if="${(user != null and user.role == 'teacher') or role == 'teacher'}">
+                <a href="/home" class="nav-item active" th:classappend="${currentPage == 'home' ? 'active' : ''}">主页</a>
+                <a href="/teacher/course/manage" class="nav-item" th:classappend="${currentPage == 'course' ? 'active' : ''}">课程管理</a>
+                <a href="/teacher/task/manage" class="nav-item" th:classappend="${currentPage == 'task' ? 'active' : ''}">作业管理</a>
+                <a href="/teacher/score/statistics" class="nav-item" th:classappend="${currentPage == 'score' ? 'active' : ''}">成绩统计</a>
+            </th:block>
+        </div>
+
+        <div class="sidebar-footer">
+            <span th:if="${user != null}" style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">你好, <span th:text="${user.username}"></span></span>
+            <a th:if="${user != null}" th:href="@{/profile}" class="login-btn" style="width:100%; box-sizing:border-box;">个人信息</a>
+            <a th:if="${user != null}" th:href="@{/logout}" class="login-btn" style="width:100%; box-sizing:border-box; background: var(--accent-red); color: white;">退出</a>
+
+            <a th:if="${user == null}" th:href="@{/login}" class="login-btn" style="width:100%; box-sizing:border-box;">登录 / 注册</a>
+        </div>
     </div>
 
-    <div class="nav-right">
-        <a th:if="${user == null}" th:href="@{/login}" class="login-btn">登录 / 注册</a>
-        <span th:if="${user != null}" style="color: #fff; font-size: 14px;">你好, <span th:text="${user.username}"></span></span>
-        <a th:if="${user != null}" th:href="@{/logout}" class="login-btn" style="border-color: #e24a4a; color: #e24a4a;">退出</a>
-    </div>
-</div>
+    <div class="content-area">
+        <div class="top-bar">
+            <h2 class="page-title">Platform Overview</h2>
+        </div>
 
-<div class="banner">
-    <h1>大模型赋能的智能化教学、实验环境</h1>
-    <p>Large Model-enabled Platforms for Intelligent Teaching, Learning and Experimenting</p>
-</div>
+        <div class="banner">
+            <h1>大模型赋能的智能化教学、实验环境</h1>
+            <p>Large Model-enabled Platforms for Intelligent Teaching, Learning and Experimenting</p>
+        </div>
 
-<div class="main-content">
-    <div class="section-title">
-        <span th:if="${(user != null and user.role == 'student') or role == 'student'}">我的课程列表</span>
-        <span th:if="${(user != null and user.role == 'teacher') or role == 'teacher'}">已创建的课程列表</span>
-    </div>
+        <div class="main-content">
+            <div class="section-title">
+                <span th:if="${(user != null and user.role == 'student') or role == 'student'}">我的课程列表</span>
+                <span th:if="${(user != null and user.role == 'teacher') or role == 'teacher'}">已创建的课程列表</span>
+            </div>
 
-    <div class="course-list">
-        <div class="course-card" th:each="course : ${courses}">
-            <h3 th:text="${course}">前端开发</h3>
-            <p>基于实践驱动的进阶实操课程...</p>
-            <a href="#">立即进入学习 ➔</a>
+            <div class="course-list">
+                <div class="course-card" th:each="course : ${courses}">
+                    <div class="card-badge" th:text="${course.status != null ? course.status : 'Active'}">状态</div>
+                    <h3 th:text="${course.courseName}">课程名称</h3>
+                    <p th:text="'课程代码：' + ${course.courseCode} + '  学分：' + ${course.credit}"></p>
+                    <p th:text="${course.description != null ? course.description : '暂无描述'}">课程描述</p>
+
+                    <a th:if="${user != null and user.role == 'teacher'}"
+                       th:href="@{/teacher/course/manage(courseId=${course.courseId})}"
+                       class="course-link">前往课程管理</a >
+
+                    <a th:if="${user != null and user.role == 'student'}"
+                       th:href="@{/student/course/detail/{id}(id=${course.courseId})}"
+                       class="course-link">进入课程</a >
+                </div>
+                <div th:if="${#lists.isEmpty(courses)}" style="color: var(--muted, #555555); font-style: italic;">暂无可选课程。</div>
+            </div>
         </div>
     </div>
 </div>

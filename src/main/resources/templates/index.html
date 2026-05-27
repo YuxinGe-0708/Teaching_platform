@@ -101,11 +101,12 @@
         <!-- 已登录状态 -->
         <th:block th:if="${user != null}">
             <span style="color: #fff; font-size: 14px;">你好, <span th:text="${user.username}"></span></span>
-            <a th:href="@{/home}" class="dashboard-btn">
+            <a th:href="@{/profile}" class="nav-item" style="margin-left: 10px;">个人信息</a>
+            <a th:href="@{/home}" class="dashboard-btn" style="margin-left: 10px;">
                 <span th:if="${user.role == 'student'}">进入我的课程中心</span>
                 <span th:if="${user.role == 'teacher'}">进入教师控制台</span>
             </a>
-            <a th:href="@{/logout}" class="login-btn" style="border-color: #e24a4a; color: #e24a4a;">退出</a>
+            <a th:href="@{/logout}" class="login-btn" style="border-color: #e24a4a; color: #e24a4a; margin-left: 10px;">退出</a>
         </th:block>
     </div>
 </div>

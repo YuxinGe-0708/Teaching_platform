@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>课程选择与退选</title>
+    <style>
+        body { background-color: #f5f0e6; color: #1a1a1a; font-family: sans-serif; padding: 20px; }
+        .course-card { background: #ffffff; border: 2px solid #1a1a1a; padding: 15px; margin-bottom: 10px; box-shadow: 5px 5px 0px #1a1a1a; width: calc(33.333% - 20px); box-sizing: border-box; }
+        .course-list { display: flex; flex-wrap: wrap; gap: 20px; }
+        .btn { background: #1a1a1a; color: #f5f0e6; box-shadow: 3px 3px 0px #1a1a1a; padding: 8px 15px; text-decoration: none; font-weight: bold; border: none; cursor: pointer;}
+        .btn-drop { background: #d94a4a; color: white; }
+        .header-link { color: #1a1a1a; margin-bottom: 20px; display: inline-block; font-weight: bold; text-decoration: none; border-bottom: 2px solid #1a1a1a; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <a href="/home" class="header-link">⬅ 返回主页</a>
+    <h2>课程选择与退选</h2>
+
+    <form action="/student/course/selection" method="get" style="margin-bottom: 20px;">
+        <input type="text" name="search" th:value="${searchQuery}" placeholder="输入课程名或编号搜索..." style="padding: 8px; width: 250px; border: 2px solid #1a1a1a;">
+        <button type="submit" class="btn">搜索</button>
+    </form>
+
+    <div class="course-list">
+        <div th:each="course : ${courses}" class="course-card">
+            <h3 th:text="${course.courseName}"></h3>
+            <p>编号: <span th:text="${course.courseCode}"></span>  学分: <span th:text="${course.credit}"></span>  教师: <span th:text="${course.teacherId}"></span></p>
+            <p>进度/状态: <span th:text="${course.status}"></span></p>
+            <p>简介: <span th:text="${course.description}"></span></p>
+
+            <form th:if="${!myCourseIds.contains(course.courseId)}" action="/student/course/select" method="post" style="display:inline;">
+                <input type="hidden" name="courseId" th:value="${course.courseId}">
+                <button type="submit" class="btn">选修课程</button>
+            </form>
+
+            <form th:if="${myCourseIds.contains(course.courseId)}" action="/student/course/drop" method="post" style="display:inline;">
+                <input type="hidden" name="courseId" th:value="${course.courseId}">
+                <button type="submit" class="btn btn-drop">退选课程</button>
+            </form>
+
+            <a th:if="${myCourseIds.contains(course.courseId)}"
+               th:href="@{/student/course/detail/{id}(id=${course.courseId})}"
+               class="btn" style="background:#2ecc71; margin-left: 10px;">进入课程</a>
+        </div>
+    </div>
+</body>
+</html>

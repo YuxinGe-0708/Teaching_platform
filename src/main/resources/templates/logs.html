@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>选退课日志</title>
+    <style>
+        body { background-color: #f5f0e6; color: #1a1a1a; font-family: sans-serif; padding: 20px; }
+        .log-list { list-style: none; padding: 0; }
+        .log-item { background: #ffffff; padding: 15px; margin-bottom: 10px; border: 2px solid #1a1a1a; box-shadow: 4px 4px 0px #1a1a1a; font-weight: bold; }
+        .header-link { color: #1a1a1a; margin-bottom: 20px; display: inline-block; font-weight: bold; text-decoration: none; border-bottom: 2px solid #1a1a1a; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <a href="/home" class="header-link">⬅ 返回主页</a>
+    <h2>选退课日志</h2>
+    <ul class="log-list">
+        <li th:each="log : ${logs}" class="log-item" th:text="${log}"></li>
+    </ul>
+    <div th:if="${#lists.isEmpty(logs)}" style="font-weight:bold;">暂无选退课记录。</div>
+</body>
+</html>

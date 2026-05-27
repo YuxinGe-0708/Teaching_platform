@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>作业提交 - 教学平台</title>
+  <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+  <style>
+    body { background-color: #f5f0e6; color: #1a1a1a; padding: 32px 20px; font-family: sans-serif; }
+    .page-container { width: 100%; max-width: 100%; margin: 0 auto; }
+    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #1a1a1a; padding-bottom: 16px; }
+    .card { background: #ffffff; border: 2px solid #1a1a1a; box-shadow: 5px 5px 0px #1a1a1a; padding: 20px; margin-bottom: 20px; width: 100%; }
+    .btn { background: #1a1a1a; color: #f5f0e6; padding: 10px 16px; text-decoration: none; display: inline-block; border: 2px solid #1a1a1a; box-shadow: 3px 3px 0px #1a1a1a; }
+    .btn-secondary { background: #e0e0e0; color: #1a1a1a; border: 2px solid #1a1a1a; box-shadow: 3px 3px 0px #1a1a1a; padding: 10px 16px; }
+    .task-content { background: #ffffff; border: 2px dashed #1a1a1a; padding: 16px; margin-top: 10px; line-height: 1.6; width: 100%; }
+    .task-content h1, .task-content h2, .task-content h3 { margin: 12px 0 6px; }
+    .task-content ul { padding-left: 20px; }
+    .meta { color: #555; font-size: 13px; }
+    .status { font-weight: bold; }
+    .status-graded { color: #d89632; }
+    .status-submitted { color: #2a634b; }
+    .error { color: #d94a4a; font-weight: bold; margin-bottom: 10px; }
+    .success { color: #2a634b; font-weight: bold; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="page-container">
+  <div class="header-box">
+    <h1>作业提交</h1>
+    <a th:href="@{/student/course/detail/{id}(id=${course.courseId})}" class="btn-secondary">← 返回课程主页</a>
+  </div>
+
+  <div class="card" th:if="${task != null}">
+    <h2 th:text="${task.title}">作业标题</h2>
+    <div class="meta">类型：<span th:text="${task.taskType}"></span> | 满分：<span th:text="${task.fullScore}"></span>分</div>
+    <div class="meta" th:if="${task.allowedFileTypes != null && task.allowedFileTypes != ''}">允许格式：<span th:text="${task.allowedFileTypes}"></span></div>
+    <div class="task-content" th:if="${taskContentHtml != null && taskContentHtml != ''}" th:utext="${taskContentHtml}">作业内容</div>
+    <div class="meta" th:if="${task.description != null && task.description != ''}" style="margin-top: 10px;" th:text="${task.description}">作业说明</div>
+  </div>
+
+  <div class="card">
+    <h3>我的提交</h3>
+    <div th:if="${success != null}" class="success" th:text="${success}"></div>
+    <div th:if="${error != null}" class="error" th:text="${error}"></div>
+
+  <div th:if="${submission != null}">
+    <div class="meta">提交状态：
+      <span class="status" th:classappend="${submission.submitStatus == '已批改' ? 'status-graded' : 'status-submitted'}" th:text="${submission.submitStatus}">已提交</span>
+    </div>
+    <div class="meta">提交时间：<span th:text="${#dates.format(submission.submitTime, 'yyyy-MM-dd HH:mm')}"></span></div>
+    <div class="meta" th:if="${submission.score != null}">得分：<span th:text="${submission.score}"></span></div>
+    <div class="meta" th:if="${submission.comment != null && submission.comment != ''}">评语：<span th:text="${submission.comment}"></span></div>
+    <div class="meta" th:if="${submission.fileUrl != null}">附件：
+      <a th:href="@{/student/task/download(filePath=${submission.fileUrl})}">下载已提交文件</a>
+    </div>
+  </div>
+
+    <form action="/student/task/submit" method="post" enctype="multipart/form-data" style="margin-top: 16px;">
+      <input type="hidden" name="taskId" th:value="${task.taskId}">
+      <div class="meta">上传作业文件（可重复提交覆盖）</div>
+      <input type="file" id="taskFile" name="file" style="margin: 10px 0;" required>
+      <div class="meta" id="acceptTip" style="margin-bottom: 10px;"></div>
+      <button type="submit" class="btn">提交作业</button>
+    </form>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  const allowed = /*[[${task.allowedFileTypes}]]*/ '';
+  const fileInput = document.getElementById('taskFile');
+  const tip = document.getElementById('acceptTip');
+  if (allowed && allowed.trim() !== '' && allowed !== 'null') {
+    const normalized = allowed.split(',').map(v => v.trim()).filter(v => v);
+    const accept = normalized.map(v => v.startsWith('.') ? v : '.' + v).join(',');
+    fileInput.setAttribute('accept', accept);
+    tip.textContent = '允许格式：' + normalized.join(', ');
+  } else {
+    tip.textContent = '未限制文件格式';
+  }
+</script>
+
+</body>
+</html>
+

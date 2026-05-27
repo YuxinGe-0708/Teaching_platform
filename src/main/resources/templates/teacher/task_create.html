@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>发布作业 - 教师后台</title>
+  <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+  <script src="https://cdn.bootcdn.net/ajax/libs/marked/4.3.0/marked.min.js"></script>
+  <style>
+    body { background-color: var(--bg-main, #f5f0e6); color: #1a1a1a; padding: 50px; }
+    .form-container { max-width: 600px; background: #ffffff; padding: 30px; border: 2px solid #121212; box-shadow: 6px 6px 0px #121212; margin: 0 auto; }
+    input, select, textarea { width: 100%; padding: 12px; margin-top: 8px; margin-bottom: 20px; background: #ffffff; border: 2px solid #121212; color: #1a1a1a; box-sizing: border-box; }
+    input::placeholder, textarea::placeholder { color: #666666; }
+    textarea { min-height: 100px; resize: vertical; }
+    label { font-size: 14px; color: #1a1a1a; font-weight: bold; }
+    .btn-submit { background: #121212; color: #ffffff; border: 2px solid #121212; padding: 12px 20px; cursor: pointer; width: 100%; box-shadow: 4px 4px 0px #121212; }
+    .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px #121212; }
+    .back-link { display: inline-block; margin-bottom: 20px; color: #2a634b; font-weight: bold; text-decoration: underline; }
+    .back-link:hover { color: #121212; }
+    h2 { margin-bottom: 20px; }
+    .tip { font-size: 12px; color: #666666; margin-top: -15px; margin-bottom: 15px; }
+    .preview-box { background: #ffffff; border: 2px dashed #121212; padding: 16px; margin-top: 10px; white-space: pre-wrap; }
+    .inline-row { display: flex; gap: 10px; align-items: center; }
+    .btn-secondary { background: #e0e0e0; color: #1a1a1a; border: 2px solid #121212; padding: 8px 12px; cursor: pointer; box-shadow: 3px 3px 0px #121212; }
+  </style>
+</head>
+<body>
+
+<a href="/teacher/task/manage" class="back-link">← 返回作业管理</a>
+
+<div class="form-container">
+  <h2>发布新作业/考试/实训</h2>
+  <form action="/teacher/task/create" method="post">
+
+    <label>选择课程 *</label>
+    <select name="courseId" required>
+      <option value="">请选择课程</option>
+      <option th:each="c : ${courses}" th:value="${c.courseId}" th:text="${c.courseName} + ' [' + ${c.courseCode} + ']'" th:selected="${c.courseId == selectedCourseId}"></option>
+    </select>
+
+    <label>作业标题 *</label>
+    <input type="text" name="title" placeholder="例如：第1次作业 - Java基础" required>
+
+    <label>任务类型 *</label>
+    <select name="taskType" required>
+      <option value="作业">📝 作业</option>
+      <option value="考试">📋 考试</option>
+      <option value="编程实训">💻 编程实训</option>
+    </select>
+
+    <label>满分分值</label>
+    <input type="number" name="fullScore" step="0.5" value="100" placeholder="默认100">
+
+    <label>截止时间（选填）</label>
+    <input type="datetime-local" name="endTime">
+    <div class="tip">不填则无截止时间限制</div>
+
+    <label>作业说明/描述</label>
+    <textarea name="description" placeholder="请输入作业要求、题目说明、注意事项等"></textarea>
+
+    <label>允许上传的文件格式</label>
+    <input type="text" name="allowedFileTypes" placeholder="例如：.pdf,.docx,.zip">
+    <div class="tip">多个格式用英文逗号分隔，不填则不限制格式</div>
+
+    <label>作业内容（支持Markdown）</label>
+    <textarea id="taskContent" name="content" placeholder="请输入作业要求、题目内容等"></textarea>
+
+    <div class="inline-row">
+      <input type="file" id="mdFile" accept=".md,.markdown,text/markdown">
+      <button type="button" class="btn-secondary" id="importMdBtn">一键导入Markdown</button>
+      <button type="button" class="btn-secondary" id="previewBtn">作业预览</button>
+    </div>
+    <div class="tip">导入后会自动填充内容，预览仅用于查看，不会提交</div>
+
+    <div id="previewBox" class="preview-box" style="display: none;"></div>
+
+    <button type="submit" class="btn-submit">确认发布</button>
+  </form>
+</div>
+
+<script>
+  const contentEl = document.getElementById('taskContent');
+  const previewBox = document.getElementById('previewBox');
+  document.getElementById('previewBtn').addEventListener('click', () => {
+    const content = contentEl.value || '（无内容）';
+    previewBox.style.display = 'block';
+    previewBox.innerHTML = marked.parse(content);
+  });
+
+  document.getElementById('importMdBtn').addEventListener('click', () => {
+    document.getElementById('mdFile').click();
+  });
+
+  document.getElementById('mdFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      contentEl.value = reader.result || '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+</script>
+
+</body>
+</html>
+
