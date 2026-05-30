@@ -1,44 +1,32 @@
 <!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <title>创建课程 - 教师后台</title>
-  <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
-    <style>
-    body { background-color: var(--bg-main, #f5f0e6); color: #1a1a1a; padding: 50px; }
-    .form-container { max-width: 600px; background: #ffffff; padding: 30px; border: 2px solid #121212; box-shadow: 6px 6px 0px #121212; margin: 0 auto; }
-    input, textarea { width: 100%; padding: 12px; margin-top: 8px; margin-bottom: 20px; background: #ffffff; border: 2px solid #121212; color: #1a1a1a; box-sizing: border-box; }
-    input::placeholder, textarea::placeholder { color: #666666; }
-    textarea { min-height: 100px; resize: vertical; }
-    label { font-size: 14px; color: #1a1a1a; font-weight: bold; }
-    .btn-submit { background: #121212; color: #ffffff; border: 2px solid #121212; padding: 12px 20px; cursor: pointer; width: 100%; box-shadow: 4px 4px 0px #121212; }
-    .back-link { display: inline-block; margin-bottom: 20px; color: #2a634b; font-weight: bold; text-decoration: underline; }
-    h2 { margin-bottom: 20px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建课程 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
 </head>
 <body>
-
-<a href="/teacher/course/manage" class="back-link">← 返回课程管理</a>
-
-<div class="form-container">
-  <h2>创建新课程</h2>
-  <form action="/teacher/course/create" method="post">
-    <label>课程名称</label>
-    <input type="text" name="courseName" placeholder="例如：Java程序设计" required>
-
-    <label>课程代码</label>
-    <input type="text" name="courseCode" placeholder="例如：CS101" required>
-
-    <label>学分 (1.0 - 5.0)</label>
-    <input type="number" name="credit" step="0.5" value="2.0" required>
-
-    <label>课程描述</label>
-    <textarea name="description" placeholder="请输入课程简介、教学目标、适合人群等（选填）"></textarea>
-
-    <button type="submit" class="btn-submit">确认创建</button>
-  </form>
+<div class="app-layout">
+    <aside class="sidebar"><div class="sidebar-brand">TeachingPlatform</div><nav class="sidebar-nav"><a href="/home">主页</a><a href="/teacher/course/manage" class="active">课程管理</a><a href="/teacher/task/manage">作业管理</a><a href="/teacher/ai">AI 答疑</a></nav></aside>
+    <main class="main-area">
+        <header class="topbar"><h1>创建课程</h1><a class="btn" href="/teacher/course/manage">返回</a></header>
+        <section class="content">
+            <div class="panel">
+                <form action="/teacher/course/create" method="post" class="form">
+                    <label for="courseName">课程名称</label>
+                    <input id="courseName" type="text" name="courseName" required>
+                    <label for="courseCode">课程编号</label>
+                    <input id="courseCode" type="text" name="courseCode" required>
+                    <label for="credit">学分</label>
+                    <input id="credit" type="number" name="credit" step="0.5" value="2" required>
+                    <label for="description">课程简介</label>
+                    <textarea id="description" name="description"></textarea>
+                    <button type="submit">创建</button>
+                </form>
+            </div>
+        </section>
+    </main>
 </div>
-
 </body>
 </html>
-

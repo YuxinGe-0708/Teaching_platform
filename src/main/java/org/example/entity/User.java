@@ -37,4 +37,22 @@ public class User {
     public void setCreatedAt(java.sql.Timestamp createdAt) { this.createdAt = createdAt; }
     public java.sql.Timestamp getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(java.sql.Timestamp updatedAt) { this.updatedAt = updatedAt; }
+
+    // Compatibility accessors for existing Thymeleaf templates.
+    public String getNickname() { return name; }
+    public void setNickname(String nickname) { this.name = nickname; }
+    public String getRealName() { return name; }
+    public void setRealName(String realName) { this.name = realName; }
+    public String getIdNumber() { return ""; }
+    public void setIdNumber(String idNumber) {}
+    public String getSchool() { return ""; }
+    public void setSchool(String school) {}
+    public String getMajor() { return ""; }
+    public void setMajor(String major) {}
+    public String getClassName() { return ""; }
+    public void setClassName(String className) {}
+    public String getGender() { return ""; }
+    public void setGender(String gender) {}
+    public String getMotto() { return ""; }
+    public void setMotto(String motto) {}
 }

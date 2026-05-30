@@ -9,22 +9,17 @@
 <body>
 <div class="page">
     <div class="card">
-        <h1 class="title">Sign In</h1>
-        <p class="subtitle">教学平台 · 身份校验中心</p>
-
+        <h1 class="title">TeachingPlatform</h1>
+        <p class="subtitle">登录后进入学生端或教师端</p>
         <div class="message success" th:if="${success}" th:text="${success}"></div>
         <div class="message error" th:if="${error}" th:text="${error}"></div>
-
         <form th:action="@{/login}" method="post" class="form">
             <label for="username">用户名</label>
             <input id="username" type="text" name="username" required>
-
             <label for="password">密码</label>
             <input id="password" type="password" name="password" required>
-
-            <button type="submit">登录系统</button>
+            <button type="submit">登录</button>
         </form>
-
         <p class="switch-link">还没有账号？<a th:href="@{/register}">立即注册</a></p>
     </div>
 </div>

@@ -1,7 +1,13 @@
 package org.example.controller;
 
-import org.example.model.Course;
-import org.example.model.User;
+import org.example.entity.Course;
+import org.example.entity.Submission;
+import org.example.entity.Task;
+import org.example.entity.User;
+import org.example.service.CourseService;
+import org.example.service.TaskService;
+import org.example.service.UserService;
+import org.example.util.TaskMetadataUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,20 +15,29 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.HttpSession;
-import java.util.*;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
 public class UserController {
 
-    // 内存模拟数据库
-    private final Map<String, User> userDatabase = new HashMap<>();
-    private static final Set<String> ALLOWED_ROLES = new HashSet<>(Arrays.asList("student", "teacher"));
+    private final UserService userService;
+    private final CourseService courseService;
+    private final TaskService taskService;
+
+    public UserController(UserService userService, CourseService courseService, TaskService taskService) {
+        this.userService = userService;
+        this.courseService = courseService;
+        this.taskService = taskService;
+    }
 
     @GetMapping("/")
     public String showIndexPage(HttpSession session, Model model) {
-        User currentUser = (User) session.getAttribute("currentUser");
-        model.addAttribute("user", currentUser);
+        model.addAttribute("user", session.getAttribute("currentUser"));
         return "index";
     }
 
@@ -33,26 +48,30 @@ public class UserController {
 
     @PostMapping("/register")
     public String registerUser(@RequestParam String username,
-        @RequestParam String password,
-        @RequestParam String role,
-        Model model) {
+                               @RequestParam String password,
+                               @RequestParam String role,
+                               Model model) {
         String normalizedUsername = username == null ? "" : username.trim();
         String normalizedRole = role == null ? "" : role.trim().toLowerCase();
-
-        if (normalizedUsername.isEmpty() || password == null || password.trim().isEmpty()) {
-            model.addAttribute("error", "用户名和密码不能为空！");
+        model.addAttribute("username", normalizedUsername);
+        model.addAttribute("role", normalizedRole);
+        if (normalizedUsername.length() < 3 || normalizedUsername.length() > 20) {
+            model.addAttribute("error", "用户名长度必须为 3-20 个字符");
             return "register";
         }
-        if (!ALLOWED_ROLES.contains(normalizedRole)) {
-            model.addAttribute("error", "身份选择无效！");
+        if (password == null || password.trim().length() < 6 || password.trim().length() > 32) {
+            model.addAttribute("error", "密码长度必须为 6-32 个字符");
             return "register";
         }
-        if (userDatabase.containsKey(normalizedUsername)) {
-            model.addAttribute("error", "用户名已存在！");
+        if (!"student".equals(normalizedRole) && !"teacher".equals(normalizedRole)) {
+            model.addAttribute("error", "身份选择无效");
             return "register";
         }
-
-        userDatabase.put(normalizedUsername, new User(normalizedUsername, password, normalizedRole));
+        User user = userService.register(normalizedUsername, password, normalizedRole, normalizedUsername);
+        if (user == null) {
+            model.addAttribute("error", "用户名已存在");
+            return "register";
+        }
         return "redirect:/login?registered=1";
     }
 
@@ -66,104 +85,138 @@ public class UserController {
 
     @PostMapping("/login")
     public String loginUser(@RequestParam String username,
-        @RequestParam String password,
-        HttpSession session,
-        Model model) {
-        User user = userDatabase.get(username.trim());
-        if (user != null && user.getPassword().equals(password)) {
-            session.setAttribute("currentUser", user);
-            // 登录后直接跳到首页，首页会根据角色显示课程
-            return "redirect:/home";
+                            @RequestParam String password,
+                            HttpSession session,
+                            Model model) {
+        User user = userService.login(username == null ? "" : username.trim(), password);
+        if (user == null) {
+            model.addAttribute("error", "用户名或密码错误");
+            return "login";
         }
-        model.addAttribute("error", "用户名或密码错误！");
-        return "login";
+        session.setAttribute("currentUser", user);
+        return "redirect:/home";
     }
 
     @GetMapping("/home")
     public String showHomePage(HttpSession session, Model model) {
-        User currentUser = (User) session.getAttribute("currentUser");
+        User currentUser = requireUser(session);
         model.addAttribute("user", currentUser);
-
-        // 数据共享逻辑：从 TeacherController 获取课程数据
-        if (currentUser != null && "teacher".equals(currentUser.getRole())) {
-            // 教师：看到自己创建的课
-            List<Course> myCourses = TeacherController.courseDatabase.stream()
-                .filter(c -> currentUser.getUsername().equals(c.getTeacherId()))
-                .collect(Collectors.toList());
-            model.addAttribute("courses", myCourses);
-        } else if (currentUser != null && "student".equals(currentUser.getRole())) {
-            // 学生：只看到自己选过的课
-            List<Long> myCourseIds = StudentController.studentCourses.getOrDefault(currentUser.getUsername(), new ArrayList<>());
-            List<Course> myCourses = TeacherController.courseDatabase.stream()
-                .filter(c -> myCourseIds.contains(c.getCourseId()))
-                .collect(Collectors.toList());
-            model.addAttribute("courses", myCourses);
-        } else {
-            // 未登录：看到全平台所有的课
-            model.addAttribute("courses", TeacherController.courseDatabase);
+        if (currentUser == null) {
+            model.addAttribute("courses", Collections.emptyList());
+            return "home";
         }
-
+        if ("teacher".equals(currentUser.getRole())) {
+            model.addAttribute("courses", toCourseViews(courseService.getTeacherCourses(currentUser.getId())));
+        } else {
+            model.addAttribute("courses", toCourseViews(courseService.getStudentCourses(currentUser.getId())));
+        }
         return "home";
     }
 
     @GetMapping("/profile")
     public String showProfilePage(HttpSession session, Model model) {
-        User currentUser = (User) session.getAttribute("currentUser");
-        if (currentUser == null) {
-            return "redirect:/login";
-        }
+        User currentUser = requireUser(session);
+        if (currentUser == null) return "redirect:/login";
         model.addAttribute("user", currentUser);
+        if ("student".equals(currentUser.getRole())) {
+            model.addAttribute("courses", toCourseViews(courseService.getStudentCourses(currentUser.getId())));
+            model.addAttribute("submissions", taskService.getStudentSubmissions(currentUser.getId()));
+        } else {
+            model.addAttribute("courses", toCourseViews(courseService.getTeacherCourses(currentUser.getId())));
+            model.addAttribute("submissions", Collections.<Submission>emptyList());
+        }
         return "profile";
     }
 
     @PostMapping("/profile")
-    public String updateProfile(
-            @RequestParam(required = false) String nickname,
-            @RequestParam(required = false) String realName,
-            @RequestParam(required = false) String idNumber,
-            @RequestParam(required = false) String email,
-            @RequestParam(required = false) String school,
-            @RequestParam(required = false) String major,
-            @RequestParam(required = false) String className,
-            @RequestParam(required = false) String gender,
-            @RequestParam(required = false) String motto,
-            HttpSession session, Model model) {
-            
-        User currentUser = (User) session.getAttribute("currentUser");
-        if (currentUser == null) {
-            return "redirect:/login";
-        }
-
-        // Basic validation
-        if (email != null && !email.isEmpty() && !email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
-            model.addAttribute("error", "邮箱格式不合法！");
-            model.addAttribute("user", currentUser);
-            return "profile";
-        }
-
-        // Update fields
-        currentUser.setNickname(nickname);
-        currentUser.setRealName(realName);
-        currentUser.setIdNumber(idNumber);
+    public String updateProfile(@RequestParam(required = false) String name,
+                                @RequestParam(required = false) String realName,
+                                @RequestParam(required = false) String nickname,
+                                @RequestParam(required = false) String email,
+                                HttpSession session) {
+        User currentUser = requireUser(session);
+        if (currentUser == null) return "redirect:/login";
+        currentUser.setName(firstNonBlank(name, realName, nickname, currentUser.getName(), currentUser.getUsername()));
         currentUser.setEmail(email);
-        currentUser.setSchool(school);
-        currentUser.setMajor(major);
-        currentUser.setClassName(className);
-        currentUser.setGender(gender);
-        currentUser.setMotto(motto);
-        
-        // Update in database (in-memory)
-        userDatabase.put(currentUser.getUsername(), currentUser);
+        userService.updateProfile(currentUser);
         session.setAttribute("currentUser", currentUser);
-
-        model.addAttribute("user", currentUser);
-        model.addAttribute("success", "个人信息修改成功！");
-        return "profile";
+        return "redirect:/profile?updated=1";
     }
 
     @GetMapping("/logout")
     public String logout(HttpSession session) {
         session.invalidate();
         return "redirect:/login";
+    }
+
+    static User requireUser(HttpSession session) {
+        Object user = session.getAttribute("currentUser");
+        return user instanceof User ? (User) user : null;
+    }
+
+    static List<Map<String, Object>> toCourseViews(List<Course> courses) {
+        return courses.stream().map(UserController::toCourseView).collect(Collectors.toList());
+    }
+
+    static Map<String, Object> toCourseView(Course course) {
+        Map<String, Object> view = new HashMap<>();
+        view.put("courseId", course.getId());
+        view.put("courseName", course.getName());
+        view.put("courseCode", course.getCode());
+        view.put("credit", course.getCredits());
+        view.put("teacherId", course.getTeacherName() == null ? course.getTeacherId() : course.getTeacherName());
+        view.put("description", course.getDescription());
+        view.put("studentCount", course.getStudentCount() == null ? 0 : course.getStudentCount());
+        view.put("status", "active".equals(course.getStatus()) ? "进行中" : course.getStatus());
+        view.put("inviteCode", course.getInviteCode());
+        Map<String, Object> clazz = new HashMap<>();
+        clazz.put("classId", course.getId());
+        clazz.put("courseId", course.getId());
+        clazz.put("className", "默认班级");
+        clazz.put("inviteCode", course.getInviteCode());
+        clazz.put("currentCount", course.getStudentCount() == null ? 0 : course.getStudentCount());
+        clazz.put("maxCount", 100);
+        view.put("classes", Collections.singletonList(clazz));
+        return view;
+    }
+
+    static Map<String, Object> toTaskView(Task task) {
+        String visible = TaskMetadataUtils.visibleMarkdown(task.getDescription());
+        Map<String, Object> view = new HashMap<>();
+        view.put("taskId", task.getId());
+        view.put("title", task.getTitle());
+        view.put("courseId", task.getCourseId());
+        view.put("courseName", task.getCourseName());
+        view.put("taskKind", task.getType());
+        view.put("taskType", displayTaskType(task.getType()));
+        view.put("description", visible);
+        view.put("content", visible);
+        view.put("fullScore", task.getMaxScore());
+        view.put("startTime", task.getCreatedAt() == null ? new Date() : new Date(task.getCreatedAt().getTime()));
+        view.put("endTime", task.getEndTime() == null ? null : new Date(task.getEndTime().getTime()));
+        view.put("status", "published".equals(task.getStatus()) ? "已发布" : task.getStatus());
+        view.put("allowedFileTypes", "");
+        view.put("testCasesJson", TaskMetadataUtils.testCasesJson(task.getDescription()));
+        view.put("hasExamAnswer", !TaskMetadataUtils.examAnswer(task.getDescription()).trim().isEmpty());
+        return view;
+    }
+
+    static String dbTaskType(String type) {
+        if ("exam".equals(type) || "考试".equals(type)) return "exam";
+        if ("programming".equals(type) || "编程实训".equals(type)) return "programming";
+        return "homework";
+    }
+
+    static String displayTaskType(String type) {
+        if ("exam".equals(type)) return "考试";
+        if ("programming".equals(type)) return "编程实训";
+        return "作业";
+    }
+
+    static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) return value.trim();
+        }
+        return "";
     }
 }

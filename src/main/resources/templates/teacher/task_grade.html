@@ -1,66 +1,39 @@
 <!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <title>批改作业 - 教学平台</title>
-  <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
-    <style>
-    body { background-color: var(--bg-main, #f5f0e6); color: var(--text-main, #1a1a1a); padding: 40px 24px; font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif; }
-    .container { max-width: 1200px; margin: 0 auto; display: grid; gap: 20px; }
-    .card { background: var(--bg-card, #ffffff); border: 2px solid var(--border-color, #121212); box-shadow: 6px 6px 0px var(--shadow-color, #121212); padding: 20px; }
-    .btn-back { display: inline-block; padding: 8px 14px; background: var(--bg-card, #ffffff); color: var(--text-main, #1a1a1a); border: 2px solid var(--border-color, #121212); box-shadow: 3px 3px 0px var(--shadow-color, #121212); text-decoration: none; font-weight: bold; width: fit-content; }
-    .submission-content { background: #fdfbf7; border: 2px dashed var(--border-color, #121212); padding: 12px; white-space: pre-wrap; }
-    input, select, textarea { width: 100%; padding: 12px; margin-top: 8px; margin-bottom: 20px; background: #ffffff; border: 2px solid var(--border-color, #121212); color: #1a1a1a; box-sizing: border-box; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 14px; outline: none; }
-    input:focus, select:focus, textarea:focus { background: #fdfbf7; }
-    textarea { min-height: 120px; resize: vertical; }
-    label { font-size: 14px; color: var(--text-main, #1a1a1a); font-weight: bold; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
-    .btn-submit { background: var(--border-color, #121212); color: #ffffff; font-weight: bold; border: 2px solid var(--border-color, #121212); padding: 12px 20px; cursor: pointer; width: 100%; box-shadow: 4px 4px 0px var(--shadow-color, #121212); transition: transform 0.1s, box-shadow 0.1s; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 14px; }
-    .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px var(--shadow-color, #121212); }
-    h2 { margin-top: 0; margin-bottom: 25px; font-size: 24px; border-bottom: 2px solid var(--border-color, #121212); padding-bottom: 10px; }
-    .file-link { display: inline-block; margin-top: 10px; color: var(--link-color, #2a634b); font-weight: bold; text-decoration: underline; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批改作业 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
 </head>
 <body>
-
-<div class="container">
-  <a href="javascript:history.back()" class="btn-back">返回</a>
-
-  <div class="card student-info" th:if="${submission != null}">
-    <h3>学生作业批改</h3>
-    <p>学生<span th:text="${submission.studentName != null ? submission.studentName : '学生ID:' + submission.studentId}"></span></p>
-    <p>提交时间<span th:text="${#dates.format(submission.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
-    <p>编程语言<span th:text="${submission.language != null ? submission.language : '-'}"></span></p>
-  </div>
-
-  <div class="card" th:if="${submission != null}">
-    <h4>学生提交内容</h4>
-    <div class="submission-content" th:text="${submission.content != null ? submission.content : '无内容'}"></div>
-    <div th:if="${submission.fileUrl != null}">
-      <a th:href="@{/teacher/task/download(filePath=${submission.fileUrl})}" class="file-link">📎 查看附件</a>
-    </div>
-  </div>
-
-  <div class="card" th:if="${submission != null}">
-    <h4>批改打分</h4>
-    <form action="/teacher/task/grade" method="post">
-      <input type="hidden" name="submissionId" th:value="${submission.submissionId}">
-
-      <label>得分 (满分 <span th:text="${submission.score != null ? '已批改' : '待批改'}"></span>)</label>
-      <input type="number" name="score" step="0.5" class="score-input" th:value="${submission.score != null ? submission.score : ''}" placeholder="请输入分数" required>
-
-      <label>评语</label>
-      <textarea name="comment" placeholder="请输入批改评语..."></textarea>
-
-      <button type="submit" class="btn-submit">保存批改结果</button>
-    </form>
-  </div>
-
-  <div th:if="${submission == null}" style="text-align: center;">
-    <h3>提交记录不存在</h3>
-    <a href="/teacher/task/manage" class="btn-submit">返回作业管理</a>
-  </div>
+<div class="app-layout">
+    <aside class="sidebar"><div class="sidebar-brand">TeachingPlatform</div><nav class="sidebar-nav"><a href="/home">主页</a><a href="/teacher/course/manage">课程管理</a><a href="/teacher/task/manage" class="active">作业管理</a><a href="/teacher/ai">AI 答疑</a></nav></aside>
+    <main class="main-area">
+        <header class="topbar"><h1>批改作业</h1><a class="btn" href="/teacher/task/manage">返回</a></header>
+        <section class="content">
+            <div class="panel" th:if="${submission != null}">
+                <h2 th:text="${submission.taskTitle}">作业</h2>
+                <p>学生：<span th:text="${submission.studentName != null ? submission.studentName : '学生ID:' + submission.studentId}"></span></p>
+                <p>提交时间：<span th:text="${#dates.format(submission.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
+                <p>评测结果：<span th:text="${submission.judgeStatus}">-</span></p>
+                <div style="border:2px solid var(--border-color); padding:14px; margin:16px 0; background:#fdfbf7;">
+                    <h3>提交内容</h3>
+                    <pre th:text="${submission.content != null ? submission.content : '无内容'}"></pre>
+                    <a th:if="${submission.fileUrl != null}" class="btn" th:href="@{/teacher/task/download(filePath=${submission.fileUrl})}">查看附件</a>
+                </div>
+                <form action="/teacher/task/grade" method="post" class="form">
+                    <input type="hidden" name="submissionId" th:value="${submission.submissionId}">
+                    <label for="score">得分</label>
+                    <input id="score" type="number" name="score" step="0.5" th:value="${submission.score != null ? submission.score : ''}" required>
+                    <label for="comment">评语</label>
+                    <textarea id="comment" name="comment" th:text="${submission.comment}"></textarea>
+                    <button type="submit">保存批改</button>
+                </form>
+            </div>
+            <div class="empty" th:if="${submission == null}">提交记录不存在。</div>
+        </section>
+    </main>
 </div>
-
 </body>
 </html>
-

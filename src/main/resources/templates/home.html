@@ -3,266 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>首页 - 教学平台</title>
+    <title>主页 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-main, #f5f0e6);
-            color: var(--text-main, #1a1a1a);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        .page-layout {
-            display: flex;
-            min-height: 100vh;
-        }
-        .sidebar {
-            width: 250px;
-            background-color: var(--bg-header, #264639);
-            color: #f5f0e6;
-            display: flex;
-            flex-direction: column;
-            border-right: 2px solid var(--border-color, #121212);
-        }
-        .sidebar-header {
-            font-size: 24px;
-            font-weight: bold;
-            padding: 20px;
-            border-bottom: 2px solid var(--border-color, #121212);
-            text-align: center;
-        }
-        .nav-menus {
-            display: flex;
-            flex-direction: column;
-            padding: 20px 0;
-            flex: 1;
-        }
-        .nav-item {
-            color: #e0e6e3;
-            text-decoration: none;
-            font-size: 16px;
-            padding: 15px 20px;
-            transition: all 0.2s;
-            border-left: 4px solid transparent;
-        }
-        .nav-item:hover {
-            background-color: rgba(255,255,255,0.1);
-        }
-        .nav-item.active {
-            background-color: var(--bg-main, #f5f0e6);
-            color: var(--text-main, #1a1a1a);
-            border-left: 4px solid var(--accent-yellow, #d89632);
-            font-weight: bold;
-        }
-        .sidebar-footer {
-            padding: 20px;
-            border-top: 2px solid var(--border-color, #121212);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            text-align: center;
-        }
-        .content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 40px;
-            background-color: var(--bg-main, #f5f0e6);
-            border-bottom: 2px solid var(--border-color, #121212);
-        }
-        .page-title {
-            font-size: 32px;
-            font-weight: bold;
-            color: var(--text-main, #1a1a1a);
-            margin: 0;
-        }
-        .login-btn {
-            background-color: var(--bg-card, #ffffff);
-            color: var(--text-main, #1a1a1a);
-            border: 2px solid var(--border-color, #121212);
-            padding: 8px 16px;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: bold;
-            box-shadow: 3px 3px 0 var(--border-color, #121212);
-            transition: transform 0.1s, box-shadow 0.1s;
-        }
-        .login-btn:hover {
-            transform: translate(1px, 1px);
-            box-shadow: 2px 2px 0 var(--border-color, #121212);
-        }
-        .banner {
-            width: 100%;
-            height: 200px;
-            background: var(--bg-header, #264639);
-            border-bottom: 2px solid var(--border-color, #121212);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 0 20px;
-        }
-        .banner h1 {
-            font-size: 32px;
-            color: #f5f0e6;
-            margin-bottom: 10px;
-        }
-        .banner p {
-            font-size: 16px;
-            color: #e0e6e3;
-        }
-        .main-content {
-            padding: 40px;
-            max-width: 1200px;
-            flex: 1;
-        }
-        .section-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--text-main, #1a1a1a);
-            margin-bottom: 25px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--border-color, #121212);
-        }
-        .course-list {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        .course-card {
-            background-color: var(--bg-card, #ffffff);
-            border: 2px solid var(--border-color, #121212);
-            border-radius: 0;
-            box-shadow: 6px 6px 0px var(--shadow-color, #121212);
-            padding: 24px;
-            width: calc(33.333% - 14px); /* Adjusted for gap */
-            box-sizing: border-box;
-            transition: transform 0.1s, box-shadow 0.1s;
-            position: relative;
-        }
-        .course-card:hover {
-            transform: translate(2px, 2px);
-            box-shadow: 4px 4px 0px var(--shadow-color, #121212);
-        }
-        .card-badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            background: var(--accent-yellow, #d89632);
-            color: var(--border-color, #121212);
-            font-size: 12px;
-            font-weight: bold;
-            padding: 4px 10px;
-            border: 2px solid var(--border-color, #121212);
-            box-shadow: 2px 2px 0 var(--border-color, #121212);
-        }
-        .course-card h3 {
-            margin-top: 10px;
-            color: var(--text-main, #1a1a1a);
-            font-size: 20px;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        .course-card p {
-            color: var(--muted, #555555);
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-        .course-link {
-            display: inline-block;
-            background-color: var(--bg-main, #f5f0e6);
-            color: var(--text-main, #1a1a1a);
-            font-weight: bold;
-            text-decoration: none;
-            font-size: 14px;
-            padding: 6px 12px;
-            border: 2px solid var(--border-color, #121212);
-            box-shadow: 3px 3px 0 var(--border-color, #121212);
-            transition: transform 0.1s, box-shadow 0.1s;
-        }
-        .course-link:hover {
-            transform: translate(1px, 1px);
-            box-shadow: 2px 2px 0 var(--border-color, #121212);
-        }
-    </style>
 </head>
 <body>
-
-<div class="page-layout">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            TeachingPlatform
-        </div>
-        <div class="nav-menus">
-            <!-- Student menus -->
-            <th:block th:if="${(user != null and user.role == 'student') or role == 'student'}">
-                <a href="/home" class="nav-item active">主页</a>
-                <a href="/student/course/my" class="nav-item">我的课程</a>
-                <a href="/student/course/selection" class="nav-item">课程选择与退选</a>
-                <a href="/student/logs" class="nav-item">选退课日志</a>
-                <a href="#" class="nav-item">班级管理</a>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home" class="active">主页</a>
+            <th:block th:if="${user != null and user.role == 'student'}">
+                <a href="/student/course/my">我的课程</a>
+                <a href="/student/course/selection">选课中心</a>
+                <a href="/student/logs">选课记录</a>
+                <a href="/student/ai">AI 答疑</a>
             </th:block>
-
-            <!-- Teacher menus -->
-            <th:block th:if="${(user != null and user.role == 'teacher') or role == 'teacher'}">
-                <a href="/home" class="nav-item active" th:classappend="${currentPage == 'home' ? 'active' : ''}">主页</a>
-                <a href="/teacher/course/manage" class="nav-item" th:classappend="${currentPage == 'course' ? 'active' : ''}">课程管理</a>
-                <a href="/teacher/task/manage" class="nav-item" th:classappend="${currentPage == 'task' ? 'active' : ''}">作业管理</a>
-                <a href="/teacher/score/statistics" class="nav-item" th:classappend="${currentPage == 'score' ? 'active' : ''}">成绩统计</a>
+            <th:block th:if="${user != null and user.role == 'teacher'}">
+                <a href="/teacher/course/manage">课程管理</a>
+                <a href="/teacher/task/manage">作业管理</a>
+                <a href="/teacher/score/statistics">成绩统计</a>
+                <a href="/teacher/ai">AI 答疑</a>
             </th:block>
+        </nav>
+        <div class="sidebar-user">
+            <strong th:if="${user != null}">你好，<span th:text="${user.username}">user</span></strong>
+            <a th:if="${user != null}" class="btn" href="/profile">个人信息</a>
+            <a th:if="${user != null}" class="btn danger" href="/logout">退出</a>
+            <a th:if="${user == null}" class="btn" href="/login">登录</a>
         </div>
-
-        <div class="sidebar-footer">
-            <span th:if="${user != null}" style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">你好, <span th:text="${user.username}"></span></span>
-            <a th:if="${user != null}" th:href="@{/profile}" class="login-btn" style="width:100%; box-sizing:border-box;">个人信息</a>
-            <a th:if="${user != null}" th:href="@{/logout}" class="login-btn" style="width:100%; box-sizing:border-box; background: var(--accent-red); color: white;">退出</a>
-
-            <a th:if="${user == null}" th:href="@{/login}" class="login-btn" style="width:100%; box-sizing:border-box;">登录 / 注册</a>
-        </div>
-    </div>
-
-    <div class="content-area">
-        <div class="top-bar">
-            <h2 class="page-title">Platform Overview</h2>
-        </div>
-
-        <div class="banner">
-            <h1>大模型赋能的智能化教学、实验环境</h1>
-            <p>Large Model-enabled Platforms for Intelligent Teaching, Learning and Experimenting</p>
-        </div>
-
-        <div class="main-content">
-            <div class="section-title">
-                <span th:if="${(user != null and user.role == 'student') or role == 'student'}">我的课程列表</span>
-                <span th:if="${(user != null and user.role == 'teacher') or role == 'teacher'}">已创建的课程列表</span>
+    </aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1>平台主页</h1>
+        </header>
+        <section class="hero-band">
+            <h2>大模型赋能的智能化教学与实验环境</h2>
+        </section>
+        <section class="content">
+            <div class="toolbar">
+                <a th:if="${user != null and user.role == 'student'}" class="btn primary" href="/student/course/selection">去选课</a>
+                <a th:if="${user != null and user.role == 'teacher'}" class="btn primary" href="/teacher/course/create">创建课程</a>
+                <a th:if="${user != null}" class="btn green" th:href="${user.role == 'teacher' ? '/teacher/ai' : '/student/ai'}">AI 答疑</a>
             </div>
-
-            <div class="course-list">
-                <div class="course-card" th:each="course : ${courses}">
-                    <div class="card-badge" th:text="${course.status != null ? course.status : 'Active'}">状态</div>
+            <h2 th:text="${user != null and user.role == 'teacher' ? '我创建的课程' : '我的课程'}">我的课程</h2>
+            <div class="course-grid" th:if="${!#lists.isEmpty(courses)}">
+                <article class="item-card" th:each="course : ${courses}">
+                    <span class="status-badge" th:text="${course.status}">进行中</span>
                     <h3 th:text="${course.courseName}">课程名称</h3>
-                    <p th:text="'课程代码：' + ${course.courseCode} + '  学分：' + ${course.credit}"></p>
-                    <p th:text="${course.description != null ? course.description : '暂无描述'}">课程描述</p>
-
-                    <a th:if="${user != null and user.role == 'teacher'}"
-                       th:href="@{/teacher/course/manage(courseId=${course.courseId})}"
-                       class="course-link">前往课程管理</a >
-
-                    <a th:if="${user != null and user.role == 'student'}"
-                       th:href="@{/student/course/detail/{id}(id=${course.courseId})}"
-                       class="course-link">进入课程</a >
-                </div>
-                <div th:if="${#lists.isEmpty(courses)}" style="color: var(--muted, #555555); font-style: italic;">暂无可选课程。</div>
+                    <p class="muted">编号：<span th:text="${course.courseCode}">CODE</span> ｜ 学分：<span th:text="${course.credit}">0</span></p>
+                    <p th:text="${course.description ?: '暂无课程简介'}">课程简介</p>
+                    <div class="card-actions">
+                        <a th:if="${user != null and user.role == 'teacher'}" class="btn" th:href="@{/teacher/course/manage(courseId=${course.courseId})}">管理课程</a>
+                        <a th:if="${user != null and user.role == 'student'}" class="btn" th:href="@{/student/course/detail/{id}(id=${course.courseId})}">进入课程</a>
+                    </div>
+                </article>
             </div>
-        </div>
-    </div>
+            <div class="empty" th:if="${#lists.isEmpty(courses)}">暂无课程数据。</div>
+        </section>
+    </main>
 </div>
 </body>
 </html>

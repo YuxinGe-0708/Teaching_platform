@@ -2,13 +2,20 @@ package org.example.controller;
 
 import org.example.dto.ApiResponse;
 import org.example.entity.Submission;
-import org.example.entity.Task;
+import org.example.entity.User;
+import org.example.mapper.SubmissionMapper;
 import org.example.service.JudgeService;
 import org.example.service.TaskService;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpSession;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v2/judge")
@@ -16,26 +23,25 @@ public class JudgeController {
 
     private final JudgeService judgeService;
     private final TaskService taskService;
+    private final SubmissionMapper submissionMapper;
 
-    public JudgeController(JudgeService judgeService, TaskService taskService) {
+    public JudgeController(JudgeService judgeService, TaskService taskService, SubmissionMapper submissionMapper) {
         this.judgeService = judgeService;
         this.taskService = taskService;
+        this.submissionMapper = submissionMapper;
     }
 
     @PostMapping("/submit")
     public ApiResponse<Map<String, Object>> submitAndJudge(@RequestBody Map<String, Object> body, HttpSession session) {
-        // Check login via reflection (compatible with both model.User and entity.User)
-        Object sessionUser = session.getAttribute("currentUser");
-        if (sessionUser == null) return ApiResponse.fail(401, "请先登录");
+        User user = UserController.requireUser(session);
+        if (user == null) return ApiResponse.fail(401, "请先登录");
 
         String code = (String) body.get("code");
         String language = (String) body.getOrDefault("language", "python");
-
         if (code == null || code.trim().isEmpty()) {
             return ApiResponse.fail("代码不能为空");
         }
 
-        // Get test cases from request body
         @SuppressWarnings("unchecked")
         List<Map<String, String>> testCases = (List<Map<String, String>>) body.get("testCases");
         if (testCases == null || testCases.isEmpty()) {
@@ -45,8 +51,20 @@ public class JudgeController {
             testCases = Collections.singletonList(tc);
         }
 
-        // Run the judge
         JudgeService.JudgeResult result = judgeService.judge(code, language, testCases);
+
+        Object rawTaskId = body.get("taskId");
+        if (rawTaskId != null) {
+            Long taskId = rawTaskId instanceof Number
+                    ? ((Number) rawTaskId).longValue()
+                    : Long.valueOf(String.valueOf(rawTaskId));
+            Submission submission = taskService.submit(taskId, user.getId(), code);
+            submission.setScore(result.score);
+            submission.setStatus("graded");
+            submission.setJudgeResult(result.status);
+            submission.setFeedback(result.errorMessage);
+            submissionMapper.grade(submission);
+        }
 
         Map<String, Object> data = new HashMap<>();
         data.put("status", result.status);

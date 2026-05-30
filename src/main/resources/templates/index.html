@@ -3,119 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>平台首页 - 教学平台</title>
+    <title>TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            background-color: #0b0f19;
-            color: #e0e0e0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #1a1e29;
-            padding: 0 40px;
-            height: 60px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            border-bottom: 1px solid #2a3040;
-        }
-        .nav-menus {
-            display: flex;
-            gap: 30px;
-        }
-        .nav-item {
-            color: #a0a5b5;
-            text-decoration: none;
-            font-size: 15px;
-            line-height: 60px;
-            transition: color 0.3s;
-        }
-        .nav-item:hover {
-            color: #ffffff;
-        }
-        .nav-item.active {
-            color: #fff;
-            border-bottom: 2px solid #3c78d8;
-        }
-        .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .login-btn, .dashboard-btn {
-            background-color: transparent;
-            color: #fff;
-            border: 1px solid #4a90e2;
-            padding: 6px 16px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-        .login-btn:hover, .dashboard-btn:hover {
-            background-color: #4a90e2;
-            color: #fff;
-        }
-        .banner {
-            width: 100%;
-            height: 500px;
-            background: linear-gradient(135deg, rgba(30,60,114,0.9) 0%, rgba(42,82,152,0.9) 100%), url('https://dummyimage.com/1920x500/1e3c72/fff&text=Welcome') no-repeat center center / cover;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 0 20px;
-        }
-        .banner h1 {
-            font-size: 48px;
-            color: #fff;
-            margin-bottom: 15px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-        }
-        .banner p {
-            font-size: 20px;
-            color: #d0d5e0;
-            margin-bottom: 30px;
-        }
-    </style>
 </head>
 <body>
-
-<div class="header">
-    <div class="nav-menus">
-        <a href="#" class="nav-item active">首页</a>
-        <a href="#" class="nav-item">教学空间</a>
-        <a href="#" class="nav-item">资源广场</a>
-        <a href="#" class="nav-item">帮助中心</a>
-    </div>
-
-    <div class="nav-right">
-        <!-- 未登录状态 -->
-        <a th:if="${user == null}" th:href="@{/login}" class="login-btn">登录 / 注册</a>
-
-        <!-- 已登录状态 -->
-        <th:block th:if="${user != null}">
-            <span style="color: #fff; font-size: 14px;">你好, <span th:text="${user.username}"></span></span>
-            <a th:href="@{/profile}" class="nav-item" style="margin-left: 10px;">个人信息</a>
-            <a th:href="@{/home}" class="dashboard-btn" style="margin-left: 10px;">
-                <span th:if="${user.role == 'student'}">进入我的课程中心</span>
-                <span th:if="${user.role == 'teacher'}">进入教师控制台</span>
-            </a>
-            <a th:href="@{/logout}" class="login-btn" style="border-color: #e24a4a; color: #e24a4a; margin-left: 10px;">退出</a>
-        </th:block>
-    </div>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/" class="active">入口</a>
+            <a href="/login">登录</a>
+            <a href="/register">注册</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <section class="hero-band">
+            <h2>教学平台</h2>
+            <p>所有功能页面均位于 Thymeleaf templates 下，运行数据统一写入 MySQL。</p>
+        </section>
+        <section class="content">
+            <div class="toolbar">
+                <a class="btn primary" th:if="${user == null}" href="/login">登录</a>
+                <a class="btn" th:if="${user == null}" href="/register">注册</a>
+                <a class="btn primary" th:if="${user != null}" href="/home">进入主页</a>
+            </div>
+        </section>
+    </main>
 </div>
-
-<div class="banner">
-    <h1>大模型赋能的智能化教学、实验环境</h1>
-    <p>提供先进的在线教学资源与实训广场</p>
-    <a th:if="${user == null}" th:href="@{/login}" class="dashboard-btn" style="font-size: 18px; padding: 12px 30px;">立即开始您的学习之旅</a>
-</div>
-
 </body>
 </html>

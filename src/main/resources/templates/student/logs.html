@@ -2,20 +2,31 @@
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>选退课日志</title>
-    <style>
-        body { background-color: #f5f0e6; color: #1a1a1a; font-family: sans-serif; padding: 20px; }
-        .log-list { list-style: none; padding: 0; }
-        .log-item { background: #ffffff; padding: 15px; margin-bottom: 10px; border: 2px solid #1a1a1a; box-shadow: 4px 4px 0px #1a1a1a; font-weight: bold; }
-        .header-link { color: #1a1a1a; margin-bottom: 20px; display: inline-block; font-weight: bold; text-decoration: none; border-bottom: 2px solid #1a1a1a; line-height: 1.5; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选课记录 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
 </head>
 <body>
-    <a href="/home" class="header-link">⬅ 返回主页</a>
-    <h2>选退课日志</h2>
-    <ul class="log-list">
-        <li th:each="log : ${logs}" class="log-item" th:text="${log}"></li>
-    </ul>
-    <div th:if="${#lists.isEmpty(logs)}" style="font-weight:bold;">暂无选退课记录。</div>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/student/course/my">我的课程</a>
+            <a href="/student/course/selection">选课中心</a>
+            <a href="/student/logs" class="active">选课记录</a>
+            <a href="/student/ai">AI 答疑</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar"><h1>选课记录</h1></header>
+        <section class="content">
+            <div class="panel" th:if="${!#lists.isEmpty(logs)}">
+                <p th:each="log : ${logs}" th:text="${log}">记录</p>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(logs)}">暂无选退课记录。</div>
+        </section>
+    </main>
+</div>
 </body>
 </html>

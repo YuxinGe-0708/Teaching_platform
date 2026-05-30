@@ -38,4 +38,17 @@ public class Submission {
     public void setTaskTitle(String taskTitle) { this.taskTitle = taskTitle; }
     public java.sql.Timestamp getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(java.sql.Timestamp submittedAt) { this.submittedAt = submittedAt; }
+
+    public Long getSubmissionId() { return id; }
+    public java.sql.Timestamp getSubmitTime() { return submittedAt; }
+    public String getSubmitStatus() {
+        if ("graded".equals(status)) return "已批改";
+        if ("grading".equals(status)) return "批改中";
+        return "已提交";
+    }
+    public String getComment() { return feedback; }
+    public void setComment(String comment) { this.feedback = comment; }
+    public String getFileUrl() { return filePath == null || filePath.isEmpty() ? null : filePath; }
+    public String getJudgeStatus() { return judgeResult == null || judgeResult.isEmpty() ? "-" : judgeResult; }
+    public String getLanguage() { return "-"; }
 }

@@ -1,26 +1,35 @@
 <!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="UTF-8">
-  <title>成绩统计 - 教学平台</title>
-  <style>
-    body { background-color: #f5f0e6; color: #1a1a1a; padding: 40px; font-family: sans-serif; }
-    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #1a1a1a; padding-bottom: 20px; }
-    .btn-gray { background: #e0e0e0; color: #1a1a1a; box-shadow: 3px 3px 0px #1a1a1a; padding: 10px 20px; text-decoration: none; border: 2px solid #1a1a1a; font-weight: bold; }
-    .coming-soon { text-align: center; padding: 80px 20px; background: #ffffff; border: 2px solid #1a1a1a; box-shadow: 5px 5px 0px #1a1a1a; margin-top: 40px; }
-    .coming-soon h2 { font-size: 32px; color: #1a1a1a; margin-bottom: 20px; }
-    .coming-soon p { color: #555; font-size: 16px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成绩统计 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
 </head>
 <body>
-<div class="header-box">
-  <h1>成绩统计</h1>
-  <div><a href="/home" class="btn-gray">⬅ 返回主页</a></div>
-</div>
-<div class="coming-soon">
-  <h2>功能开发中</h2>
-  <p>成绩统计模块正在建设中，敬请期待！</p>
-  <p style="font-size: 14px; margin-top: 20px;">计划功能：成绩分布图表、及格率统计、分数段分析、成绩导出等</p>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav"><a href="/home">主页</a><a href="/teacher/course/manage">课程管理</a><a href="/teacher/task/manage">作业管理</a><a href="/teacher/score/statistics" class="active">成绩统计</a><a href="/teacher/ai">AI 答疑</a></nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar"><h1>成绩统计</h1></header>
+        <section class="content">
+            <table>
+                <thead><tr><th>课程</th><th>任务数</th><th>提交数</th><th>已批改</th><th>平均分</th></tr></thead>
+                <tbody>
+                <tr th:each="s : ${stats}">
+                    <td th:text="${s.courseName}">课程</td>
+                    <td th:text="${s.taskCount}">0</td>
+                    <td th:text="${s.submissionCount}">0</td>
+                    <td th:text="${s.gradedCount}">0</td>
+                    <td th:text="${s.averageScore}">0</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(stats)}"><td colspan="5">暂无统计数据。</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
 </div>
 </body>
 </html>

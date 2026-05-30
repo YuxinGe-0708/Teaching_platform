@@ -7,12 +7,20 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class AiService {
@@ -35,23 +43,21 @@ public class AiService {
     @PostConstruct
     public void init() {
         this.restTemplate = new RestTemplate();
-        log.info("AI Service initialized, model={}, url={}", model, apiUrl);
+        log.info("AI Service initialized, model={}, url={}, keyConfigured={}", model, apiUrl, apiKey != null && !apiKey.trim().isEmpty());
     }
 
     public String chat(String sessionId, String courseName, String userMessage) {
-        if (apiKey == null || apiKey.isEmpty()) {
-            return "AI助手暂未配置，请联系管理员设置 API Key。";
+        String key = apiKey == null ? "" : apiKey.trim();
+        if (key.isEmpty()) {
+            return "AI 助手尚未配置 API Key。请在启动前设置环境变量 AI_API_KEY。";
         }
 
-        log.info("AI chat: session={}, course={}, msgLen={}", sessionId, courseName, userMessage.length());
-
         List<Map<String, String>> history = sessions.computeIfAbsent(sessionId, k -> new ArrayList<>());
-
         if (history.isEmpty()) {
             Map<String, String> sysMsg = new HashMap<>();
             sysMsg.put("role", "system");
-            sysMsg.put("content", "你是一个在线教学平台的 AI 助教。当前学生正在学习课程《" + courseName + "》。"
-                + "请用中文回答，语气友好、耐心，帮助学生解决课程相关问题。回答尽量简洁，不超过300字。");
+            sysMsg.put("content", "你是在线教学平台的 AI 助教。当前课程是《" + courseName
+                    + "》。请用中文回答，重点帮助学生理解课程知识、完成作业思路和排查学习问题。回答尽量简洁，不超过 500 字。");
             history.add(sysMsg);
         }
 
@@ -65,23 +71,29 @@ public class AiService {
             body.put("model", model);
             body.put("max_tokens", 1000);
             ArrayNode messages = body.putArray("messages");
-            for (Map<String, String> m : history) {
+            for (Map<String, String> message : history) {
                 ObjectNode msg = messages.addObject();
-                msg.put("role", m.get("role"));
-                msg.put("content", m.get("content"));
+                msg.put("role", message.get("role"));
+                msg.put("content", message.get("content"));
             }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
+            if (key.toLowerCase().startsWith("bearer ")) {
+                headers.set(HttpHeaders.AUTHORIZATION, key);
+            } else {
+                headers.setBearerAuth(key);
+            }
 
-            ResponseEntity<String> resp = restTemplate.exchange(
-                apiUrl, HttpMethod.POST, new HttpEntity<>(mapper.writeValueAsString(body), headers), String.class);
+            ResponseEntity<String> response = restTemplate.exchange(
+                    apiUrl,
+                    HttpMethod.POST,
+                    new HttpEntity<>(mapper.writeValueAsString(body), headers),
+                    String.class
+            );
 
-            log.info("AI response status: {}", resp.getStatusCodeValue());
-
-            JsonNode respJson = mapper.readTree(resp.getBody());
-            JsonNode choices = respJson.get("choices");
+            JsonNode responseJson = mapper.readTree(response.getBody());
+            JsonNode choices = responseJson.get("choices");
             if (choices != null && choices.size() > 0) {
                 String reply = choices.get(0).get("message").get("content").asText();
                 Map<String, String> assistantMsg = new HashMap<>();
@@ -91,13 +103,16 @@ public class AiService {
                 return reply;
             }
 
-            String errorMsg = respJson.has("error") ? respJson.get("error").toString() : "Unknown";
+            String errorMsg = responseJson.has("error") ? responseJson.get("error").toString() : "Unknown response";
             log.error("AI API error: {}", errorMsg);
             return "AI API 返回错误：" + errorMsg;
-
-        } catch (Exception e) {
-            log.error("AI call failed: {}", e.toString());
+        } catch (HttpClientErrorException.Unauthorized e) {
             history.remove(history.size() - 1);
+            log.warn("AI unauthorized: {}", e.getMessage());
+            return "AI 鉴权失败：当前 API Key、模型名或接口地址不匹配。请检查 AI_API_KEY 是否有效，AI_API_URL 是否对应这个服务商，且不要多写空格；如果变量里已经带 Bearer，系统会自动兼容。";
+        } catch (Exception e) {
+            history.remove(history.size() - 1);
+            log.error("AI call failed: {}", e.toString());
             return "AI 调用失败：" + e.getClass().getSimpleName() + " - " + e.getMessage();
         }
     }

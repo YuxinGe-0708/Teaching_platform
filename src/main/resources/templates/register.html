@@ -1,39 +1,31 @@
 <!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>注册 - 教学平台</title>
-	<link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 教学平台</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
 </head>
 <body>
 <div class="page">
-	<div class="card">
-		<h1 class="title">Create Account</h1>
-		<p class="subtitle">教学平台 · 认证终端</p>
-
-		<div class="message error" th:if="${error}" th:text="${error}"></div>
-
-		<form th:action="@{/register}" method="post" class="form">
-			<label for="username">用户名</label>
-			<input id="username" name="username" type="text" maxlength="20" required
-				   th:value="${username}">
-
-			<label for="password">密码</label>
-			<input id="password" name="password" type="password" maxlength="32" required>
-
-			<label for="role">身份</label>
-			<select id="role" name="role" required>
-				<option value="student" th:selected="${role == null || role == 'student'}">学生</option>
-				<option value="teacher" th:selected="${role == 'teacher'}">老师</option>
-			</select>
-
-			<button type="submit">立即注册</button>
-		</form>
-
-		<p class="switch-link">已有账号？<a th:href="@{/login}">前往登录</a></p>
-	</div>
+    <div class="card">
+        <h1 class="title">创建账号</h1>
+        <p class="subtitle">账号会直接写入当前配置的 MySQL 数据库</p>
+        <div class="message error" th:if="${error}" th:text="${error}"></div>
+        <form th:action="@{/register}" method="post" class="form">
+            <label for="username">用户名</label>
+            <input id="username" name="username" type="text" maxlength="20" required th:value="${username}">
+            <label for="password">密码</label>
+            <input id="password" name="password" type="password" maxlength="32" required>
+            <label for="role">身份</label>
+            <select id="role" name="role" required>
+                <option value="student" th:selected="${role == null || role == 'student'}">学生</option>
+                <option value="teacher" th:selected="${role == 'teacher'}">教师</option>
+            </select>
+            <button type="submit">注册</button>
+        </form>
+        <p class="switch-link">已有账号？<a th:href="@{/login}">返回登录</a></p>
+    </div>
 </div>
 </body>
 </html>
-

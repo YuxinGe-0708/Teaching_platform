@@ -23,4 +23,9 @@ public class CourseClass {
     public void setCurrentCount(Integer currentCount) { this.currentCount = currentCount; }
     public java.sql.Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(java.sql.Timestamp createdAt) { this.createdAt = createdAt; }
+
+    // Compatibility accessors for the existing Thymeleaf templates.
+    public Long getClassId() { return id; }
+    public String getClassName() { return name; }
+    public void setClassName(String className) { this.name = className; }
 }
