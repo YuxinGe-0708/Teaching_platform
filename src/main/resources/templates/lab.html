@@ -14,6 +14,7 @@
             <a href="/home">主页</a>
             <a th:if="${user.role == 'student'}" href="/student/course/my">我的课程</a>
             <a th:if="${user.role == 'teacher'}" href="/teacher/task/manage">作业管理</a>
+            <a href="/notifications">我的公告</a>
             <a th:href="${user.role == 'teacher' ? '/teacher/ai' : '/student/ai'}">AI 答疑</a>
         </nav>
     </aside>

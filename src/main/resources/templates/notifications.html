@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的公告 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a th:href="${user.role == 'admin' ? '/admin/dashboard' : '/home'}">主页</a>
+            <th:block th:if="${user.role == 'student'}">
+                <a href="/student/course/my">我的课程</a>
+                <a href="/student/course/selection">选课中心</a>
+                <a href="/student/logs">选课记录</a>
+            </th:block>
+            <th:block th:if="${user.role == 'teacher'}">
+                <a href="/teacher/course/manage">课程管理</a>
+                <a href="/teacher/task/manage">作业管理</a>
+                <a href="/teacher/score/statistics">成绩统计</a>
+            </th:block>
+            <th:block th:if="${user.role == 'admin'}">
+                <a href="/admin/users">用户管理</a>
+                <a href="/admin/notifications">公告管理</a>
+                <a href="/admin/logs">操作日志</a>
+            </th:block>
+            <a href="/notifications" class="active">我的公告</a>
+            <a th:if="${user.role != 'admin'}" th:href="${user.role == 'teacher' ? '/teacher/ai' : '/student/ai'}">AI 答疑</a>
+        </nav>
+        <div class="sidebar-user">
+            <strong>你好，<span th:text="${user.username}">user</span></strong>
+            <a class="btn danger" href="/logout">退出</a>
+        </div>
+    </aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1>我的公告</h1>
+            <form action="/notifications/read-all" method="post">
+                <button class="btn primary" type="submit" th:disabled="${unreadCount == 0}">全部标为已读</button>
+            </form>
+        </header>
+        <section class="content">
+            <p class="muted">未读公告：<strong th:text="${unreadCount}">0</strong></p>
+            <div class="course-grid" th:if="${!#lists.isEmpty(notifications)}">
+                <article class="item-card" th:each="n : ${notifications}">
+                    <span class="status-badge" th:text="${n.isRead ? '已读' : '未读'}">未读</span>
+                    <h3 th:text="${n.title}">公告标题</h3>
+                    <p class="muted">类型：<span th:text="${n.type}">system</span> ｜ 发布时间：<span th:text="${n.createdAt}">时间</span></p>
+                    <p th:text="${n.content}">公告内容</p>
+                    <form th:if="${!n.isRead}" action="/notifications/read" method="post">
+                        <input type="hidden" name="notificationId" th:value="${n.id}">
+                        <button class="btn primary" type="submit">确认已读</button>
+                    </form>
+                </article>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(notifications)}">暂无公告。</div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

@@ -16,4 +16,7 @@ public interface OperationLogMapper {
 
     @Select("SELECT * FROM operation_log WHERE user_id = #{userId} ORDER BY created_at DESC")
     List<OperationLog> findByUserId(Long userId);
+
+    @Select("SELECT * FROM operation_log ORDER BY created_at DESC LIMIT 200")
+    List<OperationLog> findRecent();
 }

@@ -16,6 +16,9 @@ public interface TaskMapper {
     @Select("SELECT t.*, c.name AS course_name FROM task t LEFT JOIN course c ON t.course_id = c.id INNER JOIN course_enrollment ce ON c.id = ce.course_id WHERE ce.student_id = #{studentId} AND t.status = 'published' ORDER BY t.end_time ASC")
     List<Task> findByStudentId(Long studentId);
 
+    @Select("SELECT COUNT(*) FROM task")
+    int countAll();
+
     @Insert("INSERT INTO task (title, description, course_id, type, max_score, end_time, status) VALUES (#{title}, #{description}, #{courseId}, #{type}, #{maxScore}, #{endTime}, #{status})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Task task);

@@ -16,12 +16,14 @@
                 <a href="/student/course/my">我的课程</a>
                 <a href="/student/course/selection">选课中心</a>
                 <a href="/student/logs">选课记录</a>
+                <a href="/notifications">我的公告</a>
                 <a href="/student/ai">AI 答疑</a>
             </th:block>
             <th:block th:if="${user != null and user.role == 'teacher'}">
                 <a href="/teacher/course/manage">课程管理</a>
                 <a href="/teacher/task/manage">作业管理</a>
                 <a href="/teacher/score/statistics">成绩统计</a>
+                <a href="/notifications">我的公告</a>
                 <a href="/teacher/ai">AI 答疑</a>
             </th:block>
         </nav>

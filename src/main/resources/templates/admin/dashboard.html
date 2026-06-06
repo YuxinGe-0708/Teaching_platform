@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/admin/dashboard" class="active">总览</a>
+            <a href="/admin/users">用户管理</a>
+            <a href="/admin/notifications">公告管理</a>
+            <a href="/admin/logs">操作日志</a>
+            <a href="/notifications">我的公告</a>
+        </nav>
+        <div class="sidebar-user">
+            <strong>管理员：<span th:text="${user.username}">admin</span></strong>
+            <a class="btn danger" href="/logout">退出</a>
+        </div>
+    </aside>
+    <main class="main-area">
+        <header class="topbar"><h1>管理后台</h1></header>
+        <section class="content">
+            <div class="course-grid">
+                <article class="item-card">
+                    <span class="status-badge">用户</span>
+                    <h3 th:text="${stats.userCount}">0</h3>
+                    <p class="muted">学生 <span th:text="${stats.studentCount}">0</span> ｜ 教师 <span th:text="${stats.teacherCount}">0</span> ｜ 管理员 <span th:text="${stats.adminCount}">0</span></p>
+                </article>
+                <article class="item-card">
+                    <span class="status-badge">课程</span>
+                    <h3 th:text="${stats.courseCount}">0</h3>
+                    <p class="muted">平台当前课程总数</p>
+                </article>
+                <article class="item-card">
+                    <span class="status-badge">任务</span>
+                    <h3 th:text="${stats.taskCount}">0</h3>
+                    <p class="muted">作业、考试与编程实训任务</p>
+                </article>
+                <article class="item-card">
+                    <span class="status-badge">提交</span>
+                    <h3 th:text="${stats.submissionCount}">0</h3>
+                    <p class="muted">学生提交与评测记录</p>
+                </article>
+            </div>
+            <div class="toolbar">
+                <a class="btn primary" href="/admin/users">管理用户</a>
+                <a class="btn green" href="/admin/notifications">发布公告</a>
+                <a class="btn" href="/admin/logs">查看日志</a>
+            </div>
+            <h2>最近操作</h2>
+            <table>
+                <thead><tr><th>时间</th><th>用户</th><th>操作</th><th>详情</th></tr></thead>
+                <tbody>
+                <tr th:each="log : ${logs}">
+                    <td th:text="${log.createdAt}">时间</td>
+                    <td th:text="${log.username}">用户</td>
+                    <td th:text="${log.action}">操作</td>
+                    <td th:text="${log.detail}">详情</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(logs)}"><td colspan="4">暂无操作日志。</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+</body>
+</html>

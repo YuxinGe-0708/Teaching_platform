@@ -5,6 +5,8 @@ import org.example.mapper.UserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class UserService {
 
@@ -43,5 +45,42 @@ public class UserService {
     public User updateProfile(User user) {
         userMapper.update(user);
         return user;
+    }
+
+    public List<User> listUsers(String role) {
+        if (role == null || role.trim().isEmpty()) {
+            return userMapper.findAll();
+        }
+        String normalizedRole = role.trim().toLowerCase();
+        if (!isValidRole(normalizedRole)) {
+            return userMapper.findAll();
+        }
+        return userMapper.findByRole(normalizedRole);
+    }
+
+    public boolean updateByAdmin(Long id, String name, String email, String role) {
+        User user = userMapper.findById(id);
+        String normalizedRole = role == null ? "" : role.trim().toLowerCase();
+        if (user == null || !isValidRole(normalizedRole)) return false;
+
+        user.setName(name == null || name.trim().isEmpty() ? user.getUsername() : name.trim());
+        user.setEmail(email == null ? "" : email.trim());
+        user.setRole(normalizedRole);
+        return userMapper.updateByAdmin(user) > 0;
+    }
+
+    public boolean resetPassword(Long id, String rawPassword) {
+        if (rawPassword == null || rawPassword.trim().length() < 6 || rawPassword.trim().length() > 32) {
+            return false;
+        }
+        return userMapper.updatePassword(id, passwordEncoder.encode(rawPassword.trim())) > 0;
+    }
+
+    public boolean deleteUser(Long id) {
+        return userMapper.deleteById(id) > 0;
+    }
+
+    private boolean isValidRole(String role) {
+        return "student".equals(role) || "teacher".equals(role) || "admin".equals(role);
     }
 }

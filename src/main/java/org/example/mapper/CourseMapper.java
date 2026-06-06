@@ -22,6 +22,9 @@ public interface CourseMapper {
     @Select("SELECT c.*, u.name AS teacher_name FROM course c LEFT JOIN user u ON c.teacher_id = u.id WHERE c.invite_code = #{inviteCode} AND c.status = 'active'")
     Course findByInviteCode(String inviteCode);
 
+    @Select("SELECT COUNT(*) FROM course")
+    int countAll();
+
     @Insert("INSERT INTO course (name, code, description, credits, teacher_id, invite_code, cover_url, status) VALUES (#{name}, #{code}, #{description}, #{credits}, #{teacherId}, #{inviteCode}, #{coverUrl}, #{status})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Course course);

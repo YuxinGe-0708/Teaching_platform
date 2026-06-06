@@ -22,6 +22,9 @@ public interface SubmissionMapper {
     @Select("SELECT s.*, u.name AS student_name, t.title AS task_title FROM submission s LEFT JOIN user u ON s.student_id = u.id LEFT JOIN task t ON s.task_id = t.id WHERE t.course_id = #{courseId} ORDER BY s.submitted_at DESC")
     List<Submission> findByCourseId(Long courseId);
 
+    @Select("SELECT COUNT(*) FROM submission")
+    int countAll();
+
     @Insert("INSERT INTO submission (task_id, student_id, content, file_path, status, judge_result) VALUES (#{taskId}, #{studentId}, #{content}, #{filePath}, #{status}, #{judgeResult})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Submission submission);

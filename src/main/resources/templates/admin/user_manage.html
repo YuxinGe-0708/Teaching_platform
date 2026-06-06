@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/admin/dashboard">总览</a>
+            <a href="/admin/users" class="active">用户管理</a>
+            <a href="/admin/notifications">公告管理</a>
+            <a href="/admin/logs">操作日志</a>
+            <a href="/notifications">我的公告</a>
+        </nav>
+        <div class="sidebar-user">
+            <strong>管理员：<span th:text="${user.username}">admin</span></strong>
+            <a class="btn danger" href="/logout">退出</a>
+        </div>
+    </aside>
+    <main class="main-area">
+        <header class="topbar"><h1>用户管理</h1></header>
+        <section class="content">
+            <div class="message success" th:if="${message == 'updated'}">用户信息已更新。</div>
+            <div class="message success" th:if="${message == 'passwordReset'}">密码已重置。</div>
+            <div class="message success" th:if="${message == 'deleted'}">用户已删除。</div>
+            <div class="message error" th:if="${message == 'failed'}">操作失败，请检查输入。</div>
+            <div class="message error" th:if="${message == 'selfDeleteBlocked'}">不能删除当前登录的管理员账号。</div>
+
+            <form class="toolbar" action="/admin/users" method="get">
+                <select name="role">
+                    <option value="" th:selected="${role == ''}">全部角色</option>
+                    <option value="student" th:selected="${role == 'student'}">学生</option>
+                    <option value="teacher" th:selected="${role == 'teacher'}">教师</option>
+                    <option value="admin" th:selected="${role == 'admin'}">管理员</option>
+                </select>
+                <button type="submit" class="btn primary">筛选</button>
+                <a class="btn" href="/admin/users">重置</a>
+            </form>
+
+            <table>
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>姓名</th>
+                    <th>邮箱</th>
+                    <th>角色</th>
+                    <th>创建时间</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="u : ${users}">
+                    <td th:text="${u.id}">1</td>
+                    <td th:text="${u.username}">username</td>
+                    <td colspan="3">
+                        <form action="/admin/users/update" method="post" class="inline-form">
+                            <input type="hidden" name="userId" th:value="${u.id}">
+                            <input name="name" th:value="${u.name}" placeholder="姓名">
+                            <input name="email" th:value="${u.email}" placeholder="邮箱">
+                            <select name="role">
+                                <option value="student" th:selected="${u.role == 'student'}">学生</option>
+                                <option value="teacher" th:selected="${u.role == 'teacher'}">教师</option>
+                                <option value="admin" th:selected="${u.role == 'admin'}">管理员</option>
+                            </select>
+                            <button type="submit" class="btn primary">保存</button>
+                        </form>
+                    </td>
+                    <td th:text="${u.createdAt}">时间</td>
+                    <td>
+                        <form action="/admin/users/reset-password" method="post" class="inline-form">
+                            <input type="hidden" name="userId" th:value="${u.id}">
+                            <input type="password" name="password" minlength="6" maxlength="32" placeholder="新密码" required>
+                            <button type="submit" class="btn">重置</button>
+                        </form>
+                        <form action="/admin/users/delete" method="post" class="inline-form" onsubmit="return confirm('确定删除该用户吗？相关课程、提交等数据也可能被级联删除。')">
+                            <input type="hidden" name="userId" th:value="${u.id}">
+                            <button type="submit" class="btn danger">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(users)}"><td colspan="7">暂无用户。</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+</body>
+</html>

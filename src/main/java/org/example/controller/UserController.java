@@ -105,6 +105,9 @@ public class UserController {
             model.addAttribute("courses", Collections.emptyList());
             return "home";
         }
+        if ("admin".equals(currentUser.getRole())) {
+            return "redirect:/admin/dashboard";
+        }
         if ("teacher".equals(currentUser.getRole())) {
             model.addAttribute("courses", toCourseViews(courseService.getTeacherCourses(currentUser.getId())));
         } else {
@@ -149,7 +152,7 @@ public class UserController {
         return "redirect:/login";
     }
 
-    static User requireUser(HttpSession session) {
+    public static User requireUser(HttpSession session) {
         Object user = session.getAttribute("currentUser");
         return user instanceof User ? (User) user : null;
     }
