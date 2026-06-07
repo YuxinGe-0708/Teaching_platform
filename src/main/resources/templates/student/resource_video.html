@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频学习 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/student/course/my">我的课程</a>
+            <a href="/notifications">我的公告</a>
+            <a href="/student/ai">AI 答疑</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1 th:text="${resource.title}">视频学习</h1>
+            <a class="btn" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='resources')}">返回资源</a>
+        </header>
+        <section class="content video-learning" th:inline="javascript">
+            <div class="video-pane">
+                <div id="captureArea" class="video-frame">
+                    <video id="courseVideo" controls crossorigin="anonymous" th:src="@{/student/resource/stream/{id}(id=${resource.id})}"></video>
+                    <div id="selectionBox" class="selection-box"></div>
+                </div>
+                <div class="toolbar">
+                    <button type="button" class="btn green" id="pointerBtn">AI 点读笔</button>
+                    <span class="muted">点击后在视频画面中拖拽框选知识点区域。</span>
+                </div>
+            </div>
+            <aside class="ai-side-panel">
+                <h2>AI 辅助学习</h2>
+                <div id="aiAnswer" class="ai-answer">框选视频画面后，这里会显示知识点解释。</div>
+            </aside>
+        </section>
+    </main>
+</div>
+<script th:inline="javascript">
+const resourceTitle = /*[[${resource.title}]]*/ '课程视频';
+const courseName = /*[[${course.courseName}]]*/ '课程';
+const video = document.getElementById('courseVideo');
+const captureArea = document.getElementById('captureArea');
+const box = document.getElementById('selectionBox');
+const pointerBtn = document.getElementById('pointerBtn');
+const aiAnswer = document.getElementById('aiAnswer');
+let selecting = false;
+let pointerMode = false;
+let start = null;
+
+pointerBtn.addEventListener('click', () => {
+    pointerMode = !pointerMode;
+    pointerBtn.classList.toggle('primary', pointerMode);
+    captureArea.classList.toggle('selecting', pointerMode);
+    aiAnswer.textContent = pointerMode ? '请在视频画面上拖拽框选。' : '框选视频画面后，这里会显示知识点解释。';
+});
+
+captureArea.addEventListener('mousedown', event => {
+    if (!pointerMode) return;
+    selecting = true;
+    const rect = captureArea.getBoundingClientRect();
+    start = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    updateBox(start.x, start.y, 0, 0);
+});
+
+captureArea.addEventListener('mousemove', event => {
+    if (!selecting || !start) return;
+    const rect = captureArea.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    updateBox(Math.min(start.x, x), Math.min(start.y, y), Math.abs(x - start.x), Math.abs(y - start.y));
+});
+
+window.addEventListener('mouseup', async () => {
+    if (!selecting || !start) return;
+    selecting = false;
+    const bounds = box.getBoundingClientRect();
+    const areaBounds = captureArea.getBoundingClientRect();
+    const crop = {
+        x: bounds.left - areaBounds.left,
+        y: bounds.top - areaBounds.top,
+        width: bounds.width,
+        height: bounds.height
+    };
+    if (crop.width < 20 || crop.height < 20) {
+        aiAnswer.textContent = '框选区域太小，请重新选择。';
+        return;
+    }
+    await sendSelection(crop);
+});
+
+function updateBox(x, y, width, height) {
+    box.style.display = 'block';
+    box.style.left = x + 'px';
+    box.style.top = y + 'px';
+    box.style.width = width + 'px';
+    box.style.height = height + 'px';
+}
+
+async function sendSelection(crop) {
+    aiAnswer.textContent = '正在截取画面并发送给 AI...';
+    try {
+        if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+            aiAnswer.textContent = '视频画面尚未加载完成，请播放到需要解释的位置后再框选。';
+            return;
+        }
+        const canvas = document.createElement('canvas');
+        const scaleX = video.videoWidth / captureArea.clientWidth;
+        const scaleY = video.videoHeight / captureArea.clientHeight;
+        const sourceWidth = Math.round(crop.width * scaleX);
+        const sourceHeight = Math.round(crop.height * scaleY);
+        const maxSide = 900;
+        const shrink = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
+        canvas.width = Math.max(1, Math.round(sourceWidth * shrink));
+        canvas.height = Math.max(1, Math.round(sourceHeight * shrink));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, crop.x * scaleX, crop.y * scaleY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+        const image = canvas.toDataURL('image/jpeg', 0.82);
+        const response = await fetch('/api/v2/ai/explain-image', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({image, courseName, resourceTitle})
+        });
+        const data = await response.json();
+        aiAnswer.textContent = data.code === 200 && data.data ? data.data.reply : (data.message || 'AI 解释失败。');
+    } catch (error) {
+        aiAnswer.textContent = 'AI 点读失败：' + error.message;
+    }
+}
+</script>
+</body>
+</html>

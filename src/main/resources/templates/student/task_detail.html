@@ -61,17 +61,74 @@
                     <select id="language">
                         <option value="python">Python</option>
                         <option value="java">Java</option>
-                        <option value="cpp">C++</option>
-                        <option value="javascript">JavaScript</option>
+                        <option value="c">C</option>
                     </select>
+                    <button type="button" class="btn" id="templateBtn">载入模板</button>
                     <button type="button" class="btn primary" id="judgeBtn">运行评测</button>
                 </div>
-                <textarea id="codeEditor" class="ide-area" spellcheck="false">print("Hello World")</textarea>
+                <div id="monacoEditor" class="monaco-editor-box"></div>
+                <textarea id="codeEditor" class="ide-area ide-fallback" spellcheck="false">print("Hello World")</textarea>
                 <h3>评测输出</h3>
                 <div id="judgeOutput" class="ide-output">点击“运行评测”后查看结果。</div>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
                 <script th:inline="javascript">
                     const taskId = /*[[${task.taskId}]]*/ 0;
                     const testCases = JSON.parse(/*[[${task.testCasesJson}]]*/ '[]');
+                    const language = document.getElementById('language');
+                    const fallbackEditor = document.getElementById('codeEditor');
+                    let monacoEditor = null;
+                    const templates = {
+                        python: 'print("Hello World")\n',
+                        java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World");\n    }\n}\n',
+                        c: '#include <stdio.h>\n\nint main(void) {\n    printf("Hello World\\n");\n    return 0;\n}\n'
+                    };
+                    const monacoLanguages = {python: 'python', java: 'java', c: 'c'};
+
+                    function currentCode() {
+                        return monacoEditor ? monacoEditor.getValue() : fallbackEditor.value;
+                    }
+
+                    function setCode(value) {
+                        if (monacoEditor) monacoEditor.setValue(value);
+                        fallbackEditor.value = value;
+                    }
+
+                    function setLanguage(value) {
+                        if (monacoEditor && window.monaco) {
+                            monaco.editor.setModelLanguage(monacoEditor.getModel(), monacoLanguages[value] || 'plaintext');
+                        }
+                    }
+
+                    document.getElementById('templateBtn').addEventListener('click', () => setCode(templates[language.value]));
+                    language.addEventListener('change', () => {
+                        setLanguage(language.value);
+                        if (!currentCode().trim() || currentCode().trim() === 'print("Hello World")') {
+                            setCode(templates[language.value]);
+                        }
+                    });
+
+                    if (window.require) {
+                        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+                        require(['vs/editor/editor.main'], function () {
+                            monacoEditor = monaco.editor.create(document.getElementById('monacoEditor'), {
+                                value: fallbackEditor.value,
+                                language: 'python',
+                                theme: 'vs',
+                                automaticLayout: true,
+                                minimap: { enabled: false },
+                                fontSize: 14,
+                                scrollBeyondLastLine: false
+                            });
+                            fallbackEditor.style.display = 'none';
+                        }, function () {
+                            document.getElementById('monacoEditor').style.display = 'none';
+                            fallbackEditor.style.display = 'block';
+                        });
+                    } else {
+                        document.getElementById('monacoEditor').style.display = 'none';
+                        fallbackEditor.style.display = 'block';
+                    }
+
                     document.getElementById('judgeBtn').addEventListener('click', async () => {
                         const output = document.getElementById('judgeOutput');
                         const button = document.getElementById('judgeBtn');
@@ -83,8 +140,8 @@
                                 headers: {'Content-Type': 'application/json'},
                                 body: JSON.stringify({
                                     taskId,
-                                    code: document.getElementById('codeEditor').value,
-                                    language: document.getElementById('language').value,
+                                    code: currentCode(),
+                                    language: language.value,
                                     testCases
                                 })
                             });
@@ -98,6 +155,7 @@
                                 '<strong>状态：</strong>' + result.status +
                                 ' ｜ <strong>得分：</strong>' + result.score +
                                 ' ｜ <strong>通过：</strong>' + result.passedCases + '/' + result.totalCases +
+                                (result.errorMessage ? '<p class="message error">' + result.errorMessage + '</p>' : '') +
                                 '<pre>' + JSON.stringify(result.caseResults, null, 2) + '</pre>';
                         } catch (e) {
                             output.textContent = '评测请求失败：' + e.message;

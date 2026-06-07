@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 笔记 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/student/course/my">我的课程</a>
+            <a href="/notifications">我的公告</a>
+            <a href="/student/ai">AI 答疑</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1 th:text="${resource.title} + ' - AI 笔记'">AI 笔记</h1>
+            <a class="btn" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='resources')}">返回资源</a>
+        </header>
+        <section class="content">
+            <div class="panel">
+                <div class="card-actions">
+                    <a class="btn primary" th:href="@{/student/resource/download/{id}(id=${resource.id})}">下载原 PDF</a>
+                </div>
+                <pre class="ai-notes" th:text="${notes}">AI 笔记</pre>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

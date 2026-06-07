@@ -1,17 +1,38 @@
 package org.example.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.*;
 
 @Service
 public class JudgeService {
 
-    private static final int TIME_LIMIT_SEC = 5;
+    @Value("${app.judge0.api-url:https://ce.judge0.com}")
+    private String apiUrl;
+
+    @Value("${app.judge0.api-key:}")
+    private String apiKey;
+
+    @Value("${app.judge0.api-host:}")
+    private String apiHost;
+
+    @Value("${app.judge0.timeout-ms:15000}")
+    private int timeoutMs;
+
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public static class JudgeResult {
         public String status;
@@ -30,6 +51,7 @@ public class JudgeService {
         public String expectedOutput;
         public String actualOutput;
         public double timeMs;
+        public String message;
     }
 
     public JudgeResult judge(String code, String language, List<Map<String, String>> testCases) {
@@ -37,180 +59,188 @@ public class JudgeService {
         result.totalCases = testCases != null ? testCases.size() : 0;
 
         if (testCases == null || testCases.isEmpty()) {
-            result.status = "AC";
-            result.errorMessage = "No test cases";
+            result.status = "IE";
+            result.errorMessage = "编程题没有配置测试用例，请联系教师补充期望输出。";
             return result;
         }
 
-        if ("python".equalsIgnoreCase(language)) {
-            return judgePython(code, testCases, result);
+        Integer languageId = languageId(language);
+        if (languageId == null) {
+            result.status = "IE";
+            result.errorMessage = "暂不支持该语言：" + language;
+            return result;
         }
 
-        return simulateJudge(code, language, testCases, result);
+        long started = System.currentTimeMillis();
+        for (int i = 0; i < testCases.size(); i++) {
+            CaseResult caseResult = submitCase(code, languageId, testCases.get(i), i + 1);
+            result.caseResults.add(caseResult);
+            result.timeUsedMs += caseResult.timeMs;
+            if ("AC".equals(caseResult.status)) {
+                result.passedCases++;
+            }
+            if ("IE".equals(caseResult.status)) {
+                result.status = "IE";
+                result.errorMessage = caseResult.message;
+                result.score = 0;
+                return result;
+            }
+        }
+
+        if (result.timeUsedMs <= 0) {
+            result.timeUsedMs = System.currentTimeMillis() - started;
+        }
+        result.score = result.totalCases == 0 ? 0 : (double) result.passedCases / result.totalCases * 100;
+        result.status = result.passedCases == result.totalCases ? "AC" : worstStatus(result.caseResults);
+        return result;
     }
 
-    private JudgeResult judgePython(String code, List<Map<String, String>> testCases, JudgeResult result) {
-        Path tempDir = null;
-        Path codeFile = null;
+    private CaseResult submitCase(String code, Integer languageId, Map<String, String> testCase, int index) {
+        CaseResult cr = new CaseResult();
+        cr.caseIndex = index;
+        cr.input = testCase.getOrDefault("input", "");
+        cr.expectedOutput = testCase.getOrDefault("expectedOutput", "").trim();
 
         try {
-            tempDir = Files.createTempDirectory("judge_");
-            codeFile = tempDir.resolve("solution.py");
-            Files.write(codeFile, code.getBytes(StandardCharsets.UTF_8));
+            ObjectNode body = mapper.createObjectNode();
+            body.put("source_code", code);
+            body.put("language_id", languageId);
+            body.put("stdin", cr.input);
+            body.put("expected_output", cr.expectedOutput);
+            body.put("cpu_time_limit", Math.max(2, timeoutMs / 1000));
+            body.put("wall_time_limit", Math.max(3, timeoutMs / 1000 + 2));
 
-            long totalTime = 0;
-            boolean allPassed = true;
-            boolean hasError = false;
+            String url = UriComponentsBuilder.fromHttpUrl(normalizedApiUrl() + "/submissions")
+                    .queryParam("base64_encoded", "false")
+                    .queryParam("wait", "false")
+                    .queryParam("fields", "stdout,stderr,compile_output,message,status,time,memory")
+                    .toUriString();
 
-            for (int i = 0; i < testCases.size(); i++) {
-                Map<String, String> tc = testCases.get(i);
-                CaseResult cr = new CaseResult();
-                cr.caseIndex = i + 1;
-                cr.input = tc.getOrDefault("input", "");
-                cr.expectedOutput = tc.getOrDefault("expectedOutput", "").trim();
-
-                try {
-                    long start = System.currentTimeMillis();
-
-                    ProcessBuilder pb = new ProcessBuilder(
-                        "python", codeFile.toAbsolutePath().toString()
-                    );
-                    pb.directory(tempDir.toFile());
-                    pb.redirectErrorStream(true);
-
-                    Process proc = pb.start();
-
-                    if (!cr.input.isEmpty()) {
-                        try (OutputStream os = proc.getOutputStream()) {
-                            os.write(cr.input.getBytes(StandardCharsets.UTF_8));
-                            os.flush();
-                        }
-                    }
-
-                    ExecutorService executor = Executors.newSingleThreadExecutor();
-                    Future<String> future = executor.submit(() -> {
-                        try (BufferedReader reader = new BufferedReader(
-                                new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
-                            StringBuilder sb = new StringBuilder();
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                sb.append(line).append("\n");
-                            }
-                            return sb.toString().trim();
-                        }
-                    });
-
-                    String output;
-                    try {
-                        output = future.get(TIME_LIMIT_SEC, TimeUnit.SECONDS);
-                    } catch (TimeoutException e) {
-                        proc.destroyForcibly();
-                        future.cancel(true);
-                        cr.status = "TLE";
-                        cr.actualOutput = "[Time Limit Exceeded]";
-                        cr.timeMs = TIME_LIMIT_SEC * 1000;
-                        result.caseResults.add(cr);
-                        allPassed = false;
-                        continue;
-                    } finally {
-                        executor.shutdownNow();
-                    }
-
-                    long end = System.currentTimeMillis();
-                    cr.timeMs = end - start;
-                    totalTime += cr.timeMs;
-
-                    int exitCode = proc.waitFor();
-                    if (exitCode != 0) {
-                        cr.status = "RE";
-                        cr.actualOutput = output.isEmpty() ? "[Runtime Error, exit code: " + exitCode + "]" : output;
-                        result.caseResults.add(cr);
-                        allPassed = false;
-                        hasError = true;
-                        continue;
-                    }
-
-                    cr.actualOutput = output;
-
-                    if (normalizeOutput(output).equals(normalizeOutput(cr.expectedOutput))) {
-                        cr.status = "AC";
-                        result.passedCases++;
-                    } else {
-                        cr.status = "WA";
-                        allPassed = false;
-                    }
-
-                } catch (IOException e) {
-                    cr.status = "CE";
-                    cr.actualOutput = "[Compilation/Execution Error]: " + e.getMessage();
-                    result.caseResults.add(cr);
-                    allPassed = false;
-                    hasError = true;
-                }
-
-                result.caseResults.add(cr);
+            long start = System.currentTimeMillis();
+            ResponseEntity<String> response = restTemplate().exchange(
+                    url,
+                    HttpMethod.POST,
+                    new HttpEntity<>(mapper.writeValueAsString(body), headers()),
+                    String.class
+            );
+            JsonNode submitted = mapper.readTree(response.getBody());
+            JsonNode json = submitted.has("token")
+                    ? pollSubmission(submitted.get("token").asText(), start)
+                    : submitted;
+            cr.timeMs = System.currentTimeMillis() - start;
+            JsonNode statusNode = json.path("status");
+            cr.status = mapStatus(statusNode.path("id").asInt(0));
+            cr.message = statusNode.path("description").asText("");
+            cr.actualOutput = firstText(json, "stdout", "stderr", "compile_output", "message");
+            double remoteTime = json.path("time").asDouble(0D);
+            if (remoteTime > 0) {
+                cr.timeMs = remoteTime * 1000D;
             }
-
-            result.timeUsedMs = totalTime;
-
-            if (allPassed) {
-                result.status = "AC";
-                result.score = 100.0;
-            } else if (hasError) {
-                result.status = "RE";
-                result.score = 0;
-            } else {
-                result.status = "WA";
-                result.score = (double) result.passedCases / result.totalCases * 100;
-            }
-
+        } catch (RestClientException e) {
+            cr.status = "IE";
+            cr.message = "云端判题服务连接失败或超时：" + e.getMessage();
+            cr.actualOutput = cr.message;
         } catch (Exception e) {
-            result.status = "IE";
-            result.errorMessage = "Judge internal error: " + e.getMessage();
-        } finally {
-            if (codeFile != null) try { Files.deleteIfExists(codeFile); } catch (IOException ignored) {}
-            if (tempDir != null) try { Files.deleteIfExists(tempDir); } catch (IOException ignored) {}
+            cr.status = "IE";
+            cr.message = "云端判题异常：" + e.getMessage();
+            cr.actualOutput = cr.message;
         }
 
-        return result;
+        return cr;
     }
 
-    private JudgeResult simulateJudge(String code, String language, List<Map<String, String>> testCases, JudgeResult result) {
-        boolean hasCode = code != null && code.trim().length() > 20;
-        boolean hasMain = code != null && (code.contains("main") || code.contains("class"));
-
-        if (!hasCode) {
-            result.status = "CE";
-            result.errorMessage = "Code is empty or too short";
-            return result;
+    private JsonNode pollSubmission(String token, long start) throws Exception {
+        String url = UriComponentsBuilder.fromHttpUrl(normalizedApiUrl() + "/submissions/" + token)
+                .queryParam("base64_encoded", "false")
+                .queryParam("fields", "stdout,stderr,compile_output,message,status,time,memory")
+                .toUriString();
+        while (System.currentTimeMillis() - start < timeoutMs) {
+            ResponseEntity<String> response = restTemplate().exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers()),
+                    String.class
+            );
+            JsonNode json = mapper.readTree(response.getBody());
+            int statusId = json.path("status").path("id").asInt(0);
+            if (statusId > 2) {
+                return json;
+            }
+            Thread.sleep(500L);
         }
-
-        if (!hasMain && ("java".equalsIgnoreCase(language))) {
-            result.status = "CE";
-            result.errorMessage = "main method or class not found";
-            return result;
-        }
-
-        for (int i = 0; i < testCases.size(); i++) {
-            Map<String, String> tc = testCases.get(i);
-            CaseResult cr = new CaseResult();
-            cr.caseIndex = i + 1;
-            cr.input = tc.getOrDefault("input", "");
-            cr.expectedOutput = tc.getOrDefault("expectedOutput", "").trim();
-            cr.status = "AC";
-            cr.actualOutput = cr.expectedOutput;
-            cr.timeMs = 50 + Math.random() * 200;
-            result.caseResults.add(cr);
-            result.passedCases++;
-        }
-
-        result.status = "AC";
-        result.score = 100.0;
-        result.timeUsedMs = result.caseResults.stream().mapToDouble(c -> c.timeMs).sum();
-        return result;
+        ObjectNode timeout = mapper.createObjectNode();
+        ObjectNode status = timeout.putObject("status");
+        status.put("id", 5);
+        status.put("description", "Time Limit Exceeded");
+        timeout.put("message", "云端判题等待超时，请稍后重试。");
+        return timeout;
     }
 
-    private String normalizeOutput(String s) {
-        return s.replaceAll("\\s+", " ").trim();
+    private RestTemplate restTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(timeoutMs);
+        factory.setReadTimeout(timeoutMs);
+        return new RestTemplate(factory);
+    }
+
+    private HttpHeaders headers() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String key = apiKey == null ? "" : apiKey.trim();
+        if (!key.isEmpty()) {
+            if (key.toLowerCase().startsWith("bearer ")) {
+                headers.set(HttpHeaders.AUTHORIZATION, key);
+            } else {
+                headers.set("X-RapidAPI-Key", key);
+            }
+        }
+        String host = apiHost == null ? "" : apiHost.trim();
+        if (!host.isEmpty()) {
+            headers.set("X-RapidAPI-Host", host);
+        }
+        return headers;
+    }
+
+    private String normalizedApiUrl() {
+        String url = apiUrl == null || apiUrl.trim().isEmpty() ? "https://ce.judge0.com" : apiUrl.trim();
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    private Integer languageId(String language) {
+        if (language == null) return null;
+        String value = language.trim().toLowerCase();
+        if ("python".equals(value) || "py".equals(value)) return 71;
+        if ("java".equals(value)) return 62;
+        if ("c".equals(value) || "gcc".equals(value)) return 50;
+        return null;
+    }
+
+    private String mapStatus(int id) {
+        if (id == 3) return "AC";
+        if (id == 4) return "WA";
+        if (id == 5) return "TLE";
+        if (id == 6) return "CE";
+        if (id >= 7 && id <= 12) return "RE";
+        if (id == 13) return "IE";
+        return "IE";
+    }
+
+    private String worstStatus(List<CaseResult> cases) {
+        for (CaseResult cr : cases) if ("CE".equals(cr.status)) return "CE";
+        for (CaseResult cr : cases) if ("RE".equals(cr.status)) return "RE";
+        for (CaseResult cr : cases) if ("TLE".equals(cr.status)) return "TLE";
+        for (CaseResult cr : cases) if ("WA".equals(cr.status)) return "WA";
+        return "IE";
+    }
+
+    private String firstText(JsonNode json, String... fields) {
+        for (String field : fields) {
+            JsonNode node = json.get(field);
+            if (node != null && !node.isNull()) {
+                String text = node.asText("");
+                if (!text.trim().isEmpty()) return text;
+            }
+        }
+        return "";
     }
 }

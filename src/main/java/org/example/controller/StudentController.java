@@ -7,6 +7,7 @@ import org.example.entity.Task;
 import org.example.entity.User;
 import org.example.mapper.OperationLogMapper;
 import org.example.mapper.SubmissionMapper;
+import org.example.mapper.TeachingResourceMapper;
 import org.example.service.CourseService;
 import org.example.service.TaskService;
 import org.example.util.MarkdownUtils;
@@ -43,15 +44,18 @@ public class StudentController {
     private final TaskService taskService;
     private final SubmissionMapper submissionMapper;
     private final OperationLogMapper operationLogMapper;
+    private final TeachingResourceMapper resourceMapper;
 
     public StudentController(CourseService courseService,
                              TaskService taskService,
                              SubmissionMapper submissionMapper,
-                             OperationLogMapper operationLogMapper) {
+                             OperationLogMapper operationLogMapper,
+                             TeachingResourceMapper resourceMapper) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
         this.operationLogMapper = operationLogMapper;
+        this.resourceMapper = resourceMapper;
     }
 
     @GetMapping("/course/selection")
@@ -127,6 +131,7 @@ public class StudentController {
         if (user == null) return "redirect:/login";
         Course course = courseService.findById(courseId);
         if (course == null) return "redirect:/student/course/my";
+        if (!isEnrolled(user.getId(), courseId)) return "redirect:/student/course/my";
         String activeTab = (tab == null || tab.trim().isEmpty()) ? "home" : tab.trim();
         List<java.util.Map<String, Object>> tasks = taskService.getCourseTasks(courseId).stream()
                 .filter(task -> filterTask(activeTab, task))
@@ -135,6 +140,7 @@ public class StudentController {
         model.addAttribute("user", user);
         model.addAttribute("course", UserController.toCourseView(course));
         model.addAttribute("tasks", tasks);
+        model.addAttribute("resources", resourceMapper.findByCourseId(courseId));
         model.addAttribute("tab", activeTab);
         return "student/course_detail";
     }
@@ -146,6 +152,7 @@ public class StudentController {
         Task task = taskService.findById(taskId);
         if (task == null) return "redirect:/student/course/my";
         Course course = courseService.findById(task.getCourseId());
+        if (course == null || !isEnrolled(user.getId(), course.getId())) return "redirect:/student/course/my";
         Submission submission = taskService.getSubmission(user.getId(), taskId);
         String visibleMarkdown = TaskMetadataUtils.visibleMarkdown(task.getDescription());
         model.addAttribute("user", user);
@@ -232,6 +239,10 @@ public class StudentController {
         if ("exam".equals(tab)) return "exam".equals(task.getType());
         if ("lab".equals(tab)) return "programming".equals(task.getType());
         return true;
+    }
+
+    private boolean isEnrolled(Long studentId, Long courseId) {
+        return courseService.getStudentCourses(studentId).stream().anyMatch(course -> course.getId().equals(courseId));
     }
 
     private void log(User user, String action, String detail) {

@@ -32,6 +32,7 @@
                 <a class="btn" th:classappend="${tab == 'homework' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='homework')}">作业</a>
                 <a class="btn" th:classappend="${tab == 'exam' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='exam')}">考试</a>
                 <a class="btn" th:classappend="${tab == 'lab' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='lab')}">编程实训</a>
+                <a class="btn" th:classappend="${tab == 'resources' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='resources')}">教学资源</a>
             </div>
             <div class="panel" th:if="${tab == 'info'}">
                 <h2>课程信息</h2>
@@ -40,7 +41,24 @@
                 <p>教师：<span th:text="${course.teacherId}">teacher</span></p>
                 <p th:text="${course.description ?: '暂无课程简介'}">课程简介</p>
             </div>
-            <div th:if="${tab != 'info'}">
+            <div th:if="${tab == 'resources'}">
+                <div class="course-grid" th:if="${!#lists.isEmpty(resources)}">
+                    <article class="item-card" th:each="resource : ${resources}">
+                        <span class="status-badge" th:text="${resource.type == 'video' ? '视频' : 'PDF'}">PDF</span>
+                        <h3 th:text="${resource.title}">资源标题</h3>
+                        <p class="muted">上传时间：<span th:text="${#dates.format(resource.createdAt, 'yyyy-MM-dd HH:mm')}"></span></p>
+                        <div class="card-actions" th:if="${resource.type == 'pdf'}">
+                            <a class="btn primary" th:href="@{/student/resource/download/{id}(id=${resource.id})}">下载 PDF</a>
+                            <a class="btn green" th:href="@{/student/resource/notes/{id}(id=${resource.id})}">生成 AI 笔记</a>
+                        </div>
+                        <div class="card-actions" th:if="${resource.type == 'video'}">
+                            <a class="btn primary" th:href="@{/student/resource/video/{id}(id=${resource.id})}">在线播放</a>
+                        </div>
+                    </article>
+                </div>
+                <div class="empty" th:if="${#lists.isEmpty(resources)}">该课程暂无教学资源。</div>
+            </div>
+            <div th:if="${tab != 'info' && tab != 'resources'}">
                 <div class="course-grid" th:if="${!#lists.isEmpty(tasks)}">
                     <article class="item-card" th:each="task : ${tasks}">
                         <span class="status-badge" th:text="${task.taskType}">作业</span>

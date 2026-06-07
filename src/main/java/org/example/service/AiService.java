@@ -36,6 +36,9 @@ public class AiService {
     @Value("${app.ai.model:deepseek-chat}")
     private String model;
 
+    @Value("${app.ai.vision-model:${app.ai.model:deepseek-chat}}")
+    private String visionModel;
+
     private RestTemplate restTemplate;
     private final ObjectMapper mapper = new ObjectMapper();
     private final Map<String, List<Map<String, String>>> sessions = new HashMap<>();
@@ -67,45 +70,15 @@ public class AiService {
         history.add(userMsg);
 
         try {
-            ObjectNode body = mapper.createObjectNode();
-            body.put("model", model);
-            body.put("max_tokens", 1000);
-            ArrayNode messages = body.putArray("messages");
-            for (Map<String, String> message : history) {
-                ObjectNode msg = messages.addObject();
-                msg.put("role", message.get("role"));
-                msg.put("content", message.get("content"));
-            }
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            if (key.toLowerCase().startsWith("bearer ")) {
-                headers.set(HttpHeaders.AUTHORIZATION, key);
-            } else {
-                headers.setBearerAuth(key);
-            }
-
-            ResponseEntity<String> response = restTemplate.exchange(
-                    apiUrl,
-                    HttpMethod.POST,
-                    new HttpEntity<>(mapper.writeValueAsString(body), headers),
-                    String.class
-            );
-
-            JsonNode responseJson = mapper.readTree(response.getBody());
-            JsonNode choices = responseJson.get("choices");
-            if (choices != null && choices.size() > 0) {
-                String reply = choices.get(0).get("message").get("content").asText();
+            String reply = sendTextMessages(model, history);
+            if (reply != null && !reply.trim().isEmpty()) {
                 Map<String, String> assistantMsg = new HashMap<>();
                 assistantMsg.put("role", "assistant");
                 assistantMsg.put("content", reply);
                 history.add(assistantMsg);
                 return reply;
             }
-
-            String errorMsg = responseJson.has("error") ? responseJson.get("error").toString() : "Unknown response";
-            log.error("AI API error: {}", errorMsg);
-            return "AI API 返回错误：" + errorMsg;
+            return "AI API 返回内容为空，请稍后重试。";
         } catch (HttpClientErrorException.Unauthorized e) {
             history.remove(history.size() - 1);
             log.warn("AI unauthorized: {}", e.getMessage());
@@ -119,5 +92,123 @@ public class AiService {
 
     public void clearSession(String sessionId) {
         sessions.remove(sessionId);
+    }
+
+    public String summarizePdfText(String courseName, String resourceTitle, String text) {
+        if (!hasKey()) {
+            return "AI 助手尚未配置 API Key。请在启动前设置环境变量 AI_API_KEY。";
+        }
+        String source = text == null ? "" : text.trim();
+        if (source.isEmpty()) {
+            return "这个 PDF 暂时没有提取到可用于总结的文本内容。";
+        }
+        if (source.length() > 12000) {
+            source = source.substring(0, 12000);
+        }
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(message("system", "你是在线教学平台的 AI 助教，请为学生生成清晰、结构化的课程资料笔记。"));
+        messages.add(message("user", "课程：" + courseName + "\n资料：" + resourceTitle
+                + "\n请根据下面 PDF 文本生成中文知识点概括，包含：核心概念、重点公式/步骤、易错点、复习建议。\n\n"
+                + source));
+        try {
+            String reply = sendTextMessages(model, messages);
+            return reply == null || reply.trim().isEmpty() ? "AI 没有返回有效笔记，请稍后重试。" : reply;
+        } catch (Exception e) {
+            log.error("PDF note generation failed: {}", e.toString());
+            return "AI 笔记生成失败：" + e.getClass().getSimpleName() + " - " + e.getMessage();
+        }
+    }
+
+    public String explainImage(String courseName, String resourceTitle, String imageDataUrl) {
+        if (!hasKey()) {
+            return "AI 助手尚未配置 API Key。请在启动前设置环境变量 AI_API_KEY。";
+        }
+        if (imageDataUrl == null || !imageDataUrl.startsWith("data:image/")) {
+            return "没有收到有效的框选图片。";
+        }
+        try {
+            ObjectNode body = mapper.createObjectNode();
+            body.put("model", visionModel);
+            body.put("max_tokens", 800);
+            ArrayNode messages = body.putArray("messages");
+            ObjectNode user = messages.addObject();
+            user.put("role", "user");
+            ArrayNode content = user.putArray("content");
+            ObjectNode text = content.addObject();
+            text.put("type", "text");
+            text.put("text", "课程：" + courseName + "。视频：" + resourceTitle
+                    + "。请解释这张视频框选截图中的知识点，用中文回答，包含概念解释和学习提示。");
+            ObjectNode image = content.addObject();
+            image.put("type", "image_url");
+            ObjectNode imageUrl = image.putObject("image_url");
+            imageUrl.put("url", imageDataUrl);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    apiUrl,
+                    HttpMethod.POST,
+                    new HttpEntity<>(mapper.writeValueAsString(body), headers()),
+                    String.class
+            );
+            return extractReply(response.getBody());
+        } catch (HttpClientErrorException e) {
+            log.warn("Vision AI call failed: {}", e.getResponseBodyAsString());
+            return "AI 图像解释失败：当前模型或接口可能不支持图片输入。请配置支持视觉能力的 AI_API_URL/AI_VISION_MODEL 后再试。";
+        } catch (Exception e) {
+            log.error("Vision AI call failed: {}", e.toString());
+            return "AI 图像解释失败：" + e.getClass().getSimpleName() + " - " + e.getMessage();
+        }
+    }
+
+    private String sendTextMessages(String selectedModel, List<Map<String, String>> messages) throws Exception {
+        ObjectNode body = mapper.createObjectNode();
+        body.put("model", selectedModel);
+        body.put("max_tokens", 1000);
+        ArrayNode messageNodes = body.putArray("messages");
+        for (Map<String, String> message : messages) {
+            ObjectNode msg = messageNodes.addObject();
+            msg.put("role", message.get("role"));
+            msg.put("content", message.get("content"));
+        }
+        ResponseEntity<String> response = restTemplate.exchange(
+                apiUrl,
+                HttpMethod.POST,
+                new HttpEntity<>(mapper.writeValueAsString(body), headers()),
+                String.class
+        );
+        return extractReply(response.getBody());
+    }
+
+    private String extractReply(String responseBody) throws Exception {
+        JsonNode responseJson = mapper.readTree(responseBody);
+        JsonNode choices = responseJson.get("choices");
+        if (choices != null && choices.size() > 0) {
+            return choices.get(0).get("message").get("content").asText();
+        }
+        String errorMsg = responseJson.has("error") ? responseJson.get("error").toString() : "Unknown response";
+        log.error("AI API error: {}", errorMsg);
+        return "AI API 返回错误：" + errorMsg;
+    }
+
+    private HttpHeaders headers() {
+        String key = apiKey == null ? "" : apiKey.trim();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (key.toLowerCase().startsWith("bearer ")) {
+            headers.set(HttpHeaders.AUTHORIZATION, key);
+        } else {
+            headers.setBearerAuth(key);
+        }
+        return headers;
+    }
+
+    private boolean hasKey() {
+        return apiKey != null && !apiKey.trim().isEmpty();
+    }
+
+    private Map<String, String> message(String role, String content) {
+        Map<String, String> message = new HashMap<>();
+        message.put("role", role);
+        message.put("content", content);
+        return message;
     }
 }

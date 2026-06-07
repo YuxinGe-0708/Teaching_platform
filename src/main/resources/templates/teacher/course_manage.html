@@ -31,6 +31,7 @@
                     <p class="muted">邀请码：<strong th:text="${c.classes.size() > 0 ? c.classes[0].inviteCode : '暂无'}">CODE</strong></p>
                     <div class="card-actions">
                         <a class="btn primary" th:href="@{/teacher/task/create(courseId=${c.courseId})}">布置任务</a>
+                        <a class="btn" th:href="@{/teacher/resource/manage/{courseId}(courseId=${c.courseId})}">资源</a>
                         <a class="btn" th:href="@{/teacher/course/class/{courseId}(courseId=${c.courseId})}">班级</a>
                         <a class="btn" th:href="@{/teacher/course/edit/{id}(id=${c.courseId})}">编辑</a>
                         <a class="btn danger" th:href="@{/teacher/course/delete/{id}(id=${c.courseId})}" onclick="return confirm('确定删除该课程吗？')">删除</a>

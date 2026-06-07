@@ -1,7 +1,14 @@
 server:
   port: ${SERVER_PORT:8080}
+  tomcat:
+    max-swallow-size: -1
+    max-http-form-post-size: 1024MB
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:1024MB}
+      max-request-size: ${MAX_REQUEST_SIZE:1024MB}
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/teaching_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
@@ -24,3 +31,9 @@ app:
     api-url: ${AI_API_URL:https://api.deepseek.com/v1/chat/completions}
     api-key: ${AI_API_KEY:}
     model: ${AI_MODEL:deepseek-chat}
+    vision-model: ${AI_VISION_MODEL:${AI_MODEL:deepseek-chat}}
+  judge0:
+    api-url: ${JUDGE0_API_URL:https://ce.judge0.com}
+    api-key: ${JUDGE0_API_KEY:}
+    api-host: ${JUDGE0_API_HOST:}
+    timeout-ms: ${JUDGE0_TIMEOUT_MS:15000}

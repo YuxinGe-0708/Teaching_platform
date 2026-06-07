@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教学资源 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/teacher/course/manage" class="active">课程管理</a>
+            <a href="/teacher/task/manage">作业管理</a>
+            <a href="/teacher/score/statistics">成绩统计</a>
+            <a href="/notifications">我的公告</a>
+            <a href="/teacher/ai">AI 答疑</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1 th:text="${course.courseName} + ' - 教学资源'">教学资源</h1>
+            <a class="btn" href="/teacher/course/manage">返回</a>
+        </header>
+        <section class="content">
+            <div class="message error" th:if="${error}" th:text="${error}"></div>
+            <div class="panel">
+                <form action="/teacher/resource/upload" method="post" enctype="multipart/form-data" class="form">
+                    <input type="hidden" name="courseId" th:value="${course.courseId}">
+                    <label for="title">资源标题</label>
+                    <input id="title" name="title" placeholder="例如：第一章课件 / 实训讲解视频">
+                    <label for="file">上传文件</label>
+                    <input id="file" type="file" name="file" accept=".pdf,application/pdf,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" required>
+                    <button type="submit">上传资源</button>
+                </form>
+            </div>
+            <table>
+                <thead><tr><th>标题</th><th>类型</th><th>上传时间</th><th>操作</th></tr></thead>
+                <tbody>
+                <tr th:each="resource : ${resources}">
+                    <td th:text="${resource.title}">资源</td>
+                    <td th:text="${resource.type == 'video' ? '视频' : 'PDF'}">PDF</td>
+                    <td th:text="${#dates.format(resource.createdAt, 'yyyy-MM-dd HH:mm')}">时间</td>
+                    <td>
+                        <form action="/teacher/resource/delete" method="post" class="inline-form" onsubmit="return confirm('确定删除该资源记录吗？')">
+                            <input type="hidden" name="resourceId" th:value="${resource.id}">
+                            <button type="submit" class="btn danger">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(resources)}"><td colspan="4">暂无资源。</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+</body>
+</html>

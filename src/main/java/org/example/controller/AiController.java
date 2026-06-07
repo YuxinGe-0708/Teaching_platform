@@ -50,4 +50,24 @@ public class AiController {
         aiService.clearSession(sessionId);
         return ApiResponse.ok("会话已清除");
     }
+
+    @PostMapping("/explain-image")
+    public ApiResponse<Map<String, String>> explainImage(@RequestBody Map<String, String> body, HttpSession session) {
+        User user = UserController.requireUser(session);
+        if (user == null) {
+            return ApiResponse.fail(401, "请先登录");
+        }
+        String image = body.get("image");
+        if (image == null || image.trim().isEmpty()) {
+            return ApiResponse.fail("框选图片不能为空");
+        }
+        String reply = aiService.explainImage(
+                body.getOrDefault("courseName", "通用课程"),
+                body.getOrDefault("resourceTitle", "课程视频"),
+                image
+        );
+        Map<String, String> data = new HashMap<>();
+        data.put("reply", reply);
+        return ApiResponse.ok(data);
+    }
 }
