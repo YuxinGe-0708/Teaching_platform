@@ -43,6 +43,43 @@ mvn spring-boot:run
 
 ## 运行
 
+推荐直接使用一键启动脚本：
+
+```powershell
+.\run-dev.ps1 -SeedTestData
+```
+
+脚本会提示输入 MySQL 密码，自动确保 `teaching_platform` 数据库存在，设置运行所需环境变量，并启动项目。`-SeedTestData` 会导入测试账号、课程、班级、资源、作业、成绩、讨论等数据；重复运行不会反复插入同名测试数据。
+
+常用参数：
+
+```powershell
+.\run-dev.ps1 -DbUsername root -DbPassword "你的MySQL密码" -Port 8080 -SeedTestData
+.\run-dev.ps1 -DbUsername root -DbPassword "你的MySQL密码" -SkipDbCreate
+```
+
+启用 Qwen/百炼 AI、AI 识图点读笔和 Judge0 云端判题：
+
+```powershell
+$env:QWEN_API_KEY="你的阿里云百炼APIKey"
+.\run-dev.ps1 -DbUsername root -DbPassword "你的MySQL密码" -SeedTestData -UseQwen
+```
+
+脚本会自动设置：
+
+- `AI_API_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`
+- `AI_MODEL=qwen-plus`
+- `AI_VISION_MODEL=qwen3-vl-plus`
+- `JUDGE0_API_URL=https://ce.judge0.com`
+
+测试账号密码统一为 `123456`：
+
+- 教师：`teacher_demo`、`teacher_algo`
+- 学生：`student_001`、`student_002`、`student_003`、`student_004`、`student_005`、`student_006`
+- 管理员：`admin` / `admin123456`
+
+也可以手动运行：
+
 ```powershell
 mvn clean compile
 mvn spring-boot:run

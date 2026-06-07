@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -8,16 +8,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar">
-        <div class="sidebar-brand">TeachingPlatform</div>
-        <nav class="sidebar-nav">
-            <a href="/home">主页</a>
-            <a href="/teacher/course/manage">课程管理</a>
-            <a href="/teacher/task/manage" class="active">作业管理</a>
-            <a href="/notifications">我的公告</a>
-            <a href="/teacher/ai">AI 答疑</a>
-        </nav>
-    </aside>
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
         <header class="topbar"><h1>发布任务</h1><a class="btn" href="/teacher/task/manage">返回</a></header>
         <section class="content">
@@ -41,6 +32,11 @@
                             <input id="fullScore" type="number" name="fullScore" step="1" value="100">
                             <label for="endTime">截止时间</label>
                             <input id="endTime" type="datetime-local" name="endTime">
+                            <label for="status">发布状态</label>
+                            <select id="status" name="status">
+                                <option value="published">立即发布</option>
+                                <option value="draft">保存草稿</option>
+                            </select>
                             <label for="mdFile">从本地 Markdown 导入</label>
                             <input id="mdFile" type="file" accept=".md,.markdown,text/markdown,text/plain">
                             <label for="content">任务说明（Markdown）</label>
@@ -54,6 +50,14 @@
                                 <input id="examAnswer" name="examAnswer" placeholder="例如：A 或 标准填空答案">
                             </div>
                             <div id="judgeFields" style="margin-top:16px;">
+                                <label for="timeLimitMs">时间限制（毫秒）</label>
+                                <input id="timeLimitMs" type="number" name="timeLimitMs" value="15000" min="1000" step="500">
+                                <label for="memoryLimitMb">内存限制（MB）</label>
+                                <input id="memoryLimitMb" type="number" name="memoryLimitMb" value="128" min="16" step="16">
+                                <label for="codeTemplate">代码模板</label>
+                                <textarea id="codeTemplate" name="codeTemplate" style="min-height:90px;" placeholder="可为学生预置 Python/Java/C 代码骨架"></textarea>
+                                <label for="testCases">多测试用例（每行：输入 | 期望输出 | 权重）</label>
+                                <textarea id="testCases" name="testCases" style="min-height:120px;" placeholder="例如：&#10;1 2 | 3 | 1&#10;2 3 | 5 | 2"></textarea>
                                 <label for="sampleInput">编程测试输入</label>
                                 <textarea id="sampleInput" name="sampleInput" style="min-height:80px;" placeholder="没有输入可留空"></textarea>
                                 <label for="expectedOutput">期望输出</label>

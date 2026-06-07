@@ -20,7 +20,9 @@ public class TaskService {
     }
 
     public Task createTask(Task task) {
-        task.setStatus("published");
+        if (task.getStatus() == null || task.getStatus().trim().isEmpty()) {
+            task.setStatus("published");
+        }
         taskMapper.insert(task);
         return task;
     }
@@ -44,6 +46,10 @@ public class TaskService {
 
     public void deleteTask(Long id) {
         taskMapper.delete(id);
+    }
+
+    public void updateStatus(Long id, String status) {
+        taskMapper.updateStatus(id, status);
     }
 
     public Submission submit(Long taskId, Long studentId, String content) {

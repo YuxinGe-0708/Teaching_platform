@@ -2,11 +2,14 @@ package org.example.controller;
 
 import org.example.entity.Course;
 import org.example.entity.CourseClass;
+import org.example.entity.CourseEnrollment;
 import org.example.entity.Submission;
 import org.example.entity.Task;
 import org.example.entity.User;
 import org.example.mapper.CourseClassMapper;
+import org.example.mapper.CourseEnrollmentMapper;
 import org.example.mapper.SubmissionMapper;
+import org.example.mapper.UserMapper;
 import org.example.service.CourseService;
 import org.example.service.ScoreService;
 import org.example.service.TaskService;
@@ -43,28 +46,41 @@ public class TeacherController {
     private final TaskService taskService;
     private final SubmissionMapper submissionMapper;
     private final CourseClassMapper courseClassMapper;
+    private final CourseEnrollmentMapper enrollmentMapper;
+    private final UserMapper userMapper;
     private final ScoreService scoreService;
 
     public TeacherController(CourseService courseService,
                              TaskService taskService,
                              SubmissionMapper submissionMapper,
                              CourseClassMapper courseClassMapper,
+                             CourseEnrollmentMapper enrollmentMapper,
+                             UserMapper userMapper,
                              ScoreService scoreService) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
         this.courseClassMapper = courseClassMapper;
+        this.enrollmentMapper = enrollmentMapper;
+        this.userMapper = userMapper;
         this.scoreService = scoreService;
     }
 
     @GetMapping("/course/manage")
     public String manageCourses(HttpSession session, Model model,
-                                @RequestParam(required = false) Long courseId) {
+                                @RequestParam(required = false) Long courseId,
+                                @RequestParam(required = false) String keyword,
+                                @RequestParam(required = false, defaultValue = "newest") String sort) {
         User user = requireTeacher(session);
         if (user == null) return "redirect:/login";
+        List<Course> courses = (keyword == null || keyword.trim().isEmpty()) && "newest".equals(sort)
+                ? courseService.getTeacherCourses(user.getId())
+                : courseService.searchTeacherCourses(user.getId(), keyword, sort);
         model.addAttribute("user", user);
-        model.addAttribute("courses", toCourseViewsWithClasses(courseService.getTeacherCourses(user.getId())));
+        model.addAttribute("courses", toCourseViewsWithClasses(courses));
         model.addAttribute("highlightCourseId", courseId);
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("sort", sort);
         return "teacher/course_manage";
     }
 
@@ -80,6 +96,11 @@ public class TeacherController {
     public String createCourse(@RequestParam String courseName,
                                @RequestParam String courseCode,
                                @RequestParam Double credit,
+                               @RequestParam(required = false) String subjectCategory,
+                               @RequestParam(required = false) Integer hours,
+                               @RequestParam(required = false) String coverUrl,
+                               @RequestParam(required = false, defaultValue = "true") Boolean allowJoin,
+                               @RequestParam(required = false, defaultValue = "active") String status,
                                @RequestParam(required = false) String description,
                                HttpSession session) {
         User user = requireTeacher(session);
@@ -88,6 +109,11 @@ public class TeacherController {
         course.setName(courseName);
         course.setCode(courseCode);
         course.setCredits(credit == null ? 0 : credit.intValue());
+        course.setSubjectCategory(subjectCategory);
+        course.setHours(hours == null ? 0 : hours);
+        course.setCoverUrl(coverUrl);
+        course.setAllowJoin(allowJoin == null || allowJoin);
+        course.setStatus(normalizeCourseStatus(status));
         course.setTeacherId(user.getId());
         course.setDescription(description);
         courseService.createCourse(course);
@@ -110,6 +136,10 @@ public class TeacherController {
                                @RequestParam String courseName,
                                @RequestParam String courseCode,
                                @RequestParam Double credit,
+                               @RequestParam(required = false) String subjectCategory,
+                               @RequestParam(required = false) Integer hours,
+                               @RequestParam(required = false) String coverUrl,
+                               @RequestParam(required = false, defaultValue = "true") Boolean allowJoin,
                                @RequestParam String description,
                                HttpSession session) {
         User user = requireTeacher(session);
@@ -119,6 +149,10 @@ public class TeacherController {
             course.setName(courseName);
             course.setCode(courseCode);
             course.setCredits(credit == null ? 0 : credit.intValue());
+            course.setSubjectCategory(subjectCategory);
+            course.setHours(hours == null ? 0 : hours);
+            course.setCoverUrl(coverUrl);
+            course.setAllowJoin(allowJoin == null || allowJoin);
             course.setDescription(description);
             courseService.updateCourse(course);
         }
@@ -130,7 +164,22 @@ public class TeacherController {
         User user = requireTeacher(session);
         if (user == null) return "redirect:/login";
         Course course = ownedCourse(user, id);
-        if (course != null) courseService.deleteCourse(id);
+        if (course != null) {
+            if (course.getStudentCount() != null && course.getStudentCount() > 0) {
+                courseService.updateStatus(id, "archived");
+            } else {
+                courseService.deleteCourse(id);
+            }
+        }
+        return "redirect:/teacher/course/manage";
+    }
+
+    @GetMapping("/course/archive/{id}")
+    public String archiveCourse(@PathVariable Long id, HttpSession session) {
+        User user = requireTeacher(session);
+        if (user == null) return "redirect:/login";
+        Course course = ownedCourse(user, id);
+        if (course != null) courseService.updateStatus(id, "archived");
         return "redirect:/teacher/course/manage";
     }
 
@@ -170,6 +219,11 @@ public class TeacherController {
                              @RequestParam(required = false) String examAnswer,
                              @RequestParam(required = false) String sampleInput,
                              @RequestParam(required = false) String expectedOutput,
+                             @RequestParam(required = false) String testCases,
+                             @RequestParam(required = false) Integer timeLimitMs,
+                             @RequestParam(required = false) Integer memoryLimitMb,
+                             @RequestParam(required = false) String codeTemplate,
+                             @RequestParam(required = false, defaultValue = "published") String status,
                              @RequestParam(required = false) Double fullScore,
                              HttpSession session) {
         User user = requireTeacher(session);
@@ -181,8 +235,12 @@ public class TeacherController {
         task.setTitle(title);
         task.setType(UserController.dbTaskType(taskType));
         task.setMaxScore(fullScore == null ? 100 : fullScore.intValue());
-        task.setDescription(TaskMetadataUtils.buildDescription(UserController.firstNonBlank(content, description), examAnswer, sampleInput, expectedOutput));
+        task.setDescription(TaskMetadataUtils.buildDescription(UserController.firstNonBlank(content, description), examAnswer, sampleInput, expectedOutput, testCases));
+        task.setTimeLimitMs(timeLimitMs == null ? 15000 : timeLimitMs);
+        task.setMemoryLimitMb(memoryLimitMb == null ? 128 : memoryLimitMb);
+        task.setCodeTemplate(codeTemplate);
         task.setEndTime(parseTimestamp(endTime));
+        task.setStatus(normalizeTaskStatus(status));
         taskService.createTask(task);
         return "redirect:/teacher/task/manage";
     }
@@ -236,7 +294,25 @@ public class TeacherController {
         User user = requireTeacher(session);
         if (user == null) return "redirect:/login";
         Task task = taskService.findById(taskId);
-        if (ownsTask(user, task)) taskService.deleteTask(taskId);
+        if (ownsTask(user, task)) taskService.updateStatus(taskId, "retracted");
+        return "redirect:/teacher/task/manage";
+    }
+
+    @PostMapping("/task/status")
+    public String updateTaskStatus(@RequestParam Long taskId,
+                                   @RequestParam String status,
+                                   @RequestParam(required = false) String endTime,
+                                   HttpSession session) {
+        User user = requireTeacher(session);
+        if (user == null) return "redirect:/login";
+        Task task = taskService.findById(taskId);
+        if (ownsTask(user, task)) {
+            if (endTime != null && !endTime.trim().isEmpty()) {
+                task.setEndTime(parseTimestamp(endTime));
+                taskService.updateTask(task);
+            }
+            taskService.updateStatus(taskId, normalizeTaskStatus(status));
+        }
         return "redirect:/teacher/task/manage";
     }
 
@@ -262,6 +338,7 @@ public class TeacherController {
         model.addAttribute("user", user);
         model.addAttribute("course", UserController.toCourseView(course));
         model.addAttribute("classes", classes);
+        model.addAttribute("members", classMemberViews(courseId));
         return "teacher/class_manage";
     }
 
@@ -281,6 +358,43 @@ public class TeacherController {
             courseClass.setMaxCount(maxCount == null ? 100 : maxCount);
             courseClass.setCurrentCount(0);
             courseClassMapper.insert(courseClass);
+        }
+        return "redirect:/teacher/course/class/" + courseId;
+    }
+
+    @PostMapping("/course/class/update")
+    public String updateClass(@RequestParam Long courseId,
+                              @RequestParam Long classId,
+                              @RequestParam String className,
+                              @RequestParam(required = false, defaultValue = "100") Integer maxCount,
+                              HttpSession session) {
+        User user = requireTeacher(session);
+        if (user == null) return "redirect:/login";
+        Course course = ownedCourse(user, courseId);
+        if (course != null) {
+            CourseClass courseClass = courseClassMapper.findById(classId);
+            if (courseClass != null && courseId.equals(courseClass.getCourseId())) {
+                courseClass.setName(className);
+                courseClass.setMaxCount(maxCount == null ? 100 : maxCount);
+                courseClassMapper.update(courseClass);
+            }
+        }
+        return "redirect:/teacher/course/class/" + courseId;
+    }
+
+    @PostMapping("/course/class/remove-student")
+    public String removeStudentFromClass(@RequestParam Long courseId,
+                                         @RequestParam Long studentId,
+                                         HttpSession session) {
+        User user = requireTeacher(session);
+        if (user == null) return "redirect:/login";
+        Course course = ownedCourse(user, courseId);
+        if (course != null) {
+            CourseEnrollment enrollment = enrollmentMapper.findByStudentAndCourse(studentId, courseId);
+            if (enrollment != null && enrollment.getClassId() != null) {
+                courseClassMapper.decrementCount(enrollment.getClassId());
+            }
+            enrollmentMapper.delete(studentId, courseId);
         }
         return "redirect:/teacher/course/class/" + courseId;
     }
@@ -361,6 +475,16 @@ public class TeacherController {
         return Timestamp.valueOf(LocalDateTime.parse(text.replace(' ', 'T')));
     }
 
+    private String normalizeCourseStatus(String status) {
+        if ("draft".equals(status) || "closed".equals(status) || "archived".equals(status)) return status;
+        return "active";
+    }
+
+    private String normalizeTaskStatus(String status) {
+        if ("draft".equals(status) || "closed".equals(status) || "expired".equals(status) || "retracted".equals(status)) return status;
+        return "published";
+    }
+
     private List<Map<String, Object>> toCourseViewsWithClasses(List<Course> courses) {
         return courses.stream().map(course -> {
             Map<String, Object> view = UserController.toCourseView(course);
@@ -396,6 +520,21 @@ public class TeacherController {
         view.put("currentCount", courseClass.getCurrentCount() == null ? 0 : courseClass.getCurrentCount());
         view.put("maxCount", courseClass.getMaxCount() == null ? 100 : courseClass.getMaxCount());
         return view;
+    }
+
+    private List<Map<String, Object>> classMemberViews(Long courseId) {
+        return enrollmentMapper.findByCourseId(courseId).stream().map(enrollment -> {
+            Map<String, Object> row = new HashMap<>();
+            User student = userMapper.findById(enrollment.getStudentId());
+            CourseClass courseClass = enrollment.getClassId() == null ? null : courseClassMapper.findById(enrollment.getClassId());
+            row.put("studentId", enrollment.getStudentId());
+            row.put("studentName", student == null ? "学生ID:" + enrollment.getStudentId() : (student.getName() == null ? student.getUsername() : student.getName()));
+            row.put("username", student == null ? "-" : student.getUsername());
+            row.put("className", courseClass == null ? "默认班级" : courseClass.getName());
+            row.put("joinedAt", enrollment.getEnrolledAt());
+            row.put("onlineMinutes", 0);
+            return row;
+        }).collect(Collectors.toList());
     }
 
     private Map<String, Object> courseStats(Course course) {

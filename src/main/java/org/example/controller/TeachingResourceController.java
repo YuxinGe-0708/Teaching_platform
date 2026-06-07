@@ -60,13 +60,24 @@ public class TeachingResourceController {
 
     @GetMapping("/teacher/resource/manage/{courseId}")
     public String manageResources(@PathVariable Long courseId, HttpSession session, Model model) {
+        return manageResources(courseId, null, null, session, model);
+    }
+
+    @GetMapping("/teacher/resource/manage/{courseId}/filter")
+    public String manageResources(@PathVariable Long courseId,
+                                  @RequestParam(required = false) String type,
+                                  @RequestParam(required = false) String chapter,
+                                  HttpSession session,
+                                  Model model) {
         User user = requireRole(session, "teacher");
         if (user == null) return "redirect:/login";
         Course course = ownedCourse(user, courseId);
         if (course == null) return "redirect:/teacher/course/manage";
         model.addAttribute("user", user);
         model.addAttribute("course", UserController.toCourseView(course));
-        model.addAttribute("resources", resourceMapper.findByCourseId(courseId));
+        model.addAttribute("resources", resourceMapper.searchByCourse(courseId, type, chapter));
+        model.addAttribute("filterType", type);
+        model.addAttribute("filterChapter", chapter);
         return "teacher/resource_manage";
     }
 
@@ -74,37 +85,55 @@ public class TeachingResourceController {
     public String uploadResource(@RequestParam Long courseId,
                                  @RequestParam String title,
                                  @RequestParam(required = false) String chapter,
-                                 @RequestParam MultipartFile file,
+                                 @RequestParam("file") MultipartFile[] files,
                                  HttpSession session,
                                  Model model) {
         User user = requireRole(session, "teacher");
         if (user == null) return "redirect:/login";
         Course course = ownedCourse(user, courseId);
         if (course == null) return "redirect:/teacher/course/manage";
-        String type = detectType(file);
-        if (type == null) {
+        if (files == null || files.length == 0) {
             model.addAttribute("user", user);
             model.addAttribute("course", UserController.toCourseView(course));
             model.addAttribute("resources", resourceMapper.findByCourseId(courseId));
-            model.addAttribute("error", "只支持上传 PDF、MP4、WebM、MOV 视频文件。");
+            model.addAttribute("error", "请选择要上传的文件。");
             return "teacher/resource_manage";
         }
-        String path = saveFile(courseId, file);
-        if (path == null) {
-            model.addAttribute("user", user);
-            model.addAttribute("course", UserController.toCourseView(course));
-            model.addAttribute("resources", resourceMapper.findByCourseId(courseId));
-            model.addAttribute("error", "文件保存失败，请检查文件是否为空。");
-            return "teacher/resource_manage";
+        for (MultipartFile file : files) {
+            String type = detectType(file);
+            if (type == null) continue;
+            String path = saveFile(courseId, file);
+            if (path == null) continue;
+            TeachingResource resource = new TeachingResource();
+            resource.setCourseId(courseId);
+            resource.setTitle(title == null || title.trim().isEmpty() ? originalName(file) : title.trim());
+            resource.setType(type);
+            resource.setFilePath(path);
+            resource.setChapter(chapter == null || chapter.trim().isEmpty() ? "默认章节" : chapter.trim());
+            resource.setFileSize(file.getSize());
+            resource.setDownloadCount(0);
+            resourceMapper.insert(resource);
         }
-        TeachingResource resource = new TeachingResource();
-        resource.setCourseId(courseId);
-        resource.setTitle(title == null || title.trim().isEmpty() ? originalName(file) : title.trim());
-        resource.setType(type);
-        resource.setFilePath(path);
-        resource.setChapter(chapter == null || chapter.trim().isEmpty() ? "默认章节" : chapter.trim());
-        resourceMapper.insert(resource);
         return "redirect:/teacher/resource/manage/" + courseId;
+    }
+
+    @PostMapping("/teacher/resource/update")
+    public String updateResource(@RequestParam Long resourceId,
+                                 @RequestParam String title,
+                                 @RequestParam(required = false) String chapter,
+                                 @RequestParam(required = false) String type,
+                                 HttpSession session) {
+        User user = requireRole(session, "teacher");
+        if (user == null) return "redirect:/login";
+        TeachingResource resource = resourceMapper.findById(resourceId);
+        if (resource == null) return "redirect:/teacher/course/manage";
+        Course course = ownedCourse(user, resource.getCourseId());
+        if (course == null) return "redirect:/teacher/course/manage";
+        resource.setTitle(title == null || title.trim().isEmpty() ? resource.getTitle() : title.trim());
+        resource.setChapter(chapter == null || chapter.trim().isEmpty() ? "默认章节" : chapter.trim());
+        resource.setType(type == null || type.trim().isEmpty() ? resource.getType() : type.trim());
+        resourceMapper.updateMeta(resource);
+        return "redirect:/teacher/resource/manage/" + resource.getCourseId();
     }
 
     @GetMapping("/teacher/resource/upload")
@@ -124,6 +153,24 @@ public class TeachingResourceController {
         return "redirect:/teacher/resource/manage/" + resource.getCourseId();
     }
 
+    @PostMapping("/teacher/resource/batch-delete")
+    public String batchDeleteResource(@RequestParam Long courseId,
+                                      @RequestParam(required = false) java.util.List<Long> resourceIds,
+                                      HttpSession session) {
+        User user = requireRole(session, "teacher");
+        if (user == null) return "redirect:/login";
+        Course course = ownedCourse(user, courseId);
+        if (course != null && resourceIds != null) {
+            for (Long id : resourceIds) {
+                TeachingResource resource = resourceMapper.findById(id);
+                if (resource != null && courseId.equals(resource.getCourseId())) {
+                    resourceMapper.deleteById(id);
+                }
+            }
+        }
+        return "redirect:/teacher/resource/manage/" + courseId;
+    }
+
     @GetMapping("/student/resource/download/{resourceId}")
     public ResponseEntity<Resource> downloadPdf(@PathVariable Long resourceId, HttpSession session) throws Exception {
         User user = requireRole(session, "student");
@@ -131,6 +178,7 @@ public class TeachingResourceController {
         if (resource == null || !resource.isPdf()) {
             return ResponseEntity.status(403).build();
         }
+        resourceMapper.incrementDownloadCount(resourceId);
         Resource file = fileResource(resource);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
@@ -240,6 +288,8 @@ public class TeachingResourceController {
         String filename = originalName(file).toLowerCase();
         String contentType = file == null ? "" : String.valueOf(file.getContentType()).toLowerCase();
         if (filename.endsWith(".pdf") || contentType.contains("pdf")) return "pdf";
+        if (filename.endsWith(".ppt") || filename.endsWith(".pptx") || contentType.contains("presentation")) return "ppt";
+        if (filename.endsWith(".zip") || filename.endsWith(".rar") || filename.endsWith(".7z") || filename.endsWith(".tar.gz")) return "code";
         if (filename.endsWith(".mp4") || filename.endsWith(".webm") || filename.endsWith(".mov") || contentType.startsWith("video/")) {
             return "video";
         }

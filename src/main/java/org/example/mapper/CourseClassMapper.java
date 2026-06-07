@@ -26,6 +26,9 @@ public interface CourseClassMapper {
     @Delete("DELETE FROM course_class WHERE id = #{classId} AND course_id = #{courseId}")
     int deleteByCourse(@Param("courseId") Long courseId, @Param("classId") Long classId);
 
+    @Update("UPDATE course_class SET name=#{name}, max_count=#{maxCount} WHERE id=#{id} AND course_id=#{courseId}")
+    int update(CourseClass cc);
+
     @Update("UPDATE course_class SET current_count = current_count + 1 WHERE id = #{id} AND current_count < max_count")
     int incrementCount(Long id);
 

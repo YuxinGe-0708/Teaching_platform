@@ -27,6 +27,7 @@ mybatis:
 
 app:
   upload-path: ${APP_UPLOAD_PATH:./uploads}
+  seed-test-data: ${APP_SEED_TEST_DATA:false}
   ai:
     api-url: ${AI_API_URL:https://api.deepseek.com/v1/chat/completions}
     api-key: ${AI_API_KEY:}

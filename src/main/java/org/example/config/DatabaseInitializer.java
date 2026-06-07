@@ -27,7 +27,15 @@ public class DatabaseInitializer {
     @PostConstruct
     public void init() {
         addColumnIfMissing("course_enrollment", "class_id", "BIGINT NULL");
+        addColumnIfMissing("course", "subject_category", "VARCHAR(100) DEFAULT ''");
+        addColumnIfMissing("course", "hours", "INT DEFAULT 0");
+        addColumnIfMissing("course", "allow_join", "TINYINT(1) DEFAULT 1");
+        addColumnIfMissing("task", "time_limit_ms", "INT DEFAULT 15000");
+        addColumnIfMissing("task", "memory_limit_mb", "INT DEFAULT 128");
+        addColumnIfMissing("task", "code_template", "MEDIUMTEXT NULL");
         addColumnIfMissing("resource", "chapter", "VARCHAR(120) DEFAULT '默认章节'");
+        addColumnIfMissing("resource", "file_size", "BIGINT DEFAULT 0");
+        addColumnIfMissing("resource", "download_count", "INT DEFAULT 0");
         addColumnIfMissing("discussion_post", "anonymous", "TINYINT(1) DEFAULT 0");
         addColumnIfMissing("discussion_post", "post_type", "VARCHAR(30) DEFAULT 'discussion'");
         addColumnIfMissing("discussion_post", "target_role", "VARCHAR(30) DEFAULT 'all'");

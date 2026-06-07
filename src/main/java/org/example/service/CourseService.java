@@ -28,7 +28,12 @@ public class CourseService {
     @Transactional
     public Course createCourse(Course course) {
         course.setInviteCode(UUID.randomUUID().toString().substring(0, 8).toUpperCase());
-        course.setStatus("active");
+        if (course.getStatus() == null || course.getStatus().trim().isEmpty()) {
+            course.setStatus("active");
+        }
+        if (course.getAllowJoin() == null) {
+            course.setAllowJoin(Boolean.TRUE);
+        }
         courseMapper.insert(course);
         CourseClass defaultClass = new CourseClass();
         defaultClass.setCourseId(course.getId());
@@ -48,6 +53,10 @@ public class CourseService {
         return courseMapper.findByTeacherId(teacherId);
     }
 
+    public List<Course> searchTeacherCourses(Long teacherId, String keyword, String sort) {
+        return courseMapper.searchTeacherCourses(teacherId, keyword == null ? "" : keyword.trim(), sort);
+    }
+
     public List<Course> getStudentCourses(Long studentId) {
         return courseMapper.findByStudentId(studentId);
     }
@@ -59,7 +68,7 @@ public class CourseService {
     @Transactional
     public boolean enroll(Long studentId, Long courseId) {
         Course course = courseMapper.findById(courseId);
-        if (course == null || !"active".equals(course.getStatus())) return false;
+        if (course == null || !"active".equals(course.getStatus()) || !course.getAllowJoin()) return false;
 
         CourseEnrollment existing = enrollmentMapper.findByStudentAndCourse(studentId, courseId);
         if (existing != null) return false;
@@ -82,7 +91,7 @@ public class CourseService {
     public boolean enrollByInviteCode(Long studentId, String inviteCode) {
         CourseClass courseClass = courseClassMapper.findByInviteCode(inviteCode);
         Course course = courseClass == null ? courseMapper.findByInviteCode(inviteCode) : courseMapper.findById(courseClass.getCourseId());
-        if (course == null || !"active".equals(course.getStatus())) return false;
+        if (course == null || !"active".equals(course.getStatus()) || !course.getAllowJoin()) return false;
 
         CourseEnrollment existing = enrollmentMapper.findByStudentAndCourse(studentId, course.getId());
         if (existing != null) return false;
@@ -113,6 +122,10 @@ public class CourseService {
     public Course updateCourse(Course course) {
         courseMapper.update(course);
         return course;
+    }
+
+    public void updateStatus(Long id, String status) {
+        courseMapper.updateStatus(id, status);
     }
 
     public void deleteCourse(Long id) {

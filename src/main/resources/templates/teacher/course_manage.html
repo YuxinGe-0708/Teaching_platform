@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -8,25 +8,30 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar">
-        <div class="sidebar-brand">TeachingPlatform</div>
-        <nav class="sidebar-nav">
-            <a href="/home">主页</a>
-            <a href="/teacher/course/manage" class="active">课程管理</a>
-            <a href="/teacher/task/manage">作业管理</a>
-            <a href="/teacher/score/statistics">成绩统计</a>
-            <a href="/notifications">我的公告</a>
-            <a href="/teacher/ai">AI 答疑</a>
-        </nav>
-    </aside>
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
         <header class="topbar"><h1>课程管理</h1><a class="btn primary" href="/teacher/course/create">创建课程</a></header>
         <section class="content">
+            <div class="panel">
+                <form action="/teacher/course/manage" method="get" class="form-inline">
+                    <div><label>课程搜索</label><input name="keyword" th:value="${keyword}" placeholder="按课程名或编号搜索"></div>
+                    <div>
+                        <label>排序</label>
+                        <select name="sort">
+                            <option value="newest" th:selected="${sort == 'newest'}">创建时间倒序</option>
+                            <option value="oldest" th:selected="${sort == 'oldest'}">创建时间正序</option>
+                            <option value="students" th:selected="${sort == 'students'}">学生人数倒序</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn primary">查询</button>
+                </form>
+            </div>
             <div class="course-grid" th:if="${!#lists.isEmpty(courses)}">
                 <article class="item-card" th:each="c : ${courses}">
                     <span class="status-badge" th:text="${c.status}">进行中</span>
                     <h3 th:text="${c.courseName} + ' [' + ${c.courseCode} + ']'">课程名称</h3>
-                    <p class="muted">学分：<span th:text="${c.credit}"></span> ｜ 学生：<span th:text="${c.studentCount}"></span></p>
+                    <p class="muted">分类：<span th:text="${c.subjectCategory ?: '未分类'}"></span> ｜ 学时：<span th:text="${c.hours ?: 0}"></span></p>
+                    <p class="muted">学分：<span th:text="${c.credit}"></span> ｜ 学生：<span th:text="${c.studentCount}"></span> ｜ 自主加入：<span th:text="${c.allowJoin ? '允许' : '关闭'}"></span></p>
                     <p th:text="${c.description ?: '暂无课程简介'}">课程简介</p>
                     <p class="muted">邀请码：<strong th:text="${c.classes.size() > 0 ? c.classes[0].inviteCode : '暂无'}">CODE</strong></p>
                     <div class="card-actions">
@@ -35,7 +40,8 @@
                         <a class="btn" th:href="@{/discussion/teacher/course/{courseId}(courseId=${c.courseId})}">交流区</a>
                         <a class="btn" th:href="@{/teacher/course/class/{courseId}(courseId=${c.courseId})}">班级</a>
                         <a class="btn" th:href="@{/teacher/course/edit/{id}(id=${c.courseId})}">编辑</a>
-                        <a class="btn danger" th:href="@{/teacher/course/delete/{id}(id=${c.courseId})}" onclick="return confirm('确定删除该课程吗？')">删除</a>
+                        <a class="btn" th:href="@{/teacher/course/archive/{id}(id=${c.courseId})}" onclick="return confirm('确定归档该课程吗？')">归档</a>
+                        <a class="btn danger" th:href="@{/teacher/course/delete/{id}(id=${c.courseId})}" onclick="return confirm('无学生课程将被删除；已有学生课程会自动归档。确定继续吗？')">删除</a>
                     </div>
                 </article>
             </div>

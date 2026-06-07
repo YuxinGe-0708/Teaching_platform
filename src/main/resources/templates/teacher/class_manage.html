@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar"><div class="sidebar-brand">TeachingPlatform</div><nav class="sidebar-nav"><a href="/home">主页</a><a href="/teacher/course/manage" class="active">课程管理</a><a href="/teacher/task/manage">作业管理</a><a href="/notifications">我的公告</a><a href="/teacher/ai">AI 答疑</a></nav></aside>
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
         <header class="topbar"><h1 th:text="'班级管理 - ' + ${course.courseName}">班级管理</h1><a class="btn" href="/teacher/course/manage">返回</a></header>
         <section class="content">
@@ -24,7 +24,15 @@
                 <thead><tr><th>班级名称</th><th>邀请码</th><th>人数</th><th>操作</th></tr></thead>
                 <tbody>
                 <tr th:each="cls : ${classes}">
-                    <td th:text="${cls.className}">班级名称</td>
+                    <td>
+                        <form action="/teacher/course/class/update" method="post" class="form-inline">
+                            <input type="hidden" name="courseId" th:value="${course.courseId}">
+                            <input type="hidden" name="classId" th:value="${cls.classId}">
+                            <input name="className" th:value="${cls.className}" required>
+                            <input name="maxCount" type="number" min="1" th:value="${cls.maxCount}">
+                            <button type="submit" class="btn">保存</button>
+                        </form>
+                    </td>
                     <td><strong th:text="${cls.inviteCode}">CODE</strong></td>
                     <td th:text="${cls.currentCount} + ' / ' + ${cls.maxCount}">0 / 100</td>
                     <td><a class="btn danger" th:href="@{/teacher/course/class/delete(courseId=${course.courseId}, classId=${cls.classId})}" onclick="return confirm('确定删除该班级吗？')">删除</a></td>
@@ -32,6 +40,31 @@
                 <tr th:if="${#lists.isEmpty(classes)}"><td colspan="4">暂无班级。</td></tr>
                 </tbody>
             </table>
+            <div class="panel">
+                <h2>班级成员</h2>
+                <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>学生</th><th>用户名</th><th>班级</th><th>加入时间</th><th>在线学习时长</th><th>操作</th></tr></thead>
+                        <tbody>
+                        <tr th:each="member : ${members}">
+                            <td th:text="${member.studentName}">学生</td>
+                            <td th:text="${member.username}">username</td>
+                            <td th:text="${member.className}">班级</td>
+                            <td th:text="${member.joinedAt == null ? '-' : #dates.format(member.joinedAt, 'yyyy-MM-dd HH:mm')}">加入时间</td>
+                            <td th:text="${member.onlineMinutes} + ' 分钟'">0 分钟</td>
+                            <td>
+                                <form action="/teacher/course/class/remove-student" method="post" onsubmit="return confirm('确定将该学生移出课程吗？')">
+                                    <input type="hidden" name="courseId" th:value="${course.courseId}">
+                                    <input type="hidden" name="studentId" th:value="${member.studentId}">
+                                    <button type="submit" class="btn danger">移除</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(members)}"><td colspan="6">暂无学生加入。</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </section>
     </main>
 </div>

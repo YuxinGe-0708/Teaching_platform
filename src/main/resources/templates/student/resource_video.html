@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -8,15 +8,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar">
-        <div class="sidebar-brand">TeachingPlatform</div>
-        <nav class="sidebar-nav">
-            <a href="/home">主页</a>
-            <a href="/student/course/my">我的课程</a>
-            <a href="/notifications">我的公告</a>
-            <a href="/student/ai">AI 答疑</a>
-        </nav>
-    </aside>
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
         <header class="topbar">
             <h1 th:text="${resource.title}">视频学习</h1>

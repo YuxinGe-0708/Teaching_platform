@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -8,14 +8,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar">
-        <div class="sidebar-brand">TeachingPlatform</div>
-        <nav class="sidebar-nav">
-            <a href="/" class="active">入口</a>
-            <a href="/login">登录</a>
-            <a href="/register">注册</a>
-        </nav>
-    </aside>
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
         <section class="hero-band">
             <h2>教学平台</h2>

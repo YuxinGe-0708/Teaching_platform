@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -8,36 +8,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar">
-        <div class="sidebar-brand">TeachingPlatform</div>
-        <nav class="sidebar-nav">
-            <a href="/home" class="active">主页</a>
-            <th:block th:if="${user != null and user.role == 'student'}">
-                <a href="/student/course/my">我的课程</a>
-                <a href="/student/course/selection">选课中心</a>
-                <a href="/student/classes">班级管理</a>
-                <a href="/student/tasks">作业考试</a>
-                <a href="/student/notes">随堂笔记</a>
-                <a href="/student/scores">成绩汇总</a>
-                <a href="/student/logs">选课记录</a>
-                <a href="/notifications">我的公告</a>
-                <a href="/student/ai">AI 答疑</a>
-            </th:block>
-            <th:block th:if="${user != null and user.role == 'teacher'}">
-                <a href="/teacher/course/manage">课程管理</a>
-                <a href="/teacher/task/manage">作业管理</a>
-                <a href="/teacher/score/statistics">成绩统计</a>
-                <a href="/notifications">我的公告</a>
-                <a href="/teacher/ai">AI 答疑</a>
-            </th:block>
-        </nav>
-        <div class="sidebar-user">
-            <strong th:if="${user != null}">你好，<span th:text="${user.username}">user</span></strong>
-            <a th:if="${user != null}" class="btn" href="/profile">个人信息</a>
-            <a th:if="${user != null}" class="btn danger" href="/logout">退出</a>
-            <a th:if="${user == null}" class="btn" href="/login">登录</a>
-        </div>
-    </aside>
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
         <header class="topbar">
             <h1>平台主页</h1>

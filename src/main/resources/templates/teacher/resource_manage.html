@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -8,17 +8,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar">
-        <div class="sidebar-brand">TeachingPlatform</div>
-        <nav class="sidebar-nav">
-            <a href="/home">主页</a>
-            <a href="/teacher/course/manage" class="active">课程管理</a>
-            <a href="/teacher/task/manage">作业管理</a>
-            <a href="/teacher/score/statistics">成绩统计</a>
-            <a href="/notifications">我的公告</a>
-            <a href="/teacher/ai">AI 答疑</a>
-        </nav>
-    </aside>
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
         <header class="topbar">
             <h1 th:text="${course.courseName} + ' - 教学资源'">教学资源</h1>
@@ -30,34 +20,89 @@
                 <form action="/teacher/resource/upload" method="post" enctype="multipart/form-data" class="form">
                     <input type="hidden" name="courseId" th:value="${course.courseId}">
                     <label for="title">资源标题</label>
-                    <input id="title" name="title" placeholder="例如：第一章课件 / 实训讲解视频">
+                    <input id="title" name="title" placeholder="批量上传时留空将使用原文件名">
                     <label for="chapter">所属章节</label>
                     <input id="chapter" name="chapter" placeholder="例如：第 1 章 数据结构基础">
                     <label for="file">上传文件</label>
-                    <input id="file" type="file" name="file" accept=".pdf,application/pdf,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" required>
+                    <input id="file" type="file" name="file" accept=".pdf,.ppt,.pptx,.zip,.rar,.7z,application/pdf,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov" multiple required>
                     <button type="submit">上传资源</button>
                 </form>
             </div>
-            <table>
-                <thead><tr><th>标题</th><th>章节</th><th>类型</th><th>上传时间</th><th>操作</th></tr></thead>
-                <tbody>
-                <tr th:each="resource : ${resources}">
-                    <td th:text="${resource.title}">资源</td>
-                    <td th:text="${resource.chapter ?: '默认章节'}">默认章节</td>
-                    <td th:text="${resource.type == 'video' ? '视频' : 'PDF'}">PDF</td>
-                    <td th:text="${#dates.format(resource.createdAt, 'yyyy-MM-dd HH:mm')}">时间</td>
-                    <td>
-                        <form action="/teacher/resource/delete" method="post" class="inline-form" onsubmit="return confirm('确定删除该资源记录吗？')">
-                            <input type="hidden" name="resourceId" th:value="${resource.id}">
-                            <button type="submit" class="btn danger">删除</button>
-                        </form>
-                    </td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(resources)}"><td colspan="5">暂无资源。</td></tr>
-                </tbody>
-            </table>
+            <div class="panel">
+                <form th:action="@{/teacher/resource/manage/{courseId}/filter(courseId=${course.courseId})}" method="get" class="form-inline">
+                    <div>
+                        <label>类型过滤</label>
+                        <select name="type">
+                            <option value="">全部</option>
+                            <option value="pdf" th:selected="${filterType == 'pdf'}">PDF</option>
+                            <option value="video" th:selected="${filterType == 'video'}">视频</option>
+                            <option value="ppt" th:selected="${filterType == 'ppt'}">PPT</option>
+                            <option value="code" th:selected="${filterType == 'code'}">代码包</option>
+                        </select>
+                    </div>
+                    <div><label>章节</label><input name="chapter" th:value="${filterChapter}" placeholder="输入章节名"></div>
+                    <button type="submit" class="btn primary">筛选</button>
+                </form>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>选择</th><th>标题</th><th>章节</th><th>类型</th><th>下载次数</th><th>上传时间</th><th>操作</th></tr></thead>
+                    <tbody>
+                    <tr th:each="resource : ${resources}">
+                        <td><input type="checkbox" class="resource-check" th:value="${resource.id}"></td>
+                        <td colspan="5">
+                            <form action="/teacher/resource/update" method="post" class="form-inline">
+                                <input type="hidden" name="resourceId" th:value="${resource.id}">
+                                <input name="title" th:value="${resource.title}" required>
+                                <input name="chapter" th:value="${resource.chapter ?: '默认章节'}">
+                                <select name="type">
+                                    <option value="pdf" th:selected="${resource.type == 'pdf'}">PDF</option>
+                                    <option value="video" th:selected="${resource.type == 'video'}">视频</option>
+                                    <option value="ppt" th:selected="${resource.type == 'ppt'}">PPT</option>
+                                    <option value="code" th:selected="${resource.type == 'code'}">代码包</option>
+                                </select>
+                                <span class="status-badge" th:text="${resource.downloadCount}">0</span>
+                                <span class="muted" th:text="${#dates.format(resource.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span>
+                                <button type="submit" class="btn">保存</button>
+                            </form>
+                        </td>
+                        <td>
+                            <form action="/teacher/resource/delete" method="post" class="inline-form" onsubmit="return confirm('确定删除该资源记录吗？')">
+                                <input type="hidden" name="resourceId" th:value="${resource.id}">
+                                <button type="submit" class="btn danger">删除</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(resources)}"><td colspan="7">暂无资源。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <form id="batchDeleteForm" action="/teacher/resource/batch-delete" method="post" class="toolbar" onsubmit="return fillBatchDelete()">
+                <input type="hidden" name="courseId" th:value="${course.courseId}">
+                <button type="submit" class="btn danger">批量删除选中资源</button>
+            </form>
         </section>
     </main>
 </div>
+<script>
+function fillBatchDelete() {
+    const form = document.getElementById('batchDeleteForm');
+    form.querySelectorAll('input[name="resourceIds"]').forEach(input => input.remove());
+    const checked = Array.from(document.querySelectorAll('.resource-check:checked'));
+    if (checked.length === 0) {
+        alert('请先选择资源');
+        return false;
+    }
+    if (!confirm('确定批量删除选中资源吗？')) return false;
+    checked.forEach(box => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'resourceIds';
+        input.value = box.value;
+        form.appendChild(input);
+    });
+    return true;
+}
+</script>
 </body>
 </html>

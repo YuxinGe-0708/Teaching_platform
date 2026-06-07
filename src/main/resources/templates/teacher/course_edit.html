@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 </head>
 <body>
 <div class="app-layout">
-    <aside class="sidebar"><div class="sidebar-brand">TeachingPlatform</div><nav class="sidebar-nav"><a href="/home">主页</a><a href="/teacher/course/manage" class="active">课程管理</a><a href="/teacher/task/manage">作业管理</a><a href="/notifications">我的公告</a><a href="/teacher/ai">AI 答疑</a></nav></aside>
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
         <header class="topbar"><h1>编辑课程</h1><a class="btn" href="/teacher/course/manage">返回</a></header>
         <section class="content">
@@ -19,8 +19,15 @@
                     <input id="courseName" type="text" name="courseName" th:value="${course.courseName}" required>
                     <label for="courseCode">课程编号</label>
                     <input id="courseCode" type="text" name="courseCode" th:value="${course.courseCode}" required>
+                    <label for="subjectCategory">学科分类</label>
+                    <input id="subjectCategory" type="text" name="subjectCategory" th:value="${course.subjectCategory}">
                     <label for="credit">学分</label>
                     <input id="credit" type="number" name="credit" step="0.5" th:value="${course.credit}" required>
+                    <label for="hours">学时</label>
+                    <input id="hours" type="number" name="hours" min="0" th:value="${course.hours}">
+                    <label for="coverUrl">课程封面地址</label>
+                    <input id="coverUrl" type="url" name="coverUrl" th:value="${course.coverUrl}">
+                    <label class="check-row"><input type="checkbox" name="allowJoin" value="true" th:checked="${course.allowJoin}"> 允许学生自主加入</label>
                     <label for="description">课程简介</label>
                     <textarea id="description" name="description" th:text="${course.description}"></textarea>
                     <button type="submit">保存</button>

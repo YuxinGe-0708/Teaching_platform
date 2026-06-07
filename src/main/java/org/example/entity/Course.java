@@ -6,9 +6,12 @@ public class Course {
     private String code;
     private String description;
     private Integer credits;
+    private String subjectCategory;
+    private Integer hours;
     private Long teacherId;
     private String inviteCode;
     private String coverUrl;
+    private Boolean allowJoin;
     private String status;
     private String teacherName;
     private Integer studentCount;
@@ -25,12 +28,18 @@ public class Course {
     public void setDescription(String description) { this.description = description; }
     public Integer getCredits() { return credits; }
     public void setCredits(Integer credits) { this.credits = credits; }
+    public String getSubjectCategory() { return subjectCategory; }
+    public void setSubjectCategory(String subjectCategory) { this.subjectCategory = subjectCategory; }
+    public Integer getHours() { return hours; }
+    public void setHours(Integer hours) { this.hours = hours; }
     public Long getTeacherId() { return teacherId; }
     public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
     public String getInviteCode() { return inviteCode; }
     public void setInviteCode(String inviteCode) { this.inviteCode = inviteCode; }
     public String getCoverUrl() { return coverUrl; }
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
+    public Boolean getAllowJoin() { return allowJoin == null || allowJoin; }
+    public void setAllowJoin(Boolean allowJoin) { this.allowJoin = allowJoin; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getTeacherName() { return teacherName; }

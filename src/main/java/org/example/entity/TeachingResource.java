@@ -7,6 +7,8 @@ public class TeachingResource {
     private String filePath;
     private String type;
     private String chapter;
+    private Long fileSize;
+    private Integer downloadCount;
     private java.sql.Timestamp createdAt;
     private String courseName;
 
@@ -22,6 +24,10 @@ public class TeachingResource {
     public void setType(String type) { this.type = type; }
     public String getChapter() { return chapter; }
     public void setChapter(String chapter) { this.chapter = chapter; }
+    public Long getFileSize() { return fileSize; }
+    public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
+    public Integer getDownloadCount() { return downloadCount == null ? 0 : downloadCount; }
+    public void setDownloadCount(Integer downloadCount) { this.downloadCount = downloadCount; }
     public java.sql.Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(java.sql.Timestamp createdAt) { this.createdAt = createdAt; }
     public String getCourseName() { return courseName; }

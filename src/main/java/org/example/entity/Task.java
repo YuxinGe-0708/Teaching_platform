@@ -7,6 +7,9 @@ public class Task {
     private Long courseId;
     private String type;
     private Integer maxScore;
+    private Integer timeLimitMs;
+    private Integer memoryLimitMb;
+    private String codeTemplate;
     private java.sql.Timestamp endTime;
     private String status;
     private String courseName;
@@ -25,6 +28,12 @@ public class Task {
     public void setType(String type) { this.type = type; }
     public Integer getMaxScore() { return maxScore; }
     public void setMaxScore(Integer maxScore) { this.maxScore = maxScore; }
+    public Integer getTimeLimitMs() { return timeLimitMs; }
+    public void setTimeLimitMs(Integer timeLimitMs) { this.timeLimitMs = timeLimitMs; }
+    public Integer getMemoryLimitMb() { return memoryLimitMb; }
+    public void setMemoryLimitMb(Integer memoryLimitMb) { this.memoryLimitMb = memoryLimitMb; }
+    public String getCodeTemplate() { return codeTemplate; }
+    public void setCodeTemplate(String codeTemplate) { this.codeTemplate = codeTemplate; }
     public java.sql.Timestamp getEndTime() { return endTime; }
     public void setEndTime(java.sql.Timestamp endTime) { this.endTime = endTime; }
     public String getStatus() { return status; }

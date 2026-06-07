@@ -167,10 +167,14 @@ public class UserController {
         view.put("courseName", course.getName());
         view.put("courseCode", course.getCode());
         view.put("credit", course.getCredits());
+        view.put("subjectCategory", course.getSubjectCategory());
+        view.put("hours", course.getHours());
         view.put("teacherId", course.getTeacherName() == null ? course.getTeacherId() : course.getTeacherName());
         view.put("description", course.getDescription());
+        view.put("coverUrl", course.getCoverUrl());
+        view.put("allowJoin", course.getAllowJoin());
         view.put("studentCount", course.getStudentCount() == null ? 0 : course.getStudentCount());
-        view.put("status", "active".equals(course.getStatus()) ? "进行中" : course.getStatus());
+        view.put("status", displayCourseStatus(course.getStatus()));
         view.put("inviteCode", course.getInviteCode());
         Map<String, Object> clazz = new HashMap<>();
         clazz.put("classId", course.getId());
@@ -197,7 +201,7 @@ public class UserController {
         view.put("fullScore", task.getMaxScore());
         view.put("startTime", task.getCreatedAt() == null ? new Date() : new Date(task.getCreatedAt().getTime()));
         view.put("endTime", task.getEndTime() == null ? null : new Date(task.getEndTime().getTime()));
-        view.put("status", "published".equals(task.getStatus()) ? "已发布" : task.getStatus());
+        view.put("status", displayTaskStatus(task.getStatus()));
         view.put("allowedFileTypes", "");
         view.put("testCasesJson", TaskMetadataUtils.testCasesJson(task.getDescription()));
         view.put("hasExamAnswer", !TaskMetadataUtils.examAnswer(task.getDescription()).trim().isEmpty());
@@ -214,6 +218,21 @@ public class UserController {
         if ("exam".equals(type)) return "考试";
         if ("programming".equals(type)) return "编程实训";
         return "作业";
+    }
+
+    public static String displayTaskStatus(String status) {
+        if ("draft".equals(status)) return "草稿";
+        if ("closed".equals(status)) return "已关闭";
+        if ("expired".equals(status)) return "已过期";
+        if ("retracted".equals(status)) return "已撤回";
+        return "已发布";
+    }
+
+    public static String displayCourseStatus(String status) {
+        if ("draft".equals(status)) return "草稿";
+        if ("closed".equals(status)) return "已结课";
+        if ("archived".equals(status)) return "已归档";
+        return "进行中";
     }
 
     static String firstNonBlank(String... values) {

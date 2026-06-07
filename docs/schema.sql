@@ -22,10 +22,13 @@ CREATE TABLE IF NOT EXISTS `course` (
     `code` VARCHAR(50) DEFAULT '',
     `description` TEXT,
     `credits` INT DEFAULT 0,
+    `subject_category` VARCHAR(100) DEFAULT '',
+    `hours` INT DEFAULT 0,
     `teacher_id` BIGINT NOT NULL,
     `invite_code` VARCHAR(20) UNIQUE,
     `cover_url` VARCHAR(500) DEFAULT '',
-    `status` VARCHAR(20) DEFAULT 'active' COMMENT 'active/archived',
+    `allow_join` TINYINT(1) DEFAULT 1,
+    `status` VARCHAR(20) DEFAULT 'active' COMMENT 'draft/active/closed/archived/deleted',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`teacher_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
@@ -51,8 +54,11 @@ CREATE TABLE IF NOT EXISTS `task` (
     `course_id` BIGINT NOT NULL,
     `type` VARCHAR(20) NOT NULL COMMENT 'homework/exam/programming',
     `max_score` INT DEFAULT 100,
+    `time_limit_ms` INT DEFAULT 15000,
+    `memory_limit_mb` INT DEFAULT 128,
+    `code_template` MEDIUMTEXT NULL,
     `end_time` TIMESTAMP NULL,
-    `status` VARCHAR(20) DEFAULT 'published' COMMENT 'draft/published/closed',
+    `status` VARCHAR(20) DEFAULT 'published' COMMENT 'draft/published/closed/expired/retracted',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`course_id`) REFERENCES `course`(`id`) ON DELETE CASCADE
@@ -94,6 +100,8 @@ CREATE TABLE IF NOT EXISTS `resource` (
     `file_path` VARCHAR(500) DEFAULT '',
     `type` VARCHAR(50) DEFAULT 'other' COMMENT 'ppt/pdf/video/link/other',
     `chapter` VARCHAR(120) DEFAULT '默认章节',
+    `file_size` BIGINT DEFAULT 0,
+    `download_count` INT DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`course_id`) REFERENCES `course`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

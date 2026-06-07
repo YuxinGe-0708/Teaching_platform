@@ -165,6 +165,7 @@ public class StudentController {
                 .collect(Collectors.toMap(Submission::getTaskId, s -> s, (a, b) -> a));
         for (Course course : courseService.getStudentCourses(user.getId())) {
             for (Task task : taskService.getCourseTasks(course.getId())) {
+                if (!"published".equals(task.getStatus())) continue;
                 if (!"all".equals(activeType) && !activeType.equals(task.getType())) continue;
                 Map<String, Object> row = UserController.toTaskView(task);
                 row.put("courseId", course.getId());
@@ -275,6 +276,7 @@ public class StudentController {
         if (!isEnrolled(user.getId(), courseId)) return "redirect:/student/course/my";
         String activeTab = (tab == null || tab.trim().isEmpty()) ? "home" : tab.trim();
         List<java.util.Map<String, Object>> tasks = taskService.getCourseTasks(courseId).stream()
+                .filter(task -> "published".equals(task.getStatus()))
                 .filter(task -> filterTask(activeTab, task))
                 .map(UserController::toTaskView)
                 .collect(Collectors.toList());
