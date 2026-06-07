@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>思维导图 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/student/course/my">我的课程</a>
+            <a href="/student/notes" class="active">随堂笔记</a>
+            <a href="/student/ai">AI 答疑</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1 th:text="${note.title} + ' - 思维导图'">思维导图</h1>
+            <a class="btn" href="/student/notes">返回笔记</a>
+        </header>
+        <section class="content">
+            <div class="panel">
+                <div class="card-actions">
+                    <button type="button" class="btn primary" onclick="downloadMap()">导出源码</button>
+                </div>
+                <div class="mindmap-canvas">
+                    <pre class="mermaid" id="mindmapSource" th:text="${note.mindMap}">mindmap
+  课程笔记</pre>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+<script>
+    if (window.mermaid) {
+        mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+    }
+    function downloadMap() {
+        const text = document.getElementById('mindmapSource').textContent;
+        const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mindmap.mmd';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班级管理 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/student/course/my">我的课程</a>
+            <a href="/student/classes" class="active">班级管理</a>
+            <a href="/student/tasks">作业考试</a>
+            <a href="/student/notes">随堂笔记</a>
+            <a href="/student/scores">成绩汇总</a>
+            <a href="/notifications">我的公告</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar"><h1>班级管理</h1></header>
+        <section class="content">
+            <div class="score-summary-list" th:if="${!#lists.isEmpty(classes)}">
+                <div class="panel" th:each="item : ${classes}">
+                    <div class="score-panel-head">
+                        <div>
+                            <h2 th:text="${item.course.courseName}">课程名称</h2>
+                            <p class="muted">课程编号：<span th:text="${item.course.courseCode}">CODE</span></p>
+                        </div>
+                        <div class="status-badge" th:text="${item.classInfo != null ? item.classInfo.name : '默认班级'}">班级</div>
+                    </div>
+                    <div class="score-metrics">
+                        <div><span>班级名称</span><strong th:text="${item.classInfo != null ? item.classInfo.name : '默认班级'}">默认班级</strong></div>
+                        <div><span>邀请码</span><strong th:text="${item.classInfo != null ? item.classInfo.inviteCode : item.course.inviteCode}">CODE</strong></div>
+                        <div><span>成员数</span><strong th:text="${#lists.size(item.members)}">0</strong></div>
+                        <div><span>人数上限</span><strong th:text="${item.classInfo != null ? item.classInfo.maxCount : 100}">100</strong></div>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="score-table">
+                            <thead><tr><th>成员姓名</th><th>用户名</th><th>邮箱</th><th>角色</th></tr></thead>
+                            <tbody>
+                            <tr th:each="member : ${item.members}">
+                                <td th:text="${member.name ?: member.username}">姓名</td>
+                                <td th:text="${member.username}">username</td>
+                                <td th:text="${member.email ?: '-'}">email</td>
+                                <td>学生</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(classes)}">你还没有加入任何班级。</div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

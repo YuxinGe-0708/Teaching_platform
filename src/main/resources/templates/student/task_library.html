@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>作业考试 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/student/course/my">我的课程</a>
+            <a href="/student/classes">班级管理</a>
+            <a href="/student/tasks" class="active">作业考试</a>
+            <a href="/student/notes">随堂笔记</a>
+            <a href="/student/scores">成绩汇总</a>
+            <a href="/notifications">我的公告</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar"><h1>作业 / 考试聚合</h1></header>
+        <section class="content">
+            <div class="toolbar">
+                <a class="btn" th:classappend="${type == 'all' ? ' primary' : ''}" href="/student/tasks?type=all">全部</a>
+                <a class="btn" th:classappend="${type == 'homework' ? ' primary' : ''}" href="/student/tasks?type=homework">作业</a>
+                <a class="btn" th:classappend="${type == 'exam' ? ' primary' : ''}" href="/student/tasks?type=exam">考试</a>
+                <a class="btn" th:classappend="${type == 'programming' ? ' primary' : ''}" href="/student/tasks?type=programming">编程实训</a>
+            </div>
+            <div class="table-scroll">
+                <table class="score-table">
+                    <thead>
+                    <tr><th>任务</th><th>课程</th><th>类型</th><th>截止时间</th><th>状态</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="task : ${tasks}">
+                        <td class="task-title-cell" th:text="${task.title}">任务</td>
+                        <td th:text="${task.courseName}">课程</td>
+                        <td th:text="${task.taskType}">类型</td>
+                        <td th:text="${task.endTime == null ? '未设置' : #dates.format(task.endTime, 'yyyy-MM-dd HH:mm')}">截止</td>
+                        <td>
+                            <span class="status-badge" th:text="${task.completed ? (task.submission.score == null ? '已提交' : '已评分') : '未提交'}">状态</span>
+                        </td>
+                        <td><a class="btn primary" th:href="@{/student/task/detail(taskId=${task.taskId})}">进入</a></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(tasks)}"><td colspan="6">暂无任务。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

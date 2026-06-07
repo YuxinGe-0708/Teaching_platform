@@ -73,6 +73,7 @@ public class TeachingResourceController {
     @PostMapping("/teacher/resource/upload")
     public String uploadResource(@RequestParam Long courseId,
                                  @RequestParam String title,
+                                 @RequestParam(required = false) String chapter,
                                  @RequestParam MultipartFile file,
                                  HttpSession session,
                                  Model model) {
@@ -101,6 +102,7 @@ public class TeachingResourceController {
         resource.setTitle(title == null || title.trim().isEmpty() ? originalName(file) : title.trim());
         resource.setType(type);
         resource.setFilePath(path);
+        resource.setChapter(chapter == null || chapter.trim().isEmpty() ? "默认章节" : chapter.trim());
         resourceMapper.insert(resource);
         return "redirect:/teacher/resource/manage/" + courseId;
     }

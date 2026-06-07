@@ -14,7 +14,7 @@ public interface TeachingResourceMapper {
     @Select("SELECT r.*, c.name AS course_name FROM resource r LEFT JOIN course c ON r.course_id = c.id WHERE r.course_id = #{courseId} ORDER BY r.created_at DESC")
     List<TeachingResource> findByCourseId(Long courseId);
 
-    @Insert("INSERT INTO resource (course_id, title, file_path, type) VALUES (#{courseId}, #{title}, #{filePath}, #{type})")
+    @Insert("INSERT INTO resource (course_id, title, file_path, type, chapter) VALUES (#{courseId}, #{title}, #{filePath}, #{type}, #{chapter})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(TeachingResource resource);
 

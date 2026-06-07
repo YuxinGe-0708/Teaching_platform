@@ -67,8 +67,11 @@ public class CourseService {
         CourseEnrollment enrollment = new CourseEnrollment();
         enrollment.setStudentId(studentId);
         enrollment.setCourseId(courseId);
-        enrollmentMapper.insert(enrollment);
         List<CourseClass> classes = courseClassMapper.findByCourseId(courseId);
+        if (!classes.isEmpty()) {
+            enrollment.setClassId(classes.get(0).getId());
+        }
+        enrollmentMapper.insert(enrollment);
         if (!classes.isEmpty()) {
             courseClassMapper.incrementCount(classes.get(0).getId());
         }
@@ -87,6 +90,7 @@ public class CourseService {
         CourseEnrollment enrollment = new CourseEnrollment();
         enrollment.setStudentId(studentId);
         enrollment.setCourseId(course.getId());
+        enrollment.setClassId(courseClass == null ? null : courseClass.getId());
         enrollmentMapper.insert(enrollment);
         if (courseClass != null) {
             courseClassMapper.incrementCount(courseClass.getId());

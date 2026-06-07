@@ -388,6 +388,10 @@ textarea {
     min-height: 130px;
     white-space: pre-wrap;
 }
+input[type="checkbox"] {
+    width: auto;
+    min-width: 0;
+}
 .monaco-editor-box {
     height: 420px;
     border: 2px solid var(--border-color);
@@ -490,6 +494,32 @@ textarea {
     background: #fdfbf7;
     padding: 12px;
     margin-bottom: 12px;
+}
+.check-row {
+    width: auto;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 10px;
+    border: 2px solid var(--border-color);
+    background: #fff;
+    font-weight: 800;
+}
+.note-preview {
+    max-height: 84px;
+    overflow: hidden;
+    white-space: pre-wrap;
+}
+.mindmap-canvas {
+    min-height: 420px;
+    overflow: auto;
+    border: 2px solid var(--border-color);
+    background: #fdfbf7;
+    padding: 18px;
+}
+.mindmap-canvas svg {
+    max-width: 100%;
 }
 .score-summary-list {
     display: grid;

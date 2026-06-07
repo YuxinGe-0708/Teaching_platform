@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS `course_enrollment` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `student_id` BIGINT NOT NULL,
     `course_id` BIGINT NOT NULL,
+    `class_id` BIGINT NULL,
     `enrolled_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY `uk_student_course` (`student_id`, `course_id`),
     FOREIGN KEY (`student_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
@@ -92,6 +93,7 @@ CREATE TABLE IF NOT EXISTS `resource` (
     `title` VARCHAR(200) NOT NULL,
     `file_path` VARCHAR(500) DEFAULT '',
     `type` VARCHAR(50) DEFAULT 'other' COMMENT 'ppt/pdf/video/link/other',
+    `chapter` VARCHAR(120) DEFAULT '默认章节',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`course_id`) REFERENCES `course`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -149,6 +151,10 @@ CREATE TABLE IF NOT EXISTS `discussion_post` (
     `user_id` BIGINT NOT NULL,
     `title` VARCHAR(200) NOT NULL,
     `content` TEXT NOT NULL,
+    `anonymous` TINYINT(1) DEFAULT 0,
+    `post_type` VARCHAR(30) DEFAULT 'discussion',
+    `target_role` VARCHAR(30) DEFAULT 'all',
+    `target_user_id` BIGINT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_discussion_post_course` (`course_id`),
     FOREIGN KEY (`course_id`) REFERENCES `course`(`id`) ON DELETE CASCADE,
@@ -161,8 +167,29 @@ CREATE TABLE IF NOT EXISTS `discussion_reply` (
     `post_id` BIGINT NOT NULL,
     `user_id` BIGINT NOT NULL,
     `content` TEXT NOT NULL,
+    `anonymous` TINYINT(1) DEFAULT 0,
+    `assistant_reply` TINYINT(1) DEFAULT 0,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_discussion_reply_post` (`post_id`),
     FOREIGN KEY (`post_id`) REFERENCES `discussion_post`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 学生随堂电子笔记表
+CREATE TABLE IF NOT EXISTS `study_note` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `student_id` BIGINT NOT NULL,
+    `course_id` BIGINT NOT NULL,
+    `resource_id` BIGINT NULL,
+    `title` VARCHAR(200) NOT NULL,
+    `content` TEXT NOT NULL,
+    `ai_summary` MEDIUMTEXT NULL,
+    `mind_map` MEDIUMTEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_study_note_student` (`student_id`),
+    INDEX `idx_study_note_course` (`course_id`),
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`course_id`) REFERENCES `course`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`resource_id`) REFERENCES `resource`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

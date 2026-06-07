@@ -26,6 +26,14 @@ public class DatabaseInitializer {
 
     @PostConstruct
     public void init() {
+        addColumnIfMissing("course_enrollment", "class_id", "BIGINT NULL");
+        addColumnIfMissing("resource", "chapter", "VARCHAR(120) DEFAULT '默认章节'");
+        addColumnIfMissing("discussion_post", "anonymous", "TINYINT(1) DEFAULT 0");
+        addColumnIfMissing("discussion_post", "post_type", "VARCHAR(30) DEFAULT 'discussion'");
+        addColumnIfMissing("discussion_post", "target_role", "VARCHAR(30) DEFAULT 'all'");
+        addColumnIfMissing("discussion_post", "target_user_id", "BIGINT NULL");
+        addColumnIfMissing("discussion_reply", "anonymous", "TINYINT(1) DEFAULT 0");
+        addColumnIfMissing("discussion_reply", "assistant_reply", "TINYINT(1) DEFAULT 0");
         jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS `resource_progress` ("
                 + "`id` BIGINT AUTO_INCREMENT PRIMARY KEY,"
                 + "`student_id` BIGINT NOT NULL,"
@@ -43,6 +51,10 @@ public class DatabaseInitializer {
                 + "`user_id` BIGINT NOT NULL,"
                 + "`title` VARCHAR(200) NOT NULL,"
                 + "`content` TEXT NOT NULL,"
+                + "`anonymous` TINYINT(1) DEFAULT 0,"
+                + "`post_type` VARCHAR(30) DEFAULT 'discussion',"
+                + "`target_role` VARCHAR(30) DEFAULT 'all',"
+                + "`target_user_id` BIGINT NULL,"
                 + "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
                 + "INDEX `idx_discussion_post_course` (`course_id`)"
                 + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -51,10 +63,43 @@ public class DatabaseInitializer {
                 + "`post_id` BIGINT NOT NULL,"
                 + "`user_id` BIGINT NOT NULL,"
                 + "`content` TEXT NOT NULL,"
+                + "`anonymous` TINYINT(1) DEFAULT 0,"
+                + "`assistant_reply` TINYINT(1) DEFAULT 0,"
                 + "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
                 + "INDEX `idx_discussion_reply_post` (`post_id`)"
                 + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS `study_note` ("
+                + "`id` BIGINT AUTO_INCREMENT PRIMARY KEY,"
+                + "`student_id` BIGINT NOT NULL,"
+                + "`course_id` BIGINT NOT NULL,"
+                + "`resource_id` BIGINT NULL,"
+                + "`title` VARCHAR(200) NOT NULL,"
+                + "`content` TEXT NOT NULL,"
+                + "`ai_summary` MEDIUMTEXT NULL,"
+                + "`mind_map` MEDIUMTEXT NULL,"
+                + "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                + "`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                + "INDEX `idx_study_note_student` (`student_id`),"
+                + "INDEX `idx_study_note_course` (`course_id`)"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         ensureDefaultAdmin();
+    }
+
+    private void addColumnIfMissing(String tableName, String columnName, String definition) {
+        Integer tableCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
+                Integer.class,
+                tableName
+        );
+        if (tableCount == null || tableCount == 0) return;
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?",
+                Integer.class,
+                tableName,
+                columnName
+        );
+        if (count == null || count > 0) return;
+        jdbcTemplate.execute("ALTER TABLE `" + tableName + "` ADD COLUMN `" + columnName + "` " + definition);
     }
 
     private void ensureDefaultAdmin() {

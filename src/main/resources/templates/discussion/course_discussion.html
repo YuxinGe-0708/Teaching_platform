@@ -28,14 +28,28 @@
                 <h2>发布讨论</h2>
                 <form action="/discussion/post" method="post" class="form">
                     <input type="hidden" name="courseId" th:value="${course.courseId}">
+                    <div class="form-inline">
+                        <select name="postType">
+                            <option value="discussion">普通讨论</option>
+                            <option value="question">答疑说明</option>
+                            <option value="share">学习建议</option>
+                            <option value="resource">资源推荐</option>
+                        </select>
+                        <select name="targetRole">
+                            <option value="all">全班可见</option>
+                            <option value="teacher">教师跟进</option>
+                            <option value="assistant">助教跟进</option>
+                        </select>
+                    </div>
                     <input name="title" placeholder="标题" required>
                     <textarea name="content" placeholder="发布答疑说明、学习建议或课程公告" required></textarea>
                     <button type="submit">发布</button>
                 </form>
             </div>
             <div class="panel" th:each="post : ${posts}">
+                <span class="status-badge" th:text="${post.postTypeLabel}">讨论</span>
                 <h2 th:text="${post.title}">帖子标题</h2>
-                <p class="muted"><span th:text="${post.authorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
+                <p class="muted"><span th:text="${post.displayAuthorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${post.targetRoleLabel}">全班可见</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
                 <p th:text="${post.content}">内容</p>
                 <a class="btn" th:href="@{/discussion/post/{id}(id=${post.id})}">查看与回复</a>
             </div>

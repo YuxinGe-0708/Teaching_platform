@@ -14,6 +14,9 @@
             <a href="/home">主页</a>
             <a href="/student/course/my" class="active">我的课程</a>
             <a href="/student/course/selection">选课中心</a>
+            <a href="/student/classes">班级管理</a>
+            <a href="/student/tasks">作业考试</a>
+            <a href="/student/notes">随堂笔记</a>
             <a href="/notifications">我的公告</a>
             <a href="/student/ai">AI 答疑</a>
         </nav>
@@ -33,6 +36,7 @@
                 <a class="btn" th:classappend="${tab == 'exam' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='exam')}">考试</a>
                 <a class="btn" th:classappend="${tab == 'lab' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='lab')}">编程实训</a>
                 <a class="btn" th:classappend="${tab == 'resources' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='resources')}">教学资源</a>
+                <a class="btn" th:classappend="${tab == 'progress' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='progress')}">学习看板</a>
                 <a class="btn" th:classappend="${tab == 'discussion' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='discussion')}">交流区</a>
             </div>
             <div class="panel" th:if="${tab == 'home'}">
@@ -55,6 +59,7 @@
                     <article class="item-card" th:each="resource : ${resources}">
                         <span class="status-badge" th:text="${resource.type == 'video' ? '视频' : 'PDF'}">PDF</span>
                         <h3 th:text="${resource.title}">资源标题</h3>
+                        <p class="muted">章节：<span th:text="${resource.chapter ?: '默认章节'}">默认章节</span></p>
                         <p class="muted">上传时间：<span th:text="${#dates.format(resource.createdAt, 'yyyy-MM-dd HH:mm')}"></span></p>
                         <div class="card-actions" th:if="${resource.type == 'pdf'}">
                             <a class="btn primary" th:href="@{/student/resource/download/{id}(id=${resource.id})}">下载 PDF</a>
@@ -67,25 +72,63 @@
                 </div>
                 <div class="empty" th:if="${#lists.isEmpty(resources)}">该课程暂无教学资源。</div>
             </div>
+            <div th:if="${tab == 'progress'}">
+                <div class="split-workspace">
+                    <div class="panel">
+                        <h2>任务完成状态</h2>
+                        <div class="reply-item" th:each="task : ${progress.tasks}">
+                            <strong th:text="${task.title}">任务</strong>
+                            <span class="status-badge" th:text="${task.completed ? '已完成' : '待完成'}">状态</span>
+                            <p class="muted" th:text="${task.type}">类型</p>
+                        </div>
+                        <div class="empty" th:if="${#lists.isEmpty(progress.tasks)}">暂无学习任务。</div>
+                    </div>
+                    <div class="panel">
+                        <h2>资源学习进度</h2>
+                        <div class="reply-item" th:each="resource : ${progress.resources}">
+                            <strong th:text="${resource.title}">资源</strong>
+                            <p class="muted" th:text="${resource.type == 'video' ? '视频资源' : 'PDF 资料'}">类型</p>
+                            <div class="progress-track"><span th:style="${'width:' + resource.progress + '%'}"></span></div>
+                            <p><span th:text="${resource.progress}">0</span>%</p>
+                        </div>
+                        <div class="empty" th:if="${#lists.isEmpty(progress.resources)}">暂无课程资源。</div>
+                    </div>
+                </div>
+            </div>
             <div th:if="${tab == 'discussion'}">
                 <div class="panel">
                     <h2>发布讨论</h2>
                     <form action="/discussion/post" method="post" class="form">
                         <input type="hidden" name="courseId" th:value="${course.courseId}">
+                        <div class="form-inline">
+                            <select name="postType">
+                                <option value="discussion">普通讨论</option>
+                                <option value="question">向老师提问</option>
+                                <option value="share">心得分享</option>
+                                <option value="resource">资源分享</option>
+                            </select>
+                            <select name="targetRole">
+                                <option value="all">全班可见</option>
+                                <option value="teacher">定向推送教师</option>
+                                <option value="assistant">定向推送助教</option>
+                            </select>
+                            <label class="check-row"><input type="checkbox" name="anonymous" value="true"> 匿名发布</label>
+                        </div>
                         <input name="title" placeholder="标题" required>
                         <textarea name="content" placeholder="写下你的问题、心得或资源建议" required></textarea>
                         <button type="submit">发布</button>
                     </form>
                 </div>
                 <div class="panel" th:each="post : ${posts}">
+                    <span class="status-badge" th:text="${post.postTypeLabel}">讨论</span>
                     <h2 th:text="${post.title}">帖子标题</h2>
-                    <p class="muted"><span th:text="${post.authorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
+                    <p class="muted"><span th:text="${post.displayAuthorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${post.targetRoleLabel}">全班可见</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
                     <p th:text="${post.content}">内容</p>
                     <a class="btn" th:href="@{/discussion/post/{id}(id=${post.id})}">查看与回复</a>
                 </div>
                 <div class="empty" th:if="${#lists.isEmpty(posts)}">还没有讨论，来发布第一条吧。</div>
             </div>
-            <div th:if="${tab != 'info' && tab != 'resources' && tab != 'discussion'}">
+            <div th:if="${tab != 'info' && tab != 'resources' && tab != 'progress' && tab != 'discussion'}">
                 <div class="course-grid" th:if="${!#lists.isEmpty(tasks)}">
                     <article class="item-card" th:each="task : ${tasks}">
                         <span class="status-badge" th:text="${task.taskType}">作业</span>

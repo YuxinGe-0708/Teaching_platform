@@ -1,14 +1,22 @@
 package org.example.controller;
 
 import org.example.entity.Course;
+import org.example.entity.CourseClass;
+import org.example.entity.CourseEnrollment;
 import org.example.entity.OperationLog;
+import org.example.entity.StudyNote;
 import org.example.entity.Submission;
 import org.example.entity.Task;
 import org.example.entity.User;
+import org.example.mapper.CourseClassMapper;
+import org.example.mapper.CourseEnrollmentMapper;
 import org.example.mapper.OperationLogMapper;
 import org.example.mapper.SubmissionMapper;
 import org.example.mapper.TeachingResourceMapper;
 import org.example.mapper.DiscussionMapper;
+import org.example.mapper.StudyNoteMapper;
+import org.example.mapper.UserMapper;
+import org.example.service.AiService;
 import org.example.service.CourseService;
 import org.example.service.ScoreService;
 import org.example.service.TaskService;
@@ -33,6 +41,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -49,6 +60,11 @@ public class StudentController {
     private final TeachingResourceMapper resourceMapper;
     private final ScoreService scoreService;
     private final DiscussionMapper discussionMapper;
+    private final CourseEnrollmentMapper enrollmentMapper;
+    private final CourseClassMapper courseClassMapper;
+    private final UserMapper userMapper;
+    private final StudyNoteMapper studyNoteMapper;
+    private final AiService aiService;
 
     public StudentController(CourseService courseService,
                              TaskService taskService,
@@ -56,7 +72,12 @@ public class StudentController {
                              OperationLogMapper operationLogMapper,
                              TeachingResourceMapper resourceMapper,
                              ScoreService scoreService,
-                             DiscussionMapper discussionMapper) {
+                             DiscussionMapper discussionMapper,
+                             CourseEnrollmentMapper enrollmentMapper,
+                             CourseClassMapper courseClassMapper,
+                             UserMapper userMapper,
+                             StudyNoteMapper studyNoteMapper,
+                             AiService aiService) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
@@ -64,6 +85,11 @@ public class StudentController {
         this.resourceMapper = resourceMapper;
         this.scoreService = scoreService;
         this.discussionMapper = discussionMapper;
+        this.enrollmentMapper = enrollmentMapper;
+        this.courseClassMapper = courseClassMapper;
+        this.userMapper = userMapper;
+        this.studyNoteMapper = studyNoteMapper;
+        this.aiService = aiService;
     }
 
     @GetMapping("/course/selection")
@@ -118,6 +144,104 @@ public class StudentController {
         return "student/my_courses";
     }
 
+    @GetMapping("/classes")
+    public String myClasses(HttpSession session, Model model) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        model.addAttribute("user", user);
+        model.addAttribute("classes", studentClassViews(user.getId()));
+        return "student/class_manage";
+    }
+
+    @GetMapping("/tasks")
+    public String taskLibrary(@RequestParam(required = false) String type, HttpSession session, Model model) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        String activeType = type == null || type.trim().isEmpty() ? "all" : type.trim();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        List<Submission> submissions = submissionMapper.findByStudentId(user.getId());
+        Map<Long, Submission> byTask = submissions.stream()
+                .filter(s -> s.getTaskId() != null)
+                .collect(Collectors.toMap(Submission::getTaskId, s -> s, (a, b) -> a));
+        for (Course course : courseService.getStudentCourses(user.getId())) {
+            for (Task task : taskService.getCourseTasks(course.getId())) {
+                if (!"all".equals(activeType) && !activeType.equals(task.getType())) continue;
+                Map<String, Object> row = UserController.toTaskView(task);
+                row.put("courseId", course.getId());
+                row.put("courseName", course.getName());
+                row.put("submission", byTask.get(task.getId()));
+                row.put("completed", byTask.containsKey(task.getId()));
+                rows.add(row);
+            }
+        }
+        model.addAttribute("user", user);
+        model.addAttribute("tasks", rows);
+        model.addAttribute("type", activeType);
+        return "student/task_library";
+    }
+
+    @GetMapping("/notes")
+    public String notes(HttpSession session, Model model, @RequestParam(required = false) Long noteId) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        StudyNote editing = null;
+        if (noteId != null) {
+            StudyNote found = studyNoteMapper.findById(noteId);
+            if (found != null && user.getId().equals(found.getStudentId())) editing = found;
+        }
+        model.addAttribute("user", user);
+        model.addAttribute("courses", UserController.toCourseViews(courseService.getStudentCourses(user.getId())));
+        model.addAttribute("notes", studyNoteMapper.findByStudentId(user.getId()));
+        model.addAttribute("editing", editing);
+        return "student/study_notes";
+    }
+
+    @PostMapping("/notes/save")
+    public String saveNote(@RequestParam(required = false) Long noteId,
+                           @RequestParam Long courseId,
+                           @RequestParam(required = false) Long resourceId,
+                           @RequestParam String title,
+                           @RequestParam String content,
+                           HttpSession session) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        if (!isEnrolled(user.getId(), courseId)) return "redirect:/student/notes";
+        StudyNote note = noteId == null ? null : studyNoteMapper.findById(noteId);
+        if (note == null || !user.getId().equals(note.getStudentId())) {
+            note = new StudyNote();
+            note.setStudentId(user.getId());
+            fillNote(note, courseId, resourceId, title, content);
+            studyNoteMapper.insert(note);
+        } else {
+            fillNote(note, courseId, resourceId, title, content);
+            studyNoteMapper.update(note);
+        }
+        return "redirect:/student/notes";
+    }
+
+    @PostMapping("/notes/delete")
+    public String deleteNote(@RequestParam Long noteId, HttpSession session) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        studyNoteMapper.deleteByStudent(noteId, user.getId());
+        return "redirect:/student/notes";
+    }
+
+    @GetMapping("/notes/mindmap/{noteId}")
+    public String noteMindMap(@PathVariable Long noteId, HttpSession session, Model model) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        StudyNote note = studyNoteMapper.findById(noteId);
+        if (note == null || !user.getId().equals(note.getStudentId())) return "redirect:/student/notes";
+        if (note.getMindMap() == null || note.getMindMap().trim().isEmpty()) {
+            note.setMindMap(aiService.generateMindMap(note.getCourseName(), note.getTitle(), note.getContent()));
+            studyNoteMapper.updateMindMap(note);
+        }
+        model.addAttribute("user", user);
+        model.addAttribute("note", note);
+        return "student/note_mindmap";
+    }
+
     @GetMapping("/logs")
     public String viewLogs(HttpSession session, Model model) {
         User user = requireStudent(session);
@@ -159,6 +283,7 @@ public class StudentController {
         model.addAttribute("tasks", tasks);
         model.addAttribute("resources", resourceMapper.findByCourseId(courseId));
         model.addAttribute("progress", scoreService.learningProgress(user.getId(), courseId));
+        model.addAttribute("notes", studyNoteMapper.findByStudentAndCourse(user.getId(), courseId));
         if ("discussion".equals(activeTab)) {
             model.addAttribute("posts", discussionMapper.findPostsByCourseId(courseId));
         }
@@ -264,6 +389,33 @@ public class StudentController {
 
     private boolean isEnrolled(Long studentId, Long courseId) {
         return courseService.getStudentCourses(studentId).stream().anyMatch(course -> course.getId().equals(courseId));
+    }
+
+    private void fillNote(StudyNote note, Long courseId, Long resourceId, String title, String content) {
+        note.setCourseId(courseId);
+        note.setResourceId(resourceId);
+        note.setTitle(title == null || title.trim().isEmpty() ? "未命名笔记" : title.trim());
+        note.setContent(content == null ? "" : content.trim());
+        note.setAiSummary("");
+    }
+
+    private List<Map<String, Object>> studentClassViews(Long studentId) {
+        List<Map<String, Object>> views = new ArrayList<>();
+        for (CourseEnrollment enrollment : enrollmentMapper.findByStudentId(studentId)) {
+            Course course = courseService.findById(enrollment.getCourseId());
+            if (course == null) continue;
+            CourseClass courseClass = enrollment.getClassId() == null ? null : courseClassMapper.findById(enrollment.getClassId());
+            if (courseClass == null) {
+                List<CourseClass> classes = courseClassMapper.findByCourseId(course.getId());
+                courseClass = classes.isEmpty() ? null : classes.get(0);
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("course", UserController.toCourseView(course));
+            row.put("classInfo", courseClass);
+            row.put("members", userMapper.findStudentsByCourseId(course.getId()));
+            views.add(row);
+        }
+        return views;
     }
 
     private void log(User user, String action, String detail) {

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随堂笔记 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/student/course/my">我的课程</a>
+            <a href="/student/classes">班级管理</a>
+            <a href="/student/tasks">作业考试</a>
+            <a href="/student/notes" class="active">随堂笔记</a>
+            <a href="/student/scores">成绩汇总</a>
+            <a href="/notifications">我的公告</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar"><h1>随堂电子笔记</h1></header>
+        <section class="content">
+            <div class="split-workspace">
+                <div class="panel">
+                    <h2 th:text="${editing == null ? '新建笔记' : '编辑笔记'}">新建笔记</h2>
+                    <form action="/student/notes/save" method="post" class="form">
+                        <input type="hidden" name="noteId" th:value="${editing != null ? editing.id : ''}">
+                        <label>所属课程</label>
+                        <select name="courseId" required>
+                            <option th:each="course : ${courses}" th:value="${course.courseId}"
+                                    th:selected="${editing != null and editing.courseId == course.courseId}"
+                                    th:text="${course.courseName}">课程</option>
+                        </select>
+                        <label>笔记标题</label>
+                        <input name="title" required th:value="${editing != null ? editing.title : ''}" placeholder="例如：第一章 栈与队列">
+                        <label>笔记内容</label>
+                        <textarea name="content" required placeholder="记录课堂重点、疑问、例题思路或复习提示" th:text="${editing != null ? editing.content : ''}"></textarea>
+                        <button type="submit">保存笔记</button>
+                    </form>
+                </div>
+                <div class="panel">
+                    <h2>笔记列表</h2>
+                    <div class="reply-item" th:each="note : ${notes}">
+                        <h3 th:text="${note.title}">笔记标题</h3>
+                        <p class="muted">
+                            <span th:text="${note.courseName}">课程</span>
+                            ｜ <span th:text="${#dates.format(note.updatedAt, 'yyyy-MM-dd HH:mm')}">时间</span>
+                        </p>
+                        <p class="note-preview" th:text="${note.content}">内容</p>
+                        <div class="card-actions">
+                            <a class="btn" th:href="@{/student/notes(noteId=${note.id})}">编辑</a>
+                            <a class="btn green" th:href="@{/student/notes/mindmap/{id}(id=${note.id})}">思维导图</a>
+                            <form action="/student/notes/delete" method="post" class="inline-form" onsubmit="return confirm('确定删除这条笔记吗？')">
+                                <input type="hidden" name="noteId" th:value="${note.id}">
+                                <button type="submit" class="btn danger">删除</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="empty" th:if="${#lists.isEmpty(notes)}">还没有笔记，先记录一条课堂重点吧。</div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

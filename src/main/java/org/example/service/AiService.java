@@ -119,6 +119,31 @@ public class AiService {
         }
     }
 
+    public String generateMindMap(String courseName, String noteTitle, String noteContent) {
+        String source = noteContent == null ? "" : noteContent.trim();
+        if (source.isEmpty()) {
+            return "mindmap\n  " + safeMermaidText(noteTitle == null ? "课程笔记" : noteTitle);
+        }
+        if (!hasKey()) {
+            return fallbackMindMap(noteTitle, source);
+        }
+        if (source.length() > 6000) {
+            source = source.substring(0, 6000);
+        }
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(message("system", "你是教学平台的学习笔记整理助手。请只输出 Mermaid mindmap 语法，不要输出解释文字。"));
+        messages.add(message("user", "课程：" + courseName + "\n笔记标题：" + noteTitle
+                + "\n请把下面内容整理为 Mermaid mindmap。根节点使用笔记标题，层级控制在 3 层内。\n\n" + source));
+        try {
+            String reply = sendTextMessages(model, messages);
+            if (reply == null || reply.trim().isEmpty()) return fallbackMindMap(noteTitle, source);
+            return cleanupMermaid(reply);
+        } catch (Exception e) {
+            log.error("Mind map generation failed: {}", e.toString());
+            return fallbackMindMap(noteTitle, source);
+        }
+    }
+
     public String explainImage(String courseName, String resourceTitle, String imageDataUrl) {
         if (!hasKey()) {
             return "AI 助手尚未配置 API Key。请在启动前设置环境变量 AI_API_KEY。";
@@ -210,5 +235,35 @@ public class AiService {
         message.put("role", role);
         message.put("content", content);
         return message;
+    }
+
+    private String cleanupMermaid(String text) {
+        String cleaned = text.trim();
+        if (cleaned.startsWith("```")) {
+            cleaned = cleaned.replaceFirst("^```[a-zA-Z]*\\s*", "");
+            cleaned = cleaned.replaceFirst("\\s*```$", "");
+        }
+        return cleaned.startsWith("mindmap") ? cleaned : "mindmap\n" + cleaned;
+    }
+
+    private String fallbackMindMap(String noteTitle, String source) {
+        String title = safeMermaidText(noteTitle == null || noteTitle.trim().isEmpty() ? "课程笔记" : noteTitle.trim());
+        String[] lines = source.split("\\r?\\n");
+        StringBuilder map = new StringBuilder("mindmap\n  ").append(title).append('\n');
+        int count = 0;
+        for (String line : lines) {
+            String item = line.replaceAll("^[#\\-\\*\\d\\.\\s]+", "").trim();
+            if (item.isEmpty()) continue;
+            map.append("    ").append(safeMermaidText(item.length() > 32 ? item.substring(0, 32) : item)).append('\n');
+            if (++count >= 8) break;
+        }
+        if (count == 0) {
+            map.append("    核心知识点\n    复习提示\n");
+        }
+        return map.toString();
+    }
+
+    private String safeMermaidText(String text) {
+        return text.replaceAll("[\\r\\n\"`]", " ").trim();
     }
 }

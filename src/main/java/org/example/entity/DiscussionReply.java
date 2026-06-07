@@ -8,6 +8,8 @@ public class DiscussionReply {
     private java.sql.Timestamp createdAt;
     private String authorName;
     private String authorRole;
+    private Boolean anonymous;
+    private Boolean assistantReply;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -23,4 +25,12 @@ public class DiscussionReply {
     public void setAuthorName(String authorName) { this.authorName = authorName; }
     public String getAuthorRole() { return authorRole; }
     public void setAuthorRole(String authorRole) { this.authorRole = authorRole; }
+    public Boolean getAnonymous() { return anonymous; }
+    public void setAnonymous(Boolean anonymous) { this.anonymous = anonymous; }
+    public Boolean getAssistantReply() { return assistantReply; }
+    public void setAssistantReply(Boolean assistantReply) { this.assistantReply = assistantReply; }
+
+    public String getDisplayAuthorName() {
+        return Boolean.TRUE.equals(anonymous) ? "匿名同学" : authorName;
+    }
 }

@@ -24,19 +24,29 @@
         </header>
         <section class="content">
             <div class="panel">
+                <span class="status-badge" th:text="${post.postTypeLabel}">讨论</span>
                 <h2 th:text="${post.title}">标题</h2>
-                <p class="muted"><span th:text="${post.authorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
+                <p class="muted"><span th:text="${post.displayAuthorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${post.targetRoleLabel}">全班可见</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
                 <p th:text="${post.content}">内容</p>
             </div>
             <div class="panel">
                 <h2>回复</h2>
                 <div class="reply-item" th:each="reply : ${replies}">
-                    <p class="muted"><span th:text="${reply.authorName}">作者</span> ｜ <span th:text="${reply.authorRole}">角色</span> ｜ <span th:text="${#dates.format(reply.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
+                    <p class="muted">
+                        <span th:text="${reply.displayAuthorName}">作者</span>
+                        ｜ <span th:text="${reply.authorRole}">角色</span>
+                        <span class="status-badge" th:if="${reply.assistantReply}">助教解答</span>
+                        ｜ <span th:text="${#dates.format(reply.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span>
+                    </p>
                     <p th:text="${reply.content}">回复内容</p>
                 </div>
                 <div class="empty" th:if="${#lists.isEmpty(replies)}">暂无回复。</div>
                 <form action="/discussion/reply" method="post" class="form">
                     <input type="hidden" name="postId" th:value="${post.id}">
+                    <div class="form-inline">
+                        <label class="check-row" th:if="${user.role == 'student'}"><input type="checkbox" name="anonymous" value="true"> 匿名回复</label>
+                        <label class="check-row" th:if="${user.role == 'teacher'}"><input type="checkbox" name="assistantReply" value="true" checked> 标记为助教/教师解答</label>
+                    </div>
                     <textarea name="content" placeholder="发布你的解答或补充" required></textarea>
                     <button type="submit">回复</button>
                 </form>
