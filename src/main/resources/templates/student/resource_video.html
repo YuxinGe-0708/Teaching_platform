@@ -43,6 +43,7 @@
 <script th:inline="javascript">
 const resourceTitle = /*[[${resource.title}]]*/ '课程视频';
 const courseName = /*[[${course.courseName}]]*/ '课程';
+const resourceId = /*[[${resource.id}]]*/ 0;
 const video = document.getElementById('courseVideo');
 const captureArea = document.getElementById('captureArea');
 const box = document.getElementById('selectionBox');
@@ -51,6 +52,7 @@ const aiAnswer = document.getElementById('aiAnswer');
 let selecting = false;
 let pointerMode = false;
 let start = null;
+let lastProgressSent = 0;
 
 pointerBtn.addEventListener('click', () => {
     pointerMode = !pointerMode;
@@ -58,6 +60,25 @@ pointerBtn.addEventListener('click', () => {
     captureArea.classList.toggle('selecting', pointerMode);
     aiAnswer.textContent = pointerMode ? '请在视频画面上拖拽框选。' : '框选视频画面后，这里会显示知识点解释。';
 });
+
+video.addEventListener('timeupdate', () => {
+    if (!video.duration || video.currentTime - lastProgressSent < 8) return;
+    lastProgressSent = video.currentTime;
+    sendProgress();
+});
+video.addEventListener('pause', sendProgress);
+video.addEventListener('ended', sendProgress);
+
+async function sendProgress() {
+    if (!video.duration) return;
+    try {
+        await fetch('/student/resource/progress', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({resourceId, currentTime: video.currentTime, duration: video.duration})
+        });
+    } catch (e) {}
+}
 
 captureArea.addEventListener('mousedown', event => {
     if (!pointerMode) return;

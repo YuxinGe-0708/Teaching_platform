@@ -210,7 +210,7 @@ public class UserController {
         return "homework";
     }
 
-    static String displayTaskType(String type) {
+    public static String displayTaskType(String type) {
         if ("exam".equals(type)) return "考试";
         if ("programming".equals(type)) return "编程实训";
         return "作业";

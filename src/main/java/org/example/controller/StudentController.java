@@ -8,7 +8,9 @@ import org.example.entity.User;
 import org.example.mapper.OperationLogMapper;
 import org.example.mapper.SubmissionMapper;
 import org.example.mapper.TeachingResourceMapper;
+import org.example.mapper.DiscussionMapper;
 import org.example.service.CourseService;
+import org.example.service.ScoreService;
 import org.example.service.TaskService;
 import org.example.util.MarkdownUtils;
 import org.example.util.TaskMetadataUtils;
@@ -45,17 +47,23 @@ public class StudentController {
     private final SubmissionMapper submissionMapper;
     private final OperationLogMapper operationLogMapper;
     private final TeachingResourceMapper resourceMapper;
+    private final ScoreService scoreService;
+    private final DiscussionMapper discussionMapper;
 
     public StudentController(CourseService courseService,
                              TaskService taskService,
                              SubmissionMapper submissionMapper,
                              OperationLogMapper operationLogMapper,
-                             TeachingResourceMapper resourceMapper) {
+                             TeachingResourceMapper resourceMapper,
+                             ScoreService scoreService,
+                             DiscussionMapper discussionMapper) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
         this.operationLogMapper = operationLogMapper;
         this.resourceMapper = resourceMapper;
+        this.scoreService = scoreService;
+        this.discussionMapper = discussionMapper;
     }
 
     @GetMapping("/course/selection")
@@ -122,6 +130,15 @@ public class StudentController {
         return "student/logs";
     }
 
+    @GetMapping("/scores")
+    public String scoreSummary(HttpSession session, Model model) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        model.addAttribute("user", user);
+        model.addAttribute("courseScores", scoreService.studentScoreSummary(user.getId()));
+        return "student/score_summary";
+    }
+
     @GetMapping("/course/detail/{courseId}")
     public String courseDetail(@PathVariable Long courseId,
                                @RequestParam(required = false) String tab,
@@ -141,6 +158,10 @@ public class StudentController {
         model.addAttribute("course", UserController.toCourseView(course));
         model.addAttribute("tasks", tasks);
         model.addAttribute("resources", resourceMapper.findByCourseId(courseId));
+        model.addAttribute("progress", scoreService.learningProgress(user.getId(), courseId));
+        if ("discussion".equals(activeTab)) {
+            model.addAttribute("posts", discussionMapper.findPostsByCourseId(courseId));
+        }
         model.addAttribute("tab", activeTab);
         return "student/course_detail";
     }

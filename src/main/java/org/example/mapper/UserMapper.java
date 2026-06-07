@@ -20,6 +20,9 @@ public interface UserMapper {
     @Select("SELECT * FROM user WHERE role = #{role} ORDER BY created_at DESC")
     List<User> findByRole(String role);
 
+    @Select("SELECT u.* FROM user u INNER JOIN course_enrollment ce ON u.id = ce.student_id WHERE ce.course_id = #{courseId} ORDER BY u.name, u.username")
+    List<User> findStudentsByCourseId(Long courseId);
+
     @Select("SELECT COUNT(*) FROM user")
     int countAll();
 

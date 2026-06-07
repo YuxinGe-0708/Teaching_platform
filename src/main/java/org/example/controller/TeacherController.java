@@ -8,6 +8,7 @@ import org.example.entity.User;
 import org.example.mapper.CourseClassMapper;
 import org.example.mapper.SubmissionMapper;
 import org.example.service.CourseService;
+import org.example.service.ScoreService;
 import org.example.service.TaskService;
 import org.example.util.MarkdownUtils;
 import org.example.util.TaskMetadataUtils;
@@ -42,15 +43,18 @@ public class TeacherController {
     private final TaskService taskService;
     private final SubmissionMapper submissionMapper;
     private final CourseClassMapper courseClassMapper;
+    private final ScoreService scoreService;
 
     public TeacherController(CourseService courseService,
                              TaskService taskService,
                              SubmissionMapper submissionMapper,
-                             CourseClassMapper courseClassMapper) {
+                             CourseClassMapper courseClassMapper,
+                             ScoreService scoreService) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
         this.courseClassMapper = courseClassMapper;
+        this.scoreService = scoreService;
     }
 
     @GetMapping("/course/manage")
@@ -299,8 +303,39 @@ public class TeacherController {
         List<Course> courses = courseService.getTeacherCourses(user.getId());
         model.addAttribute("user", user);
         model.addAttribute("courses", UserController.toCourseViews(courses));
-        model.addAttribute("stats", courses.stream().map(this::courseStats).collect(Collectors.toList()));
+        model.addAttribute("stats", courses.stream().map(course -> scoreService.teacherCourseStatistics(course.getId())).collect(Collectors.toList()));
         return "teacher/score_statistics";
+    }
+
+    @GetMapping("/score/export")
+    public ResponseEntity<String> exportScores(@RequestParam Long courseId, HttpSession session) {
+        User user = requireTeacher(session);
+        if (user == null) return ResponseEntity.status(401).body("请先登录");
+        Course course = ownedCourse(user, courseId);
+        if (course == null) return ResponseEntity.status(403).body("无权访问该课程");
+        Map<String, Object> stats = scoreService.teacherCourseStatistics(courseId);
+        StringBuilder csv = new StringBuilder();
+        csv.append('\uFEFF');
+        csv.append("排名,学生,用户名,作业成绩,考试成绩,实训成绩,最终成绩,学习进度\n");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) stats.get("rows");
+        for (Map<String, Object> row : rows) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> progress = (Map<String, Object>) row.get("learningProgress");
+            csv.append(row.get("rank")).append(',')
+                    .append(csv(row.get("studentName"))).append(',')
+                    .append(csv(row.get("username"))).append(',')
+                    .append(row.get("homeworkScore")).append(',')
+                    .append(row.get("examScore")).append(',')
+                    .append(row.get("practiceScore")).append(',')
+                    .append(row.get("finalScore")).append(',')
+                    .append(progress == null ? 0 : progress.get("overallProgress"))
+                    .append('\n');
+        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"score-report-" + courseId + ".csv\"")
+                .header("Content-Type", "text/csv;charset=UTF-8")
+                .body(csv.toString());
     }
 
     private User requireTeacher(HttpSession session) {
@@ -381,5 +416,10 @@ public class TeacherController {
         stats.put("gradedCount", gradedCount);
         stats.put("averageScore", Math.round(averageScore * 10.0) / 10.0);
         return stats;
+    }
+
+    private String csv(Object value) {
+        String text = value == null ? "" : String.valueOf(value);
+        return "\"" + text.replace("\"", "\"\"") + "\"";
     }
 }

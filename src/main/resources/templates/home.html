@@ -15,6 +15,7 @@
             <th:block th:if="${user != null and user.role == 'student'}">
                 <a href="/student/course/my">我的课程</a>
                 <a href="/student/course/selection">选课中心</a>
+                <a href="/student/scores">成绩汇总</a>
                 <a href="/student/logs">选课记录</a>
                 <a href="/notifications">我的公告</a>
                 <a href="/student/ai">AI 答疑</a>
@@ -44,6 +45,7 @@
         <section class="content">
             <div class="toolbar">
                 <a th:if="${user != null and user.role == 'student'}" class="btn primary" href="/student/course/selection">去选课</a>
+                <a th:if="${user != null and user.role == 'student'}" class="btn" href="/student/scores">成绩汇总查询</a>
                 <a th:if="${user != null and user.role == 'teacher'}" class="btn primary" href="/teacher/course/create">创建课程</a>
                 <a th:if="${user != null}" class="btn green" th:href="${user.role == 'teacher' ? '/teacher/ai' : '/student/ai'}">AI 答疑</a>
             </div>

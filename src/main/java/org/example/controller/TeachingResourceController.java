@@ -6,7 +6,10 @@ import org.example.entity.Course;
 import org.example.entity.TeachingResource;
 import org.example.entity.User;
 import org.example.mapper.CourseEnrollmentMapper;
+import org.example.mapper.ResourceProgressMapper;
 import org.example.mapper.TeachingResourceMapper;
+import org.example.dto.ApiResponse;
+import org.example.entity.ResourceProgress;
 import org.example.service.AiService;
 import org.example.service.CourseService;
 import org.springframework.core.io.Resource;
@@ -21,6 +24,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpSession;
@@ -39,15 +44,18 @@ public class TeachingResourceController {
     private final TeachingResourceMapper resourceMapper;
     private final CourseEnrollmentMapper enrollmentMapper;
     private final AiService aiService;
+    private final ResourceProgressMapper progressMapper;
 
     public TeachingResourceController(CourseService courseService,
                                       TeachingResourceMapper resourceMapper,
                                       CourseEnrollmentMapper enrollmentMapper,
-                                      AiService aiService) {
+                                      AiService aiService,
+                                      ResourceProgressMapper progressMapper) {
         this.courseService = courseService;
         this.resourceMapper = resourceMapper;
         this.enrollmentMapper = enrollmentMapper;
         this.aiService = aiService;
+        this.progressMapper = progressMapper;
     }
 
     @GetMapping("/teacher/resource/manage/{courseId}")
@@ -165,6 +173,36 @@ public class TeachingResourceController {
         return "student/resource_notes";
     }
 
+    @PostMapping("/student/resource/progress")
+    @ResponseBody
+    public ApiResponse<String> updateProgress(@RequestBody java.util.Map<String, Object> body, HttpSession session) {
+        User user = requireRole(session, "student");
+        if (user == null) return ApiResponse.fail(401, "请先登录");
+        Long resourceId = toLong(body.get("resourceId"));
+        if (resourceId == null) return ApiResponse.fail("资源不存在");
+        TeachingResource resource = accessibleStudentResource(user, resourceId);
+        if (resource == null || !resource.isVideo()) return ApiResponse.fail(403, "无权访问该资源");
+        double current = toDouble(body.get("currentTime"));
+        double duration = toDouble(body.get("duration"));
+        double percent = duration <= 0 ? 0 : Math.max(0, Math.min(100, current * 100.0 / duration));
+        ResourceProgress progress = progressMapper.find(user.getId(), resourceId);
+        if (progress == null) {
+            progress = new ResourceProgress();
+            progress.setStudentId(user.getId());
+            progress.setResourceId(resourceId);
+            progress.setProgress(percent);
+            progress.setLastPosition(current);
+            progress.setDuration(duration);
+            progressMapper.insert(progress);
+        } else if (percent >= (progress.getProgress() == null ? 0 : progress.getProgress()) || current > (progress.getLastPosition() == null ? 0 : progress.getLastPosition())) {
+            progress.setProgress(Math.max(percent, progress.getProgress() == null ? 0 : progress.getProgress()));
+            progress.setLastPosition(current);
+            progress.setDuration(duration);
+            progressMapper.update(progress);
+        }
+        return ApiResponse.ok("学习进度已更新");
+    }
+
     private User requireRole(HttpSession session, String role) {
         User user = UserController.requireUser(session);
         return user != null && role.equals(user.getRole()) ? user : null;
@@ -232,6 +270,24 @@ public class TeachingResourceController {
             return aiService.summarizePdfText(resource.getCourseName(), resource.getTitle(), text);
         } catch (Exception e) {
             return "PDF 读取或 AI 笔记生成失败：" + e.getMessage();
+        }
+    }
+
+    private Long toLong(Object value) {
+        if (value instanceof Number) return ((Number) value).longValue();
+        try {
+            return value == null ? null : Long.valueOf(String.valueOf(value));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private double toDouble(Object value) {
+        if (value instanceof Number) return ((Number) value).doubleValue();
+        try {
+            return value == null ? 0 : Double.parseDouble(String.valueOf(value));
+        } catch (Exception e) {
+            return 0;
         }
     }
 }

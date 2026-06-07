@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>讨论详情 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a th:if="${user.role == 'student'}" href="/student/course/my">我的课程</a>
+            <a th:if="${user.role == 'teacher'}" href="/teacher/course/manage">课程管理</a>
+            <a href="/notifications">我的公告</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1>讨论详情</h1>
+            <a class="btn" th:href="${user.role == 'teacher' ? '/discussion/teacher/course/' + course.courseId : '/student/course/detail/' + course.courseId + '?tab=discussion'}">返回交流区</a>
+        </header>
+        <section class="content">
+            <div class="panel">
+                <h2 th:text="${post.title}">标题</h2>
+                <p class="muted"><span th:text="${post.authorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
+                <p th:text="${post.content}">内容</p>
+            </div>
+            <div class="panel">
+                <h2>回复</h2>
+                <div class="reply-item" th:each="reply : ${replies}">
+                    <p class="muted"><span th:text="${reply.authorName}">作者</span> ｜ <span th:text="${reply.authorRole}">角色</span> ｜ <span th:text="${#dates.format(reply.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
+                    <p th:text="${reply.content}">回复内容</p>
+                </div>
+                <div class="empty" th:if="${#lists.isEmpty(replies)}">暂无回复。</div>
+                <form action="/discussion/reply" method="post" class="form">
+                    <input type="hidden" name="postId" th:value="${post.id}">
+                    <textarea name="content" placeholder="发布你的解答或补充" required></textarea>
+                    <button type="submit">回复</button>
+                </form>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

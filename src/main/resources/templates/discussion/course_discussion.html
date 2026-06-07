@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课程交流区 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/teacher/course/manage" class="active">课程管理</a>
+            <a href="/teacher/task/manage">作业管理</a>
+            <a href="/teacher/score/statistics">成绩统计</a>
+            <a href="/notifications">我的公告</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1 th:text="${course.courseName} + ' - 交流区'">课程交流区</h1>
+            <a class="btn" href="/teacher/course/manage">返回</a>
+        </header>
+        <section class="content">
+            <div class="panel">
+                <h2>发布讨论</h2>
+                <form action="/discussion/post" method="post" class="form">
+                    <input type="hidden" name="courseId" th:value="${course.courseId}">
+                    <input name="title" placeholder="标题" required>
+                    <textarea name="content" placeholder="发布答疑说明、学习建议或课程公告" required></textarea>
+                    <button type="submit">发布</button>
+                </form>
+            </div>
+            <div class="panel" th:each="post : ${posts}">
+                <h2 th:text="${post.title}">帖子标题</h2>
+                <p class="muted"><span th:text="${post.authorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
+                <p th:text="${post.content}">内容</p>
+                <a class="btn" th:href="@{/discussion/post/{id}(id=${post.id})}">查看与回复</a>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(posts)}">暂无讨论。</div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

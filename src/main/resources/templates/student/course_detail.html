@@ -33,6 +33,15 @@
                 <a class="btn" th:classappend="${tab == 'exam' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='exam')}">考试</a>
                 <a class="btn" th:classappend="${tab == 'lab' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='lab')}">编程实训</a>
                 <a class="btn" th:classappend="${tab == 'resources' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='resources')}">教学资源</a>
+                <a class="btn" th:classappend="${tab == 'discussion' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='discussion')}">交流区</a>
+            </div>
+            <div class="panel" th:if="${tab == 'home'}">
+                <h2>学习进度</h2>
+                <div class="progress-list">
+                    <div><strong>总体进度</strong><div class="progress-track"><span th:style="${'width:' + progress.overallProgress + '%'}"></span></div><em th:text="${progress.overallProgress} + '%'">0%</em></div>
+                    <div><strong>任务完成度</strong><div class="progress-track"><span th:style="${'width:' + progress.taskProgress + '%'}"></span></div><em th:text="${progress.finishedTasks + '/' + progress.taskCount}">0/0</em></div>
+                    <div><strong>资源学习</strong><div class="progress-track"><span th:style="${'width:' + progress.resourceProgress + '%'}"></span></div><em th:text="${progress.resourceProgress} + '%'">0%</em></div>
+                </div>
             </div>
             <div class="panel" th:if="${tab == 'info'}">
                 <h2>课程信息</h2>
@@ -58,7 +67,25 @@
                 </div>
                 <div class="empty" th:if="${#lists.isEmpty(resources)}">该课程暂无教学资源。</div>
             </div>
-            <div th:if="${tab != 'info' && tab != 'resources'}">
+            <div th:if="${tab == 'discussion'}">
+                <div class="panel">
+                    <h2>发布讨论</h2>
+                    <form action="/discussion/post" method="post" class="form">
+                        <input type="hidden" name="courseId" th:value="${course.courseId}">
+                        <input name="title" placeholder="标题" required>
+                        <textarea name="content" placeholder="写下你的问题、心得或资源建议" required></textarea>
+                        <button type="submit">发布</button>
+                    </form>
+                </div>
+                <div class="panel" th:each="post : ${posts}">
+                    <h2 th:text="${post.title}">帖子标题</h2>
+                    <p class="muted"><span th:text="${post.authorName}">作者</span> ｜ <span th:text="${post.authorRole}">角色</span> ｜ <span th:text="${#dates.format(post.createdAt, 'yyyy-MM-dd HH:mm')}">时间</span></p>
+                    <p th:text="${post.content}">内容</p>
+                    <a class="btn" th:href="@{/discussion/post/{id}(id=${post.id})}">查看与回复</a>
+                </div>
+                <div class="empty" th:if="${#lists.isEmpty(posts)}">还没有讨论，来发布第一条吧。</div>
+            </div>
+            <div th:if="${tab != 'info' && tab != 'resources' && tab != 'discussion'}">
                 <div class="course-grid" th:if="${!#lists.isEmpty(tasks)}">
                     <article class="item-card" th:each="task : ${tasks}">
                         <span class="status-badge" th:text="${task.taskType}">作业</span>

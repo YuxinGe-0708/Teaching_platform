@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成绩汇总 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+</head>
+<body>
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">TeachingPlatform</div>
+        <nav class="sidebar-nav">
+            <a href="/home">主页</a>
+            <a href="/student/course/my">我的课程</a>
+            <a href="/student/course/selection">选课中心</a>
+            <a href="/student/scores" class="active">成绩汇总</a>
+            <a href="/notifications">我的公告</a>
+            <a href="/student/ai">AI 答疑</a>
+        </nav>
+    </aside>
+    <main class="main-area">
+        <header class="topbar"><h1>成绩汇总查询</h1></header>
+        <section class="content">
+            <div class="score-summary-list" th:if="${!#lists.isEmpty(courseScores)}">
+                <article class="panel score-panel" th:each="courseScore : ${courseScores}">
+                    <div class="score-panel-head">
+                        <div>
+                            <h2 th:text="${courseScore.courseName}">课程</h2>
+                            <p class="muted">任务完成：<span th:text="${courseScore.submittedCount}">0</span>/<span th:text="${courseScore.taskCount}">0</span> ｜ 学习进度：<span th:text="${courseScore.learningProgress.overallProgress}">0</span>%</p>
+                        </div>
+                        <strong class="final-score" th:text="${courseScore.finalScore}">0</strong>
+                    </div>
+                    <div class="score-metrics">
+                        <div><span>作业</span><strong th:text="${courseScore.homeworkScore}">0</strong></div>
+                        <div><span>考试</span><strong th:text="${courseScore.examScore}">0</strong></div>
+                        <div><span>实训</span><strong th:text="${courseScore.practiceScore}">0</strong></div>
+                        <div><span>最终</span><strong th:text="${courseScore.finalScore}">0</strong></div>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="score-table">
+                            <thead><tr><th>任务</th><th>类型</th><th>状态</th><th>得分</th><th>评测</th><th>反馈</th></tr></thead>
+                            <tbody>
+                            <tr th:each="task : ${courseScore.taskRows}">
+                                <td class="task-title-cell" th:text="${task.title}">任务</td>
+                                <td th:text="${task.typeName}">类型</td>
+                                <td th:text="${task.status}">状态</td>
+                                <td th:text="${task.score == null ? '-' : task.score + ' / ' + task.maxScore}">-</td>
+                                <td th:text="${task.judgeStatus}">-</td>
+                                <td class="feedback-cell" th:text="${task.feedback ?: '-'}">-</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(courseScore.taskRows)}"><td colspan="6">该课程暂无任务。</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(courseScores)}">暂无成绩数据。</div>
+        </section>
+    </main>
+</div>
+</body>
+</html>

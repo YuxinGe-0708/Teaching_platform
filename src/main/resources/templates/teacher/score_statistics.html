@@ -15,19 +15,41 @@
     <main class="main-area">
         <header class="topbar"><h1>成绩统计</h1></header>
         <section class="content">
-            <table>
-                <thead><tr><th>课程</th><th>任务数</th><th>提交数</th><th>已批改</th><th>平均分</th></tr></thead>
-                <tbody>
-                <tr th:each="s : ${stats}">
-                    <td th:text="${s.courseName}">课程</td>
-                    <td th:text="${s.taskCount}">0</td>
-                    <td th:text="${s.submissionCount}">0</td>
-                    <td th:text="${s.gradedCount}">0</td>
-                    <td th:text="${s.averageScore}">0</td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(stats)}"><td colspan="5">暂无统计数据。</td></tr>
-                </tbody>
-            </table>
+            <div class="panel" th:each="s : ${stats}">
+                <div class="toolbar">
+                    <h2 th:text="${s.courseName}">课程</h2>
+                    <a class="btn primary" th:href="@{/teacher/score/export(courseId=${s.courseId})}">导出成绩单</a>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-card"><span>学生数</span><strong th:text="${s.studentCount}">0</strong></div>
+                    <div class="stat-card"><span>任务数</span><strong th:text="${s.taskCount}">0</strong></div>
+                    <div class="stat-card"><span>平均分</span><strong th:text="${s.averageScore}">0</strong></div>
+                    <div class="stat-card"><span>及格率</span><strong th:text="${s.passRate} + '%'">0%</strong></div>
+                </div>
+                <div class="score-bars">
+                    <div th:each="band : ${s.bands}">
+                        <span th:text="${band.label}">0-59</span>
+                        <div class="bar-track"><strong th:style="${'width:' + (s.studentCount == 0 ? 0 : band.count * 100 / s.studentCount) + '%'}"></strong></div>
+                        <em th:text="${band.count}">0</em>
+                    </div>
+                </div>
+                <table>
+                    <thead><tr><th>排名</th><th>学生</th><th>作业</th><th>考试</th><th>实训</th><th>最终成绩</th><th>学习进度</th></tr></thead>
+                    <tbody>
+                    <tr th:each="row : ${s.rows}">
+                        <td th:text="${row.rank}">1</td>
+                        <td th:text="${row.studentName}">学生</td>
+                        <td th:text="${row.homeworkScore}">0</td>
+                        <td th:text="${row.examScore}">0</td>
+                        <td th:text="${row.practiceScore}">0</td>
+                        <td><strong th:text="${row.finalScore}">0</strong></td>
+                        <td th:text="${row.learningProgress.overallProgress} + '%'">0%</td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(s.rows)}"><td colspan="7">该课程暂无学生成绩。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="empty" th:if="${#lists.isEmpty(stats)}">暂无统计数据。</div>
         </section>
     </main>
 </div>

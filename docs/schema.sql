@@ -126,3 +126,43 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 学习资源进度表
+CREATE TABLE IF NOT EXISTS `resource_progress` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `student_id` BIGINT NOT NULL,
+    `resource_id` BIGINT NOT NULL,
+    `progress` DECIMAL(5,2) DEFAULT 0,
+    `last_position` DECIMAL(12,2) DEFAULT 0,
+    `duration` DECIMAL(12,2) DEFAULT 0,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_student_resource` (`student_id`, `resource_id`),
+    INDEX `idx_resource_progress_resource` (`resource_id`),
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`resource_id`) REFERENCES `resource`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 课程讨论帖表
+CREATE TABLE IF NOT EXISTS `discussion_post` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `course_id` BIGINT NOT NULL,
+    `user_id` BIGINT NOT NULL,
+    `title` VARCHAR(200) NOT NULL,
+    `content` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_discussion_post_course` (`course_id`),
+    FOREIGN KEY (`course_id`) REFERENCES `course`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 课程讨论回复表
+CREATE TABLE IF NOT EXISTS `discussion_reply` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `post_id` BIGINT NOT NULL,
+    `user_id` BIGINT NOT NULL,
+    `content` TEXT NOT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_discussion_reply_post` (`post_id`),
+    FOREIGN KEY (`post_id`) REFERENCES `discussion_post`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
