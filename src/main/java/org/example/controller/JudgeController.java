@@ -74,6 +74,7 @@ public class JudgeController {
         data.put("timeUsedMs", result.timeUsedMs);
         data.put("caseResults", result.caseResults);
         data.put("errorMessage", result.errorMessage);
+        data.put("usedLocalJudge", result.usedLocalJudge);
 
         return ApiResponse.ok("评测完成", data);
     }

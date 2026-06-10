@@ -34,4 +34,7 @@ public interface TeachingResourceMapper {
 
     @Delete("DELETE FROM resource WHERE id = #{id}")
     int deleteById(Long id);
+
+    @Select("SELECT r.*, c.name AS course_name FROM resource r LEFT JOIN course c ON r.course_id = c.id ORDER BY r.created_at DESC LIMIT 200")
+    List<TeachingResource> findRecent();
 }

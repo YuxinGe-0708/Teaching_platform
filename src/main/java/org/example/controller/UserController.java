@@ -3,7 +3,10 @@ package org.example.controller;
 import org.example.entity.Course;
 import org.example.entity.Submission;
 import org.example.entity.Task;
+import org.example.entity.TeachingResource;
 import org.example.entity.User;
+import org.example.mapper.NotificationMapper;
+import org.example.mapper.TeachingResourceMapper;
 import org.example.service.CourseService;
 import org.example.service.TaskService;
 import org.example.service.UserService;
@@ -28,17 +31,45 @@ public class UserController {
     private final UserService userService;
     private final CourseService courseService;
     private final TaskService taskService;
+    private final NotificationMapper notificationMapper;
+    private final TeachingResourceMapper teachingResourceMapper;
 
-    public UserController(UserService userService, CourseService courseService, TaskService taskService) {
+    public UserController(UserService userService, CourseService courseService, TaskService taskService,
+                          NotificationMapper notificationMapper, TeachingResourceMapper teachingResourceMapper) {
         this.userService = userService;
         this.courseService = courseService;
         this.taskService = taskService;
+        this.notificationMapper = notificationMapper;
+        this.teachingResourceMapper = teachingResourceMapper;
     }
 
     @GetMapping("/")
     public String showIndexPage(HttpSession session, Model model) {
         model.addAttribute("user", session.getAttribute("currentUser"));
+        model.addAttribute("announcements", notificationMapper.findRecent());
         return "index";
+    }
+
+    @GetMapping("/resource-square")
+    public String showResourceSquare(HttpSession session, Model model) {
+        User currentUser = requireUser(session);
+        model.addAttribute("user", currentUser);
+        List<TeachingResource> resources = teachingResourceMapper.findRecent();
+        model.addAttribute("resources", resources);
+        List<String> courseNames = resources.stream()
+                .map(TeachingResource::getCourseName)
+                .filter(name -> name != null && !name.isEmpty())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        model.addAttribute("courseNames", courseNames);
+        return "resource-square";
+    }
+
+    @GetMapping("/help")
+    public String showHelp(HttpSession session, Model model) {
+        model.addAttribute("user", session.getAttribute("currentUser"));
+        return "help";
     }
 
     @GetMapping("/register")

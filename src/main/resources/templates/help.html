@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>帮助中心 - 教学平台</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <style>
+        .help-hero {
+            background: var(--bg-header);
+            color: var(--text-header);
+            padding: 40px 42px;
+            border-bottom: 2px solid var(--border-color);
+            text-align: center;
+        }
+        .help-hero h1 { margin: 0 0 10px; font-size: 32px; }
+        .help-hero p { color: #e7efe9; margin: 0; }
+        .help-content {
+            padding: 36px 42px;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        .faq-item {
+            background: #fff;
+            border: 2px solid var(--border-color);
+            box-shadow: 5px 5px 0 var(--shadow-color);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+        }
+        .faq-item h3 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: var(--bg-header);
+        }
+        .faq-item p {
+            margin: 0;
+            line-height: 1.8;
+            color: var(--text-main);
+        }
+        .help-section {
+            margin-bottom: 32px;
+        }
+        .help-section h2 {
+            font-size: 24px;
+            border-bottom: 3px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .guide-steps {
+            background: #fff;
+            border: 2px solid var(--border-color);
+            box-shadow: 5px 5px 0 var(--shadow-color);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        .guide-steps ol {
+            margin: 0;
+            padding-left: 20px;
+            line-height: 2;
+        }
+        .guide-steps li { margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
+    <main class="main-area">
+        <section class="help-hero">
+            <h1>帮助中心</h1>
+            <p>平台使用指南与常见问题解答，助您快速上手</p>
+        </section>
+
+        <div class="help-content">
+            <!-- 快速入门 -->
+            <div class="help-section">
+                <h2>快速入门</h2>
+
+                <div class="guide-steps">
+                    <h3 style="margin-top:0;">学生入门步骤</h3>
+                    <ol>
+                        <li><strong>注册账号</strong> — 在首页点击"注册"，选择"学生"身份，填写用户名和密码完成注册。</li>
+                        <li><strong>登录平台</strong> — 使用注册的账号登录，进入个人教学空间。</li>
+                        <li><strong>选课</strong> — 在"选课中心"浏览可用课程，通过邀请码加入或直接选修开放课程。</li>
+                        <li><strong>学习</strong> — 进入"我的课程"查看课程详情，完成作业和考试。</li>
+                        <li><strong>查看成绩</strong> — 在"成绩汇总"中查看各课程的成绩和教师反馈。</li>
+                    </ol>
+                </div>
+
+                <div class="guide-steps">
+                    <h3 style="margin-top:0;">教师入门步骤</h3>
+                    <ol>
+                        <li><strong>注册账号</strong> — 在首页点击"注册"，选择"教师"身份完成注册。</li>
+                        <li><strong>创建课程</strong> — 在"课程管理"中创建新课程，设置课程名称、学分、邀请码等。</li>
+                        <li><strong>发布作业</strong> — 在"作业管理"中为课程发布作业或考试，设置截止时间和分值。</li>
+                        <li><strong>批改作业</strong> — 查看学生提交，给出评分和反馈意见。</li>
+                        <li><strong>成绩统计</strong> — 在"成绩统计"中查看班级学情概览和成绩分布。</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- 常见问题 -->
+            <div class="help-section">
+                <h2>常见问题</h2>
+
+                <div class="faq-item">
+                    <h3>Q: 如何加入一个课程？</h3>
+                    <p>进入"选课中心"，如果课程是开放的（允许加入），可以直接点击加入。如果课程需要邀请码，请向授课教师获取邀请码后输入加入。</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: 忘记密码怎么办？</h3>
+                    <p>目前请联系系统管理员重置密码。后续版本将支持自助找回密码功能。</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: 作业提交后能否修改？</h3>
+                    <p>如果作业还在截止时间之前，通常可以重新提交覆盖之前的提交。具体规则由教师设定，请查看作业详情中的说明。</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: 在线考试有时间限制吗？</h3>
+                    <p>是的，考试有设定的截止时间。考试一旦开始，建议在教师设定的时间范围内完成并提交，超时可能无法提交。</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: 编程题的判题标准是什么？</h3>
+                    <p>编程题会通过在线评测系统对代码进行编译和运行，使用预设的测试用例验证输出结果。判题结果包括：AC（通过）、WA（答案错误）、CE（编译错误）、RE（运行错误）、TLE（超时）。</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: AI 答疑功能如何使用？</h3>
+                    <p>登录后，学生可通过侧边栏的"AI 答疑"入口进入，输入您的问题即可获得 AI 辅助解答。教师也可使用此功能辅助备课。</p>
+                </div>
+
+                <div class="faq-item">
+                    <h3>Q: 如何联系平台管理员？</h3>
+                    <p>如有平台使用问题或建议，可通过系统内的通知功能联系管理员，或直接发送邮件至平台管理邮箱。</p>
+                </div>
+            </div>
+
+            <!-- 联系我们 -->
+            <div class="help-section">
+                <h2>联系我们</h2>
+                <div class="faq-item">
+                    <p>如果您在使用过程中遇到任何问题，或有功能建议与反馈，欢迎通过以下方式联系我们：</p>
+                    <p style="margin-top:8px;">📧 邮箱：admin@teachingplatform.com</p>
+                    <p>📋 反馈渠道：登录后在"我的公告"中发送反馈消息给管理员</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+</body>
+</html>

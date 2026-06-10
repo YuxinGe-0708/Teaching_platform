@@ -38,3 +38,4 @@ app:
     api-key: ${JUDGE0_API_KEY:}
     api-host: ${JUDGE0_API_HOST:}
     timeout-ms: ${JUDGE0_TIMEOUT_MS:15000}
+    local-fallback: ${JUDGE0_LOCAL_FALLBACK:true}

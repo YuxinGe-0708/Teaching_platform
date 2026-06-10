@@ -4,6 +4,7 @@
 <aside class="sidebar" th:fragment="sidebar">
     <div class="sidebar-brand">TeachingPlatform</div>
     <nav class="sidebar-nav">
+        <a href="/">平台首页</a>
         <a href="/home">主页</a>
         <th:block th:if="${currentUser != null and currentUser.role == 'student'}">
             <a href="/student/course/my">我的课程</a>
@@ -27,8 +28,14 @@
             <a href="/admin/dashboard">管理首页</a>
             <a href="/admin/users">用户管理</a>
             <a href="/admin/notifications">公告管理</a>
-            <a href="/admin/logs">系统日志</a>
+            <a href="/admin/logs">操作日志</a>
         </th:block>
+        <th:block th:if="${currentUser == null}">
+            <a href="/resource-square">资源广场</a>
+            <a href="/help">帮助中心</a>
+        </th:block>
+        <a href="/resource-square" th:if="${currentUser != null}">资源广场</a>
+        <a href="/help" th:if="${currentUser != null}">帮助中心</a>
     </nav>
     <div class="sidebar-user">
         <strong th:if="${currentUser != null}">你好，<span th:text="${currentUser.username}">user</span></strong>

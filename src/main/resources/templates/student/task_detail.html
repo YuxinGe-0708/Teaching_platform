@@ -142,8 +142,10 @@
                                 return;
                             }
                             const result = data.data;
+                            const judgeLabel = result.usedLocalJudge ? ' [本地评测]' : '';
                             output.innerHTML =
-                                '<strong>状态：</strong>' + result.status +
+                                '<strong>评测方式：</strong>' + (result.usedLocalJudge ? '本地评测' : '云端评测') +
+                                ' ｜ <strong>状态：</strong>' + result.status +
                                 ' ｜ <strong>得分：</strong>' + result.score +
                                 ' ｜ <strong>通过：</strong>' + result.passedCases + '/' + result.totalCases +
                                 (result.errorMessage ? '<p class="message error">' + result.errorMessage + '</p>' : '') +

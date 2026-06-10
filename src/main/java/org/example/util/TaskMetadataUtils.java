@@ -62,22 +62,79 @@ public final class TaskMetadataUtils {
     }
 
     private static String parseConfiguredCases(String raw) {
+        return parseMultiLineCases(raw.trim());
+    }
+
+    private static String parseMultiLineCases(String raw) {
         String[] lines = raw.split("\\R");
-        StringBuilder jsonArray = new StringBuilder("[");
-        int count = 0;
+        java.util.List<TestCase> cases = new java.util.ArrayList<>();
+
+        StringBuilder currentInput = new StringBuilder();
+        StringBuilder currentOutput = new StringBuilder();
+        StringBuilder currentWeight = new StringBuilder();
+        String section = null;
+
         for (String line : lines) {
-            if (line == null || line.trim().isEmpty()) continue;
-            String[] parts = line.split("\\|", -1);
-            String input = parts.length > 0 ? parts[0].trim() : "";
-            String expected = parts.length > 1 ? parts[1].trim() : "";
-            String weight = parts.length > 2 ? parts[2].trim() : "1";
-            if (count++ > 0) jsonArray.append(",");
-            jsonArray.append("{\"input\":\"").append(json(input))
-                    .append("\",\"expectedOutput\":\"").append(json(expected))
-                    .append("\",\"weight\":\"").append(json(weight)).append("\"}");
+            String t = line.trim();
+            if (t.matches("-{3,}CASE-{3,}")) {
+                if (section != null) {
+                    addMultiLineCase(cases, currentInput, currentOutput, currentWeight);
+                    currentInput = new StringBuilder();
+                    currentOutput = new StringBuilder();
+                    currentWeight = new StringBuilder();
+                }
+                section = "input";
+            } else if (t.matches("-{3,}OUTPUT-{3,}")) {
+                section = "output";
+            } else if (t.matches("-{3,}WEIGHT-{3,}")) {
+                section = "weight";
+            } else if (section != null) {
+                StringBuilder buf;
+                switch (section) {
+                    case "output": buf = currentOutput; break;
+                    case "weight": buf = currentWeight; break;
+                    default: buf = currentInput;
+                }
+                if (buf.length() > 0) buf.append("\n");
+                buf.append(line);
+            }
         }
-        jsonArray.append("]");
-        return count == 0 ? "[]" : jsonArray.toString();
+        if (section != null) {
+            addMultiLineCase(cases, currentInput, currentOutput, currentWeight);
+        }
+
+        return buildMultiLineJson(cases);
+    }
+
+    private static void addMultiLineCase(java.util.List<TestCase> cases,
+                                          StringBuilder input, StringBuilder output, StringBuilder weight) {
+        String in = input.toString().trim();
+        String out = output.toString().trim();
+        if (in.isEmpty() && out.isEmpty()) return;
+        String w = weight.toString().trim();
+        if (w.isEmpty()) w = "1";
+        cases.add(new TestCase(in, out, w));
+    }
+
+    private static String buildMultiLineJson(java.util.List<TestCase> cases) {
+        if (cases.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < cases.size(); i++) {
+            if (i > 0) sb.append(",");
+            TestCase tc = cases.get(i);
+            sb.append("{\"input\":\"").append(json(tc.input))
+              .append("\",\"expectedOutput\":\"").append(json(tc.expectedOutput))
+              .append("\",\"weight\":\"").append(json(tc.weight)).append("\"}");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private static class TestCase {
+        final String input, expectedOutput, weight;
+        TestCase(String in, String out, String w) {
+            input = in; expectedOutput = out; weight = w;
+        }
     }
 
     private static void append(StringBuilder meta, String key, String value) {

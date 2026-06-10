@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>资源广场 - 教学平台</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <style>
+        .resource-hero {
+            background: var(--bg-header);
+            color: var(--text-header);
+            padding: 40px 42px;
+            border-bottom: 2px solid var(--border-color);
+            text-align: center;
+        }
+        .resource-hero h1 { margin: 0 0 10px; font-size: 32px; }
+        .resource-hero p { color: #e7efe9; margin: 0; }
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 20px 42px;
+            border-bottom: 2px solid var(--border-color);
+            background: #fff;
+        }
+        .filter-bar label { width: auto; margin-right: 4px; }
+        .filter-bar select { width: auto; min-width: 160px; }
+        .resource-list {
+            padding: 32px 42px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .resource-card {
+            background: #fff;
+            border: 2px solid var(--border-color);
+            box-shadow: 5px 5px 0 var(--shadow-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+        .resource-card:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 9px 9px 0 var(--shadow-color);
+        }
+        .resource-card .res-type {
+            display: inline-block;
+            border: 2px solid var(--border-color);
+            padding: 2px 8px;
+            font-weight: 800;
+            font-size: 12px;
+            width: fit-content;
+        }
+        .resource-card .res-type.ppt { background: #d94a4a; color: #fff; }
+        .resource-card .res-type.pdf { background: #2a634b; color: #fff; }
+        .resource-card .res-type.video { background: #d89632; }
+        .resource-card .res-type.link { background: #7b5ea7; color: #fff; }
+        .resource-card .res-type.other { background: #ccc; }
+        .resource-card h3 { margin: 0; font-size: 18px; }
+        .resource-card .res-meta {
+            font-size: 13px;
+            color: var(--muted);
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
+    <main class="main-area">
+        <section class="resource-hero">
+            <h1>资源广场</h1>
+            <p>浏览全平台公开的教学资源，包含课件、视频、文档等各类学习资料</p>
+        </section>
+
+        <div class="filter-bar">
+            <label>资源类型：</label>
+            <select id="typeFilter" onchange="filterResources()">
+                <option value="">全部类型</option>
+                <option value="ppt">PPT课件</option>
+                <option value="pdf">PDF文档</option>
+                <option value="video">视频</option>
+                <option value="link">链接</option>
+                <option value="other">其他</option>
+            </select>
+            <label style="margin-left:16px;">所属课程：</label>
+            <select id="courseFilter" onchange="filterResources()">
+                <option value="">全部课程</option>
+                <option th:each="c : ${courseNames}" th:value="${c}" th:text="${c}">课程名</option>
+            </select>
+        </div>
+
+        <div class="resource-list" th:if="${resources != null and !resources.isEmpty()}">
+            <div class="resource-card" th:each="r : ${resources}" th:attr="data-type=${r.type},data-course=${r.courseName}">
+                <span class="res-type" th:classappend="${r.type}" th:text="${r.type}">ppt</span>
+                <h3 th:text="${r.title}">资源标题</h3>
+                <span class="muted" th:if="${r.chapter != null}" th:text="'章节: ' + ${r.chapter}">章节</span>
+                <div class="res-meta">
+                    <span th:text="${r.courseName}">课程名</span>
+                    <span th:text="${#dates.format(r.createdAt, 'yyyy-MM-dd')}">日期</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content" th:if="${resources == null or resources.isEmpty()}">
+            <div class="empty">📭 资源广场暂无可浏览的资源，待教师上传后将在此展示。</div>
+        </div>
+    </main>
+</div>
+
+<script>
+function filterResources() {
+    var type = document.getElementById('typeFilter').value;
+    var course = document.getElementById('courseFilter').value;
+    var cards = document.querySelectorAll('.resource-card');
+    cards.forEach(function(card) {
+        var matchType = !type || card.getAttribute('data-type') === type;
+        var matchCourse = !course || card.getAttribute('data-course') === course;
+        card.style.display = (matchType && matchCourse) ? '' : 'none';
+    });
+}
+</script>
+</body>
+</html>

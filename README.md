@@ -76,7 +76,7 @@ $env:QWEN_API_KEY="你的阿里云百炼APIKey"
 
 - 教师：`teacher_demo`、`teacher_algo`
 - 学生：`student_001`、`student_002`、`student_003`、`student_004`、`student_005`、`student_006`
-- 管理员：`admin` / `admin123456`
+- 管理员：`admin`
 
 也可以手动运行：
 

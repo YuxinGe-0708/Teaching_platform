@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理后台 - TeachingPlatform</title>
+    <title>管理首页 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
 </head>
 <body>
 <div class="app-layout">
     <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
-        <header class="topbar"><h1>管理后台</h1></header>
+        <header class="topbar"><h1>管理首页</h1></header>
         <section class="content">
             <div class="course-grid">
                 <article class="item-card">
@@ -37,7 +37,7 @@
             <div class="toolbar">
                 <a class="btn primary" href="/admin/users">管理用户</a>
                 <a class="btn green" href="/admin/notifications">发布公告</a>
-                <a class="btn" href="/admin/logs">查看日志</a>
+                <a class="btn" href="/admin/logs">操作日志</a>
             </div>
             <h2>最近操作</h2>
             <table>

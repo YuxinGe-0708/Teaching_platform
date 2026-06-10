@@ -1,27 +1,315 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TeachingPlatform</title>
+    <title>教学平台 - 首页</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <style>
+        .landing-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 42px;
+            border-bottom: 2px solid var(--border-color);
+            background: #fff;
+        }
+        .landing-topbar .brand {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--bg-header);
+        }
+        .landing-topbar .topbar-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .landing-hero {
+            background: var(--bg-header);
+            color: var(--text-header);
+            padding: 72px 42px 64px;
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .landing-hero h1 {
+            margin: 0 0 18px;
+            font-size: 44px;
+            font-weight: 900;
+            letter-spacing: 2px;
+        }
+        .landing-hero p {
+            margin: 0 auto;
+            max-width: 680px;
+            font-size: 18px;
+            line-height: 1.8;
+            color: #e7efe9;
+        }
+        .landing-hero .hero-actions {
+            margin-top: 32px;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .landing-hero .hero-actions .btn {
+            font-size: 16px;
+            padding: 14px 32px;
+        }
+        .entry-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(280px, 1fr));
+            gap: 28px;
+            padding: 52px 42px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .entry-card {
+            background: #fff;
+            border: 2px solid var(--border-color);
+            box-shadow: 6px 6px 0 var(--shadow-color);
+            padding: 36px 28px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .entry-card:hover {
+            transform: translate(-6px, -6px);
+            box-shadow: 12px 12px 0 var(--shadow-color);
+        }
+        .entry-card .entry-icon {
+            font-size: 48px;
+            margin-bottom: 18px;
+        }
+        .entry-card h3 {
+            margin: 0 0 12px;
+            font-size: 24px;
+            font-weight: 900;
+        }
+        .entry-card p {
+            margin: 0 0 8px;
+            color: var(--muted);
+            line-height: 1.7;
+            flex: 1;
+        }
+        .entry-card .entry-footer {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 2px solid var(--border-color);
+        }
+        .entry-card .entry-footer .btn {
+            width: 100%;
+            text-align: center;
+        }
+        .announce-section {
+            padding: 0 42px 52px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .announce-list {
+            display: grid;
+            gap: 12px;
+        }
+        .announce-item {
+            background: #fff;
+            border: 2px solid var(--border-color);
+            box-shadow: 3px 3px 0 var(--shadow-color);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .announce-item .announce-tag {
+            display: inline-block;
+            border: 2px solid var(--border-color);
+            padding: 3px 10px;
+            font-weight: 800;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .announce-item .announce-tag.system { background: var(--accent-green); color: #fff; }
+        .announce-item .announce-tag.course { background: var(--accent-yellow); }
+        .announce-item .announce-text {
+            flex: 1;
+            font-weight: 700;
+        }
+        .announce-item .announce-time {
+            color: var(--muted);
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .platform-features {
+            padding: 52px 42px;
+            background: #fff;
+            border-top: 2px solid var(--border-color);
+            border-bottom: 2px solid var(--border-color);
+        }
+        .platform-features h2 {
+            text-align: center;
+            font-size: 28px;
+            margin: 0 0 36px;
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 22px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .feature-item {
+            text-align: center;
+            padding: 20px;
+        }
+        .feature-item .feature-num {
+            font-size: 38px;
+            font-weight: 900;
+            color: var(--bg-header);
+        }
+        .feature-item h4 {
+            margin: 8px 0;
+        }
+        .feature-item p {
+            color: var(--muted);
+            font-size: 14px;
+        }
+        @media (max-width: 960px) {
+            .entry-grid {
+                grid-template-columns: 1fr;
+                padding: 32px 22px;
+            }
+            .landing-hero {
+                padding: 48px 22px 40px;
+            }
+            .landing-hero h1 {
+                font-size: 32px;
+            }
+            .landing-topbar {
+                padding: 14px 22px;
+            }
+            .announce-section {
+                padding: 0 22px 40px;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="app-layout">
-    <aside th:replace="fragments/sidebar :: sidebar"></aside>
-    <main class="main-area">
-        <section class="hero-band">
-            <h2>教学平台</h2>
-            <p>所有功能页面均位于 Thymeleaf templates 下，运行数据统一写入 MySQL。</p>
-        </section>
-        <section class="content">
-            <div class="toolbar">
-                <a class="btn primary" th:if="${user == null}" href="/login">登录</a>
-                <a class="btn" th:if="${user == null}" href="/register">注册</a>
-                <a class="btn primary" th:if="${user != null}" href="/home">进入主页</a>
-            </div>
-        </section>
-    </main>
-</div>
+
+<!-- 顶部导航栏 -->
+<header class="landing-topbar">
+    <span class="brand">TeachingPlatform</span>
+    <div class="topbar-actions">
+        <th:block th:if="${user == null}">
+            <a class="btn" href="/login">教学空间</a>
+            <a class="btn" href="/resource-square">资源广场</a>
+            <a class="btn" href="/help">帮助中心</a>
+            <a class="btn primary" href="/login">登录</a>
+            <a class="btn" href="/register">注册</a>
+        </th:block>
+        <th:block th:if="${user != null}">
+            <span style="font-weight:700;" th:text="'你好，' + ${user.username}">你好</span>
+            <a class="btn" href="/home">教学空间</a>
+            <a class="btn" href="/resource-square">资源广场</a>
+            <a class="btn" href="/help">帮助中心</a>
+            <a class="btn primary" href="/home">进入主页</a>
+            <a class="btn danger" href="/logout">退出</a>
+        </th:block>
+    </div>
+</header>
+
+<!-- 主横幅 -->
+<section class="landing-hero">
+    <h1>教学实训一体化平台</h1>
+    <p>整合教学空间、资源广场、帮助中心，提供课程管理、在线作业、在线考试、代码评测与 AI 辅助学习等全方位教学服务，助力高校信息化教学改革。</p>
+    <div class="hero-actions" th:if="${user == null}">
+        <a class="btn primary" href="/register" style="font-size:16px;padding:14px 36px;">立即注册</a>
+        <a class="btn" href="/login" style="font-size:16px;padding:14px 36px;">已有账号？登录</a>
+    </div>
+    <div class="hero-actions" th:if="${user != null}">
+        <a class="btn primary" href="/home" style="font-size:16px;padding:14px 36px;">进入我的主页</a>
+    </div>
+</section>
+
+<!-- 三大入口卡片 -->
+<section class="entry-grid">
+    <!-- 教学空间 -->
+    <div class="entry-card">
+        <div class="entry-icon">📚</div>
+        <h3>教学空间</h3>
+        <p>进入您的个人教学与学习空间。学生可查看课程、提交作业、参加考试；教师可管理课程、布置作业、批改成绩。</p>
+        <div class="entry-footer">
+            <a class="btn primary" th:if="${user != null}" th:href="@{/home}">进入教学空间</a>
+            <a class="btn primary" th:if="${user == null}" href="/login">登录进入教学空间</a>
+        </div>
+    </div>
+
+    <!-- 资源广场 -->
+    <div class="entry-card">
+        <div class="entry-icon">📂</div>
+        <h3>资源广场</h3>
+        <p>浏览和获取丰富的教学资源，包括课件、视频、文档、代码模板等。支持按学科分类检索，促进优质教学资源共享。</p>
+        <div class="entry-footer">
+            <a class="btn" href="/resource-square">浏览资源广场</a>
+        </div>
+    </div>
+
+    <!-- 帮助中心 -->
+    <div class="entry-card">
+        <div class="entry-icon">❓</div>
+        <h3>帮助中心</h3>
+        <p>提供平台使用指南、常见问题解答和操作教程，帮助您快速上手平台各项功能，解决使用过程中遇到的问题。</p>
+        <div class="entry-footer">
+            <a class="btn" href="/help">查看帮助中心</a>
+        </div>
+    </div>
+</section>
+
+<!-- 公告区域 -->
+<section class="announce-section" th:if="${announcements != null and !announcements.isEmpty()}">
+    <h2 style="margin-bottom:20px;">平台公告</h2>
+    <div class="announce-list">
+        <div class="announce-item" th:each="a : ${announcements}">
+            <span class="announce-tag" th:classappend="${a.type}" th:text="${a.type == 'system' ? '系统' : (a.type == 'course' ? '课程' : '通知')}">系统</span>
+            <span class="announce-text" th:text="${a.title}">公告标题</span>
+            <span class="announce-time" th:text="${#dates.format(a.createdAt, 'yyyy-MM-dd')}">2026-01-01</span>
+        </div>
+    </div>
+</section>
+
+<!-- 平台特性 -->
+<section class="platform-features">
+    <h2>平台特性</h2>
+    <div class="feature-list">
+        <div class="feature-item">
+            <div class="feature-num">📖</div>
+            <h4>课程管理</h4>
+            <p>创建课程、管理班级、学生选退课、邀请码加入</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-num">📝</div>
+            <h4>在线作业与考试</h4>
+            <p>发布作业、在线答题、自动判分、成绩统计</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-num">💻</div>
+            <h4>编程实训</h4>
+            <p>在线编程、多语言评测、AC/WA/CE/RE/TLE 判题</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-num">🤖</div>
+            <h4>AI 辅助学习</h4>
+            <p>AI 答疑、知识点梳理、智能笔记生成</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-num">📊</div>
+            <h4>成绩统计</h4>
+            <p>学生成绩汇总、教师学情概览、数据可视化</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-num">🔔</div>
+            <h4>通知公告</h4>
+            <p>系统通知、课程公告、实时消息推送</p>
+        </div>
+    </div>
+</section>
+
 </body>
 </html>

@@ -32,7 +32,15 @@ public class JudgeService {
     @Value("${app.judge0.timeout-ms:15000}")
     private int timeoutMs;
 
+    @Value("${app.judge0.local-fallback:true}")
+    private boolean localFallbackEnabled;
+
     private final ObjectMapper mapper = new ObjectMapper();
+    private final LocalJudgeService localJudgeService;
+
+    public JudgeService(LocalJudgeService localJudgeService) {
+        this.localJudgeService = localJudgeService;
+    }
 
     public static class JudgeResult {
         public String status;
@@ -42,6 +50,7 @@ public class JudgeService {
         public double timeUsedMs;
         public String errorMessage;
         public List<CaseResult> caseResults = new ArrayList<>();
+        public boolean usedLocalJudge;
     }
 
     public static class CaseResult {
@@ -71,13 +80,39 @@ public class JudgeService {
             return result;
         }
 
+        try {
+            return doCloudJudge(code, languageId, testCases);
+        } catch (RestClientException e) {
+            if (localFallbackEnabled) {
+                JudgeResult localResult = localJudgeService.judge(code, language, testCases);
+                localResult.usedLocalJudge = true;
+                return localResult;
+            }
+            JudgeResult errorResult = new JudgeResult();
+            errorResult.totalCases = testCases.size();
+            errorResult.status = "IE";
+            errorResult.errorMessage = "云端判题服务连接失败且本地评测未启用：" + e.getMessage();
+            return errorResult;
+        }
+    }
+
+    private JudgeResult doCloudJudge(String code, Integer languageId, List<Map<String, String>> testCases) {
+        JudgeResult result = new JudgeResult();
+        result.totalCases = testCases.size();
+
+        int totalWeight = 0;
+        int passedWeight = 0;
         long started = System.currentTimeMillis();
         for (int i = 0; i < testCases.size(); i++) {
-            CaseResult caseResult = submitCase(code, languageId, testCases.get(i), i + 1);
+            Map<String, String> tc = testCases.get(i);
+            CaseResult caseResult = submitCase(code, languageId, tc, i + 1);
             result.caseResults.add(caseResult);
             result.timeUsedMs += caseResult.timeMs;
+            int w = parseWeight(tc.get("weight"));
+            totalWeight += w;
             if ("AC".equals(caseResult.status)) {
                 result.passedCases++;
+                passedWeight += w;
             }
             if ("IE".equals(caseResult.status)) {
                 result.status = "IE";
@@ -90,7 +125,7 @@ public class JudgeService {
         if (result.timeUsedMs <= 0) {
             result.timeUsedMs = System.currentTimeMillis() - started;
         }
-        result.score = result.totalCases == 0 ? 0 : (double) result.passedCases / result.totalCases * 100;
+        result.score = totalWeight == 0 ? 0 : (double) passedWeight / totalWeight * 100;
         result.status = result.passedCases == result.totalCases ? "AC" : worstStatus(result.caseResults);
         return result;
     }
@@ -137,9 +172,7 @@ public class JudgeService {
                 cr.timeMs = remoteTime * 1000D;
             }
         } catch (RestClientException e) {
-            cr.status = "IE";
-            cr.message = "云端判题服务连接失败或超时：" + e.getMessage();
-            cr.actualOutput = cr.message;
+            throw e;
         } catch (Exception e) {
             cr.status = "IE";
             cr.message = "云端判题异常：" + e.getMessage();
@@ -223,6 +256,16 @@ public class JudgeService {
         if (id >= 7 && id <= 12) return "RE";
         if (id == 13) return "IE";
         return "IE";
+    }
+
+    static int parseWeight(String weightStr) {
+        if (weightStr == null) return 1;
+        try {
+            int w = Integer.parseInt(weightStr.trim());
+            return w > 0 ? w : 1;
+        } catch (NumberFormatException e) {
+            return 1;
+        }
     }
 
     private String worstStatus(List<CaseResult> cases) {

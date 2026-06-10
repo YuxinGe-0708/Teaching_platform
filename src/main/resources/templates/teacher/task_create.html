@@ -56,8 +56,13 @@
                                 <input id="memoryLimitMb" type="number" name="memoryLimitMb" value="128" min="16" step="16">
                                 <label for="codeTemplate">代码模板</label>
                                 <textarea id="codeTemplate" name="codeTemplate" style="min-height:90px;" placeholder="可为学生预置 Python/Java/C 代码骨架"></textarea>
-                                <label for="testCases">多测试用例（每行：输入 | 期望输出 | 权重）</label>
-                                <textarea id="testCases" name="testCases" style="min-height:120px;" placeholder="例如：&#10;1 2 | 3 | 1&#10;2 3 | 5 | 2"></textarea>
+                                <label for="testCases">多测试用例</label>
+                                <textarea id="testCases" name="testCases" style="min-height:200px;"
+                                  placeholder="---CASE---&#10;1 2&#10;---OUTPUT---&#10;3&#10;---WEIGHT---&#10;1&#10;---CASE---&#10;hello world&#10;---OUTPUT---&#10;HELLO WORLD"></textarea>
+                                <p style="font-size:12px;color:#666;margin-top:4px;">
+                                    用 <code>---CASE---</code> 分隔用例，<code>---OUTPUT---</code> 分隔输入和期望输出，<code>---WEIGHT---</code> 指定权重（可选，默认1）。<br>
+                                    不填则默认使用下方的"编程测试输入"和"期望输出"。
+                                </p>
                                 <label for="sampleInput">编程测试输入</label>
                                 <textarea id="sampleInput" name="sampleInput" style="min-height:80px;" placeholder="没有输入可留空"></textarea>
                                 <label for="expectedOutput">期望输出</label>
