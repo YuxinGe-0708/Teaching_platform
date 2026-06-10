@@ -6,30 +6,16 @@
     <title>正在考试 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
     <style>
-        .exam-container { max-width: 900px; margin: 0 auto; }
-        .countdown-bar { position: sticky; top: 0; z-index: 100; background: var(--bg-header, #1a2a1a); border: 1px solid var(--border-color, #333); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-radius: 4px; }
-        .countdown-bar .label { font-size: 1rem; color: var(--text-muted, #999); }
-        .countdown-bar .timer { font-size: 1.8rem; font-weight: bold; font-family: 'Courier New', monospace; }
-        .countdown-bar .timer.normal { color: #4a7c59; }
-        .countdown-bar .timer.warning { color: #e6b422; animation: blink 1s infinite; }
-        .countdown-bar .timer.danger { color: #c44; animation: blink 0.5s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-        .exam-question { background: #1a1a2e; border: 1px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 4px; color: #e0e0e0; }
-        .exam-question h3 { color: #f5f0e8; }
-        .answer-section { background: #1a1a2e; border: 1px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 4px; color: #e0e0e0; }
-        .answer-section h3 { color: #f5f0e8; }
-        .answer-section textarea { width: 100%; min-height: 300px; background: #0d0d1a; color: #e0e0e0; border: 1px solid #333; padding: 12px; font-size: 1rem; font-family: 'Courier New', monospace; resize: vertical; border-radius: 4px; }
-        .answer-section textarea:focus { outline: none; border-color: #4a7c59; }
-        .action-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 12px; }
-        .submit-btn { padding: 12px 36px; font-size: 1.1rem; cursor: pointer; background: #4a7c59; color: #f5f0e8; border: none; border-radius: 4px; transition: background 0.2s; }
-        .submit-btn:hover { background: #3a6c49; }
-        .submit-btn:disabled { background: #555; cursor: not-allowed; }
-        .save-hint { font-size: 0.85rem; color: #999; text-align: right; margin-top: 6px; }
-        .result-panel { background: #1a1a2e; border: 1px solid #333; padding: 20px; border-radius: 4px; text-align: center; color: #e0e0e0; }
-        .result-panel h2 { color: #f5f0e8; }
-        .result-panel .result-icon { font-size: 3rem; margin-bottom: 12px; }
-        .result-panel .result-icon.success { color: #4a7c59; }
-        .result-panel .result-icon.autosubmit { color: #e6b422; }
+        .exam-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+        .question-nav { position: sticky; top: 16px; display: grid; gap: 10px; }
+        .question-nav button { text-align: left; background: #fff; color: var(--text-main); }
+        .question-nav button.active { background: var(--bg-header); color: var(--text-header); }
+        .countdown-bar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+        .timer { font-size: 28px; font-weight: 900; font-family: Consolas, monospace; }
+        .timer.warning { color: var(--accent-yellow); }
+        .timer.danger { color: var(--accent-red); }
+        .exam-question-card textarea { min-height: 260px; }
+        @media (max-width: 900px) { .exam-shell { grid-template-columns: 1fr; } .question-nav { position: static; } }
     </style>
 </head>
 <body>
@@ -40,43 +26,45 @@
             <h1 th:text="'考试：' + ${task.title}">考试</h1>
             <a class="btn" th:href="@{/student/exam/start(taskId=${task.taskId})}">考试信息</a>
         </header>
-        <section class="content">
-            <div class="exam-container">
-                <!-- 已交卷结果展示 -->
-                <div class="result-panel" th:if="${alreadySubmitted}">
-                    <div class="result-icon" th:classappend="${autoSubmitted ? 'autosubmit' : 'success'}" th:text="${autoSubmitted ? '⏰' : '✓'}">✓</div>
-                    <h2 th:text="${autoSubmitted ? '考试时间到，系统已自动交卷' : '考试已提交'}">考试已提交</h2>
-                    <p>提交方式：<span th:text="${autoSubmitted ? '超时自动提交' : '主动提交'}"></span></p>
-                    <p th:if="${record.submitTime != null}">交卷时间：<span th:text="${#dates.format(record.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
-                    <p th:if="${record.score != null}">得分：<strong th:text="${record.score}"></strong> / <span th:text="${task.fullScore}"></span></p>
-                    <a class="btn" th:href="@{/student/tasks}">返回任务列表</a>
+        <section class="content" th:inline="javascript">
+            <div class="panel" th:if="${alreadySubmitted}">
+                <h2 th:text="${autoSubmitted ? '考试时间到，系统已自动交卷' : '考试已提交'}">考试已提交</h2>
+                <p>提交方式：<span th:text="${autoSubmitted ? '超时自动提交' : '主动提交'}"></span></p>
+                <p th:if="${record.submitTime != null}">交卷时间：<span th:text="${#dates.format(record.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
+                <p th:if="${record.score != null}">得分：<strong th:text="${record.score}"></strong> / <span th:text="${task.fullScore}"></span></p>
+                <a class="btn" th:href="@{/student/tasks}">返回任务列表</a>
+            </div>
+
+            <div th:if="${!alreadySubmitted}">
+                <div class="panel countdown-bar">
+                    <span class="muted">剩余时间</span>
+                    <span class="timer" id="countdown">--:--:--</span>
+                    <span class="muted" id="saveHint">作答内容会自动暂存</span>
                 </div>
 
-                <!-- 考试进行中 -->
-                <th:block th:if="${!alreadySubmitted}">
-                    <div class="countdown-bar" id="countdownBar">
-                        <span class="label">剩余时间</span>
-                        <span class="timer normal" id="countdown">--:--:--</span>
-                    </div>
-
-                    <div class="exam-question" th:if="${taskContentHtml != null && taskContentHtml != ''}">
-                        <h3>考试题目</h3>
-                        <div th:utext="${taskContentHtml}"></div>
-                    </div>
-
-                    <div class="answer-section">
-                        <h3>答题区域</h3>
-                        <form id="examForm" th:action="@{/student/exam/submit}" method="post">
-                            <input type="hidden" name="taskId" th:value="${task.taskId}">
-                            <textarea id="examAnswer" name="content" th:text="${record != null ? record.content : ''}" placeholder="请在此输入您的答案..."></textarea>
-                            <div class="action-row">
-                                <button type="button" class="btn" id="saveBtn">暂存草稿</button>
-                                <button type="submit" class="submit-btn" id="submitBtn">提交试卷</button>
+                <form id="examForm" th:action="@{/student/exam/submit}" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="taskId" th:value="${task.taskId}">
+                    <input type="hidden" id="contentField" name="content">
+                    <div class="exam-shell">
+                        <div class="panel question-nav" id="questionNav"></div>
+                        <div class="panel exam-question-card">
+                            <span class="status-badge" id="questionMeta">第 1 题</span>
+                            <h2 id="questionTitle">题目</h2>
+                            <div class="task-content" id="questionContent"></div>
+                            <label for="answerArea">答案</label>
+                            <textarea id="answerArea" placeholder="请在此输入本题答案。"></textarea>
+                            <div id="uploadNotice" class="message success" style="display:none;margin-top:12px;">本题要求或允许上传附件，请在交卷前选择文件。</div>
+                            <label for="file" style="margin-top:12px;">附件（可选，简答/设计题可上传）</label>
+                            <input id="file" type="file" name="file">
+                            <div class="toolbar" style="margin-top:16px;">
+                                <button type="button" class="btn" id="prevBtn">上一题</button>
+                                <button type="button" class="btn" id="nextBtn">下一题</button>
+                                <button type="button" class="btn green" id="saveBtn">暂存</button>
+                                <button type="submit" class="btn primary" id="submitBtn">提交试卷</button>
                             </div>
-                        </form>
-                        <p class="save-hint" id="saveHint">答题内容每分钟自动保存</p>
+                        </div>
                     </div>
-                </th:block>
+                </form>
             </div>
         </section>
     </main>
@@ -84,19 +72,75 @@
 
 <script th:if="${!alreadySubmitted}" th:inline="javascript">
     const taskId = /*[[${task.taskId}]]*/ 0;
+    const questions = JSON.parse(/*[[${task.examQuestionsJson}]]*/ '[]');
+    const rawContent = /*[[${record != null ? record.content : ''}]]*/ '';
     let remainingSeconds = /*[[${remainingSeconds}]]*/ 0;
+    let activeIndex = 0;
+    let submitted = false;
+    let answers = {};
+
     const countdownEl = document.getElementById('countdown');
-    const countdownBar = document.getElementById('countdownBar');
+    const saveHint = document.getElementById('saveHint');
+    const questionNav = document.getElementById('questionNav');
+    const questionMeta = document.getElementById('questionMeta');
+    const questionTitle = document.getElementById('questionTitle');
+    const questionContent = document.getElementById('questionContent');
+    const answerArea = document.getElementById('answerArea');
+    const uploadNotice = document.getElementById('uploadNotice');
+    const contentField = document.getElementById('contentField');
+    const examForm = document.getElementById('examForm');
     const submitBtn = document.getElementById('submitBtn');
     const saveBtn = document.getElementById('saveBtn');
-    const saveHint = document.getElementById('saveHint');
-    const answerArea = document.getElementById('examAnswer');
-    const examForm = document.getElementById('examForm');
 
-    let submitted = false;
-    const autoSaveInterval = 60000; // 60 seconds
-    const submitUrl = '/student/exam/submit';
-    const saveUrl = '/student/exam/save';
+    function initAnswers() {
+        try {
+            const parsed = JSON.parse(rawContent || '{}');
+            answers = parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (e) {
+            answers = questions.length ? {[questions[0].id]: rawContent || ''} : {};
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
+    }
+
+    function persistCurrent() {
+        const q = questions[activeIndex];
+        if (!q) return;
+        answers[q.id] = answerArea.value;
+        contentField.value = JSON.stringify(answers);
+    }
+
+    function renderNav() {
+        questionNav.innerHTML = questions.map((q, index) => {
+            const answered = answers[q.id] && String(answers[q.id]).trim() ? '已答' : '未答';
+            return '<button type="button" class="' + (index === activeIndex ? 'active' : '') + '" data-index="' + index + '">' +
+                escapeHtml(q.title || ('第 ' + (index + 1) + ' 题')) + '<br><small>' + answered + ' ｜ ' + escapeHtml(q.score) + ' 分</small></button>';
+        }).join('');
+        questionNav.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => switchQuestion(Number(btn.getAttribute('data-index'))));
+        });
+    }
+
+    function renderQuestion() {
+        const q = questions[activeIndex] || {id: '1', title: '题目', content: '请完成作答。', type: 'short', score: 100};
+        questionMeta.textContent = '第 ' + (activeIndex + 1) + ' 题 ｜ ' + q.score + ' 分';
+        questionTitle.textContent = q.title || ('第 ' + (activeIndex + 1) + ' 题');
+        questionContent.innerHTML = '<p>' + escapeHtml(q.content).replace(/\n/g, '<br>') + '</p>';
+        answerArea.value = answers[q.id] || '';
+        uploadNotice.style.display = q.type === 'upload' ? 'block' : 'none';
+        renderNav();
+    }
+
+    function switchQuestion(index) {
+        if (index < 0 || index >= questions.length) return;
+        persistCurrent();
+        activeIndex = index;
+        renderQuestion();
+    }
 
     function formatTime(seconds) {
         if (seconds <= 0) return '00:00:00';
@@ -114,50 +158,44 @@
             return;
         }
         countdownEl.textContent = formatTime(remainingSeconds);
-        if (remainingSeconds <= 300) {
-            countdownEl.className = 'timer danger';
-        } else if (remainingSeconds <= 600) {
-            countdownEl.className = 'timer warning';
-        } else {
-            countdownEl.className = 'timer normal';
-        }
+        countdownEl.className = remainingSeconds <= 300 ? 'timer danger' : (remainingSeconds <= 600 ? 'timer warning' : 'timer');
         remainingSeconds--;
     }
 
     async function autoSave() {
         if (submitted) return;
+        persistCurrent();
         try {
-            const resp = await fetch(saveUrl, {
+            const resp = await fetch('/student/exam/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'taskId=' + encodeURIComponent(taskId) + '&content=' + encodeURIComponent(answerArea.value)
+                body: 'taskId=' + encodeURIComponent(taskId) + '&content=' + encodeURIComponent(contentField.value)
             });
             const data = await resp.json();
             if (data.code === 200) {
-                saveHint.textContent = '已自动保存 ' + new Date().toLocaleTimeString('zh-CN');
+                saveHint.textContent = '已暂存 ' + new Date().toLocaleTimeString('zh-CN');
+                renderNav();
             }
         } catch (e) {
-            saveHint.textContent = '自动保存失败';
+            saveHint.textContent = '暂存失败';
         }
     }
 
     async function autoSubmit() {
         if (submitted) return;
         submitted = true;
+        persistCurrent();
         submitBtn.disabled = true;
         saveBtn.disabled = true;
         saveHint.textContent = '考试时间到，正在自动提交...';
         try {
-            const resp = await fetch(submitUrl, {
+            const resp = await fetch('/student/exam/submit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'taskId=' + encodeURIComponent(taskId) + '&content=' + encodeURIComponent(answerArea.value) + '&auto=true'
+                body: 'taskId=' + encodeURIComponent(taskId) + '&content=' + encodeURIComponent(contentField.value) + '&auto=true'
             });
-            if (resp.redirected) {
-                window.location.href = resp.url;
-            } else {
-                window.location.reload();
-            }
+            if (resp.redirected) window.location.href = resp.url;
+            else window.location.reload();
         } catch (e) {
             saveHint.textContent = '自动提交失败，请手动提交';
             submitted = false;
@@ -165,58 +203,35 @@
         }
     }
 
-    // Countdown timer - tick every second
-    setInterval(updateCountdown, 1000);
-    updateCountdown();
-
-    // Auto-save every 60 seconds
-    setInterval(autoSave, autoSaveInterval);
-
-    // Manual save button
-    saveBtn.addEventListener('click', async () => {
-        if (submitted) return;
-        saveHint.textContent = '保存中...';
-        await autoSave();
-    });
-
-    // Confirm before submit
-    examForm.addEventListener('submit', (e) => {
+    document.getElementById('prevBtn').addEventListener('click', () => switchQuestion(activeIndex - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => switchQuestion(activeIndex + 1));
+    saveBtn.addEventListener('click', autoSave);
+    answerArea.addEventListener('input', persistCurrent);
+    examForm.addEventListener('submit', (event) => {
         if (submitted) {
-            e.preventDefault();
+            event.preventDefault();
             return;
         }
-        if (answerArea.value.trim() === '') {
-            if (!confirm('答案内容为空，确定要提交空白试卷吗？')) {
-                e.preventDefault();
-                return;
-            }
+        persistCurrent();
+        const emptyCount = questions.filter(q => !answers[q.id] || !String(answers[q.id]).trim()).length;
+        if (emptyCount > 0 && !confirm('还有 ' + emptyCount + ' 道题未填写，确定提交吗？')) {
+            event.preventDefault();
+            return;
         }
-        if (!confirm('确定要提交试卷吗？提交后将不可修改。')) {
-            e.preventDefault();
+        if (!confirm('确定提交试卷吗？提交后不可修改。')) {
+            event.preventDefault();
             return;
         }
         submitted = true;
         submitBtn.disabled = true;
     });
 
-    // Warn before leaving
-    window.addEventListener('beforeunload', (e) => {
-        if (!submitted && answerArea.value.trim() !== '') {
-            e.preventDefault();
-            e.returnValue = '考试尚未提交，确定离开吗？';
-            return e.returnValue;
-        }
-    });
-
-    // Warn before going back
-    window.addEventListener('popstate', (e) => {
-        if (!submitted && answerArea.value.trim() !== '') {
-            if (!confirm('考试尚未提交，确定离开吗？')) {
-                history.pushState(null, '', window.location.href);
-            }
-        }
-    });
-    history.pushState(null, '', window.location.href);
+    initAnswers();
+    if (!questions.length) questions.push({id: '1', title: '题目', content: '请完成作答。', type: 'short', score: 100});
+    renderQuestion();
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+    setInterval(autoSave, 60000);
 </script>
 </body>
 </html>

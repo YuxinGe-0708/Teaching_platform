@@ -5,6 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>视频学习 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <style>
+        .video-learning .ai-side-panel {
+            position: sticky;
+            top: 18px;
+            max-height: calc(100vh - 140px);
+            display: flex;
+            flex-direction: column;
+        }
+        .video-learning .ai-answer-scroll {
+            min-height: 0;
+            height: calc(100vh - 250px);
+            max-height: 520px;
+            overflow-y: auto;
+            border: 2px solid var(--border-color);
+            background: #fdfbf7;
+            padding: 14px;
+            white-space: pre-wrap;
+            line-height: 1.7;
+        }
+        .video-learning .ai-answer.is-loading {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            white-space: normal;
+        }
+        .video-learning .loading-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #d8d0c2;
+            border-top-color: var(--accent-green);
+            border-radius: 50%;
+            flex: 0 0 auto;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
 <div class="app-layout">
@@ -27,7 +65,7 @@
             </div>
             <aside class="ai-side-panel">
                 <h2>AI 辅助学习</h2>
-                <div id="aiAnswer" class="ai-answer">框选视频画面后，这里会显示知识点解释。</div>
+                <div id="aiAnswer" class="ai-answer ai-answer-scroll">框选视频画面后，这里会显示知识点解释。</div>
             </aside>
         </section>
     </main>
@@ -115,9 +153,11 @@ function updateBox(x, y, width, height) {
 }
 
 async function sendSelection(crop) {
-    aiAnswer.textContent = '正在截取画面并发送给 AI...';
+    aiAnswer.classList.add('is-loading');
+    aiAnswer.innerHTML = '<span class="loading-spinner"></span><strong>AI 正在分析画面...</strong>';
     try {
         if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+            aiAnswer.classList.remove('is-loading');
             aiAnswer.textContent = '视频画面尚未加载完成，请播放到需要解释的位置后再框选。';
             return;
         }
@@ -139,8 +179,10 @@ async function sendSelection(crop) {
             body: JSON.stringify({image, courseName, resourceTitle})
         });
         const data = await response.json();
+        aiAnswer.classList.remove('is-loading');
         aiAnswer.textContent = data.code === 200 && data.data ? data.data.reply : (data.message || 'AI 解释失败。');
     } catch (error) {
+        aiAnswer.classList.remove('is-loading');
         aiAnswer.textContent = 'AI 点读失败：' + error.message;
     }
 }

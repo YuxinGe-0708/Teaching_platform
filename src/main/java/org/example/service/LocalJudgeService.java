@@ -35,6 +35,7 @@ public class LocalJudgeService {
             JudgeService.CaseResult caseResult = executeLocally(code, language, tc, i + 1);
             result.caseResults.add(caseResult);
             result.timeUsedMs += caseResult.timeMs;
+            result.memoryUsedKb = Math.max(result.memoryUsedKb, caseResult.memoryKb);
             int w = JudgeService.parseWeight(tc.get("weight"));
             totalWeight += w;
             if ("AC".equals(caseResult.status)) {

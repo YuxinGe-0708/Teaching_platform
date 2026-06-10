@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -24,7 +24,7 @@
                             <input id="title" type="text" name="title" required>
                             <label for="taskType">类型</label>
                             <select id="taskType" name="taskType">
-                                <option value="作业">作业</option>
+                                <option value="实验作业">实验作业</option>
                                 <option value="考试">考试</option>
                                 <option value="编程实训">编程实训</option>
                             </select>
@@ -45,23 +45,36 @@
                         <div>
                             <h3>Markdown 预览</h3>
                             <div id="preview" class="markdown-preview">在左侧输入或导入 Markdown 后，这里会显示渲染效果。</div>
+
                             <div id="examFields" style="margin-top:16px;">
-                                <label for="examAnswer">考试标准答案（可选，填写后提交时自动判分）</label>
+                                <label for="examAnswer">单题标准答案（可选，填写后提交时自动判分）</label>
                                 <input id="examAnswer" name="examAnswer" placeholder="例如：A 或 标准填空答案">
+                                <label for="examQuestions">多题配置（可选）</label>
+                                <textarea id="examQuestions" name="examQuestions" style="min-height:220px;"
+                                          placeholder="---QUESTION---&#10;title: 第1题&#10;type: short&#10;score: 40&#10;请简述数据库事务的 ACID 特性。&#10;&#10;---QUESTION---&#10;title: 第2题&#10;type: upload&#10;score: 60&#10;请完成设计题，并在交卷时上传附件。"></textarea>
+                                <p class="muted" style="font-size:12px;margin-top:4px;">
+                                    每道题用 <code>---QUESTION---</code> 分隔；支持 <code>type: short</code>、<code>type: choice</code>、<code>type: upload</code>。
+                                </p>
                             </div>
+
                             <div id="judgeFields" style="margin-top:16px;">
+                                <label for="allowedLanguage">限制提交语言</label>
+                                <select id="allowedLanguage" name="allowedLanguage">
+                                    <option value="python">Python</option>
+                                    <option value="java">Java</option>
+                                    <option value="c">C</option>
+                                </select>
                                 <label for="timeLimitMs">时间限制（毫秒）</label>
                                 <input id="timeLimitMs" type="number" name="timeLimitMs" value="15000" min="1000" step="500">
                                 <label for="memoryLimitMb">内存限制（MB）</label>
                                 <input id="memoryLimitMb" type="number" name="memoryLimitMb" value="128" min="16" step="16">
                                 <label for="codeTemplate">代码模板</label>
-                                <textarea id="codeTemplate" name="codeTemplate" style="min-height:90px;" placeholder="可为学生预置 Python/Java/C 代码骨架"></textarea>
+                                <textarea id="codeTemplate" name="codeTemplate" style="min-height:90px;" placeholder="可为学生预置代码骨架"></textarea>
                                 <label for="testCases">多测试用例</label>
                                 <textarea id="testCases" name="testCases" style="min-height:200px;"
-                                  placeholder="---CASE---&#10;1 2&#10;---OUTPUT---&#10;3&#10;---WEIGHT---&#10;1&#10;---CASE---&#10;hello world&#10;---OUTPUT---&#10;HELLO WORLD"></textarea>
-                                <p style="font-size:12px;color:#666;margin-top:4px;">
-                                    用 <code>---CASE---</code> 分隔用例，<code>---OUTPUT---</code> 分隔输入和期望输出，<code>---WEIGHT---</code> 指定权重（可选，默认1）。<br>
-                                    不填则默认使用下方的"编程测试输入"和"期望输出"。
+                                          placeholder="---CASE---&#10;1 2&#10;---OUTPUT---&#10;3&#10;---WEIGHT---&#10;1"></textarea>
+                                <p class="muted" style="font-size:12px;margin-top:4px;">
+                                    测试用例不会展示给学生；学生端只显示评测结论和诊断建议。
                                 </p>
                                 <label for="sampleInput">编程测试输入</label>
                                 <textarea id="sampleInput" name="sampleInput" style="min-height:80px;" placeholder="没有输入可留空"></textarea>

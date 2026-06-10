@@ -235,6 +235,9 @@ public class UserController {
         view.put("status", displayTaskStatus(task.getStatus()));
         view.put("allowedFileTypes", "");
         view.put("testCasesJson", TaskMetadataUtils.testCasesJson(task.getDescription()));
+        view.put("allowedLanguage", TaskMetadataUtils.allowedLanguage(task.getDescription()));
+        view.put("examQuestionsJson", TaskMetadataUtils.examQuestionsJson(task.getDescription()));
+        view.put("codeTemplate", task.getCodeTemplate());
         view.put("hasExamAnswer", !TaskMetadataUtils.examAnswer(task.getDescription()).trim().isEmpty());
         return view;
     }
@@ -248,7 +251,7 @@ public class UserController {
     public static String displayTaskType(String type) {
         if ("exam".equals(type)) return "考试";
         if ("programming".equals(type)) return "编程实训";
-        return "作业";
+        return "实验作业";
     }
 
     public static String displayTaskStatus(String status) {

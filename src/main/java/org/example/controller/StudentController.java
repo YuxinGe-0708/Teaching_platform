@@ -490,6 +490,7 @@ public class StudentController {
     @PostMapping("/exam/submit")
     public String examSubmit(@RequestParam Long taskId,
                              @RequestParam(required = false) String content,
+                             @RequestParam(required = false) MultipartFile file,
                              @RequestParam(required = false, defaultValue = "false") boolean auto,
                              HttpSession session,
                              Model model) {
@@ -523,10 +524,20 @@ public class StudentController {
         }
 
         examService.createSubmissionFromExam(record, task);
+        String filePath = saveFile(file);
+        if (filePath != null) {
+            Submission submission = taskService.getSubmission(user.getId(), taskId);
+            if (submission != null) {
+                submission.setContent(record == null || record.getContent() == null ? "" : record.getContent());
+                submission.setFilePath(filePath);
+                submissionMapper.updateContent(submission);
+            }
+        }
         log(user, "考试交卷", task.getTitle());
 
         model.addAttribute("user", user);
         model.addAttribute("task", UserController.toTaskView(task));
+        model.addAttribute("course", UserController.toCourseView(courseService.findById(task.getCourseId())));
         model.addAttribute("record", record);
         model.addAttribute("alreadySubmitted", true);
         model.addAttribute("autoSubmitted", auto);

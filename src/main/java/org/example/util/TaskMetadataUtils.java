@@ -1,7 +1,9 @@
 package org.example.util;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 public final class TaskMetadataUtils {
     private static final String START = "<!--TP_META";
@@ -15,12 +17,19 @@ public final class TaskMetadataUtils {
     }
 
     public static String buildDescription(String markdown, String examAnswer, String sampleInput, String expectedOutput, String testCases) {
+        return buildDescription(markdown, examAnswer, sampleInput, expectedOutput, testCases, null, null);
+    }
+
+    public static String buildDescription(String markdown, String examAnswer, String sampleInput, String expectedOutput,
+                                          String testCases, String allowedLanguage, String examQuestions) {
         String body = markdown == null ? "" : markdown;
         StringBuilder meta = new StringBuilder();
         append(meta, "examAnswer", examAnswer);
         append(meta, "sampleInput", sampleInput);
         append(meta, "expectedOutput", expectedOutput);
         append(meta, "testCases", testCases);
+        append(meta, "allowedLanguage", normalizeLanguage(allowedLanguage));
+        append(meta, "examQuestions", examQuestions);
         if (meta.length() == 0) return body;
         return body + "\n\n" + START + "\n" + meta + END;
     }
@@ -48,10 +57,19 @@ public final class TaskMetadataUtils {
         return value(description, "testCases");
     }
 
+    public static String allowedLanguage(String description) {
+        String value = normalizeLanguage(value(description, "allowedLanguage"));
+        return value == null || value.isEmpty() ? "python" : value;
+    }
+
+    public static String examQuestions(String description) {
+        return value(description, "examQuestions");
+    }
+
     public static String testCasesJson(String description) {
         String configured = testCases(description);
         if (configured != null && !configured.trim().isEmpty()) {
-            return parseConfiguredCases(configured);
+            return parseMultiLineCases(configured.trim());
         }
         String expected = expectedOutput(description);
         if (expected == null || expected.trim().isEmpty()) {
@@ -61,14 +79,31 @@ public final class TaskMetadataUtils {
         return "[{\"input\":\"" + json(input == null ? "" : input) + "\",\"expectedOutput\":\"" + json(expected) + "\"}]";
     }
 
-    private static String parseConfiguredCases(String raw) {
-        return parseMultiLineCases(raw.trim());
+    public static String examQuestionsJson(String description) {
+        List<ExamQuestion> questions = parseExamQuestions(examQuestions(description));
+        if (questions.isEmpty()) {
+            String visible = visibleMarkdown(description);
+            if (visible == null || visible.trim().isEmpty()) visible = "请完成本题作答。";
+            questions.add(new ExamQuestion("1", "简答题", "short", visible.trim(), 100));
+        }
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < questions.size(); i++) {
+            if (i > 0) sb.append(",");
+            ExamQuestion q = questions.get(i);
+            sb.append("{\"id\":\"").append(json(q.id)).append("\"")
+                    .append(",\"title\":\"").append(json(q.title)).append("\"")
+                    .append(",\"type\":\"").append(json(q.type)).append("\"")
+                    .append(",\"content\":\"").append(json(q.content)).append("\"")
+                    .append(",\"score\":").append(q.score)
+                    .append("}");
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
     private static String parseMultiLineCases(String raw) {
         String[] lines = raw.split("\\R");
-        java.util.List<TestCase> cases = new java.util.ArrayList<>();
-
+        List<TestCase> cases = new ArrayList<>();
         StringBuilder currentInput = new StringBuilder();
         StringBuilder currentOutput = new StringBuilder();
         StringBuilder currentWeight = new StringBuilder();
@@ -103,38 +138,62 @@ public final class TaskMetadataUtils {
             addMultiLineCase(cases, currentInput, currentOutput, currentWeight);
         }
 
-        return buildMultiLineJson(cases);
-    }
-
-    private static void addMultiLineCase(java.util.List<TestCase> cases,
-                                          StringBuilder input, StringBuilder output, StringBuilder weight) {
-        String in = input.toString().trim();
-        String out = output.toString().trim();
-        if (in.isEmpty() && out.isEmpty()) return;
-        String w = weight.toString().trim();
-        if (w.isEmpty()) w = "1";
-        cases.add(new TestCase(in, out, w));
-    }
-
-    private static String buildMultiLineJson(java.util.List<TestCase> cases) {
         if (cases.isEmpty()) return "[]";
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < cases.size(); i++) {
             if (i > 0) sb.append(",");
             TestCase tc = cases.get(i);
             sb.append("{\"input\":\"").append(json(tc.input))
-              .append("\",\"expectedOutput\":\"").append(json(tc.expectedOutput))
-              .append("\",\"weight\":\"").append(json(tc.weight)).append("\"}");
+                    .append("\",\"expectedOutput\":\"").append(json(tc.expectedOutput))
+                    .append("\",\"weight\":\"").append(json(tc.weight)).append("\"}");
         }
         sb.append("]");
         return sb.toString();
     }
 
-    private static class TestCase {
-        final String input, expectedOutput, weight;
-        TestCase(String in, String out, String w) {
-            input = in; expectedOutput = out; weight = w;
+    private static List<ExamQuestion> parseExamQuestions(String raw) {
+        List<ExamQuestion> questions = new ArrayList<>();
+        if (raw == null || raw.trim().isEmpty()) return questions;
+
+        String[] blocks = raw.split("(?m)^\\s*-{3,}QUESTION-{3,}\\s*$");
+        int index = 1;
+        for (String block : blocks) {
+            if (block == null || block.trim().isEmpty()) continue;
+            String title = "第 " + index + " 题";
+            String type = "short";
+            int score = 100;
+            StringBuilder content = new StringBuilder();
+            for (String line : block.split("\\R")) {
+                String trimmed = line.trim();
+                if (trimmed.startsWith("title:") || trimmed.startsWith("标题:")) {
+                    title = trimmed.substring(trimmed.indexOf(':') + 1).trim();
+                } else if (trimmed.startsWith("type:") || trimmed.startsWith("类型:")) {
+                    type = normalizeQuestionType(trimmed.substring(trimmed.indexOf(':') + 1).trim());
+                } else if (trimmed.startsWith("score:") || trimmed.startsWith("分值:")) {
+                    score = parseScore(trimmed.substring(trimmed.indexOf(':') + 1).trim(), score);
+                } else if (trimmed.startsWith("answer:") || trimmed.startsWith("答案:")) {
+                    // Answers stay server-side in metadata and are not exposed to students.
+                } else {
+                    if (content.length() > 0) content.append("\n");
+                    content.append(line);
+                }
+            }
+            String text = content.toString().trim();
+            if (!text.isEmpty()) {
+                questions.add(new ExamQuestion(String.valueOf(index), title, type, text, score));
+                index++;
+            }
         }
+        return questions;
+    }
+
+    private static void addMultiLineCase(List<TestCase> cases, StringBuilder input, StringBuilder output, StringBuilder weight) {
+        String in = input.toString().trim();
+        String out = output.toString().trim();
+        if (in.isEmpty() && out.isEmpty()) return;
+        String w = weight.toString().trim();
+        if (w.isEmpty()) w = "1";
+        cases.add(new TestCase(in, out, w));
     }
 
     private static void append(StringBuilder meta, String key, String value) {
@@ -164,10 +223,64 @@ public final class TaskMetadataUtils {
         return "";
     }
 
+    private static String normalizeLanguage(String language) {
+        if (language == null) return "";
+        String value = language.trim().toLowerCase();
+        if ("py".equals(value)) return "python";
+        if ("gcc".equals(value)) return "c";
+        if ("python".equals(value) || "java".equals(value) || "c".equals(value)) return value;
+        return "";
+    }
+
+    private static String normalizeQuestionType(String type) {
+        String value = type == null ? "" : type.trim().toLowerCase();
+        if (value.contains("choice") || value.contains("选择")) return "choice";
+        if (value.contains("upload") || value.contains("附件")) return "upload";
+        return "short";
+    }
+
+    private static int parseScore(String raw, int fallback) {
+        try {
+            int value = Integer.parseInt(raw);
+            return value > 0 ? value : fallback;
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
     private static String json(String value) {
+        if (value == null) return "";
         return value.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\r", "\\r")
                 .replace("\n", "\\n");
+    }
+
+    private static class TestCase {
+        final String input;
+        final String expectedOutput;
+        final String weight;
+
+        TestCase(String input, String expectedOutput, String weight) {
+            this.input = input;
+            this.expectedOutput = expectedOutput;
+            this.weight = weight;
+        }
+    }
+
+    private static class ExamQuestion {
+        final String id;
+        final String title;
+        final String type;
+        final String content;
+        final int score;
+
+        ExamQuestion(String id, String title, String type, String content, int score) {
+            this.id = id;
+            this.title = title;
+            this.type = type;
+            this.content = content;
+            this.score = score;
+        }
     }
 }

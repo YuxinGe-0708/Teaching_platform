@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>批改作业 - TeachingPlatform</title>
+    <title>批改任务 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
 </head>
 <body>
 <div class="app-layout">
     <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
-        <header class="topbar"><h1>批改作业</h1><a class="btn" href="/teacher/task/manage">返回</a></header>
+        <header class="topbar"><h1>批改任务</h1><a class="btn" href="/teacher/task/manage">返回</a></header>
         <section class="content">
             <div class="panel" th:if="${submission != null}">
-                <h2 th:text="${submission.taskTitle}">作业</h2>
+                <h2 th:text="${submission.taskTitle}">实验作业</h2>
                 <p>学生：<span th:text="${submission.studentName != null ? submission.studentName : '学生ID:' + submission.studentId}"></span></p>
                 <p>提交时间：<span th:text="${#dates.format(submission.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
                 <p>评测结果：<span th:text="${submission.judgeStatus}">-</span></p>

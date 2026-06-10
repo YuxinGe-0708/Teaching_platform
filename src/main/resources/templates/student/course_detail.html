@@ -15,7 +15,7 @@
             <div class="toolbar">
                 <a class="btn" th:classappend="${tab == 'home' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='home')}">全部</a>
                 <a class="btn" th:classappend="${tab == 'info' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='info')}">课程信息</a>
-                <a class="btn" th:classappend="${tab == 'homework' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='homework')}">作业</a>
+                <a class="btn" th:classappend="${tab == 'homework' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='homework')}">实验作业</a>
                 <a class="btn" th:classappend="${tab == 'exam' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='exam')}">考试</a>
                 <a class="btn" th:classappend="${tab == 'lab' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='lab')}">编程实训</a>
                 <a class="btn" th:classappend="${tab == 'resources' ? ' primary' : ''}" th:href="@{/student/course/detail/{id}(id=${course.courseId}, tab='resources')}">教学资源</a>
@@ -114,14 +114,14 @@
             <div th:if="${tab != 'info' && tab != 'resources' && tab != 'progress' && tab != 'discussion'}">
                 <div class="course-grid" th:if="${!#lists.isEmpty(tasks)}">
                     <article class="item-card" th:each="task : ${tasks}">
-                        <span class="status-badge" th:text="${task.taskType}">作业</span>
+                        <span class="status-badge" th:text="${task.taskType}">实验作业</span>
                         <h3 th:text="${task.title}">任务标题</h3>
                         <p class="muted">发布时间：<span th:text="${#dates.format(task.startTime, 'yyyy-MM-dd HH:mm')}"></span></p>
                         <p class="muted">满分：<span th:text="${task.fullScore}"></span></p>
                         <p th:text="${task.description ?: '暂无任务说明'}">任务说明</p>
                         <div class="card-actions">
                             <a class="btn primary" th:if="${task.taskKind == 'exam'}" th:href="@{/student/exam/start(taskId=${task.taskId})}">进入考试</a>
-                            <a class="btn primary" th:if="${task.taskKind != 'exam'}" th:href="@{/student/task/detail(taskId=${task.taskId})}" th:text="${task.taskKind == 'programming' ? '进入 IDE' : '进入作业'}">进入</a>
+                            <a class="btn primary" th:if="${task.taskKind != 'exam'}" th:href="@{/student/task/detail(taskId=${task.taskId})}" th:text="${task.taskKind == 'programming' ? '进入 IDE' : '进入实验作业'}">进入</a>
                         </div>
                     </article>
                 </div>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -19,7 +19,7 @@
             <div class="message error" th:if="${error}" th:text="${error}"></div>
 
             <div class="panel">
-                <span class="status-badge" th:text="${task.taskType}">作业</span>
+                <span class="status-badge" th:text="${task.taskType}">实验作业</span>
                 <p class="muted">满分：<span th:text="${task.fullScore}"></span> ｜ 状态：<span th:text="${task.status}"></span></p>
                 <div class="task-content" th:if="${taskContentHtml != null && taskContentHtml != ''}" th:utext="${taskContentHtml}">任务内容</div>
             </div>
@@ -35,21 +35,22 @@
             </div>
 
             <div class="panel" th:if="${task.taskKind != 'programming'}">
-                <h2 th:text="${task.taskKind == 'exam' ? '提交试卷' : '提交作业'}">提交</h2>
+                <h2>提交实验作业</h2>
                 <form action="/student/task/submit" method="post" enctype="multipart/form-data" class="form">
                     <input type="hidden" name="taskId" th:value="${task.taskId}">
                     <label for="content">答案内容</label>
                     <textarea id="content" name="content" placeholder="输入答案、思路或说明"></textarea>
-                    <label for="file" th:if="${task.taskKind != 'exam'}">附件</label>
-                    <input id="file" type="file" name="file" th:if="${task.taskKind != 'exam'}">
-                    <button type="submit" th:text="${task.taskKind == 'exam' ? '提交试卷' : '提交作业'}">提交</button>
+                    <label for="file">附件</label>
+                    <input id="file" type="file" name="file">
+                    <button type="submit">提交实验作业</button>
                 </form>
             </div>
 
             <div class="panel" th:if="${task.taskKind == 'programming'}" th:inline="javascript">
                 <h2>Web IDE</h2>
                 <div class="toolbar">
-                    <select id="language">
+                    <label class="check-row">限定语言：<strong id="allowedLanguageText"></strong></label>
+                    <select id="language" disabled>
                         <option value="python">Python</option>
                         <option value="java">Java</option>
                         <option value="c">C</option>
@@ -58,22 +59,30 @@
                     <button type="button" class="btn primary" id="judgeBtn">运行评测</button>
                 </div>
                 <div id="monacoEditor" class="monaco-editor-box"></div>
-                <textarea id="codeEditor" class="ide-area ide-fallback" spellcheck="false">print("Hello World")</textarea>
+                <textarea id="codeEditor" class="ide-area ide-fallback" spellcheck="false"></textarea>
                 <h3>评测输出</h3>
-                <div id="judgeOutput" class="ide-output">点击“运行评测”后查看结果。</div>
+                <div id="judgeOutput" class="judge-result-panel muted">点击“运行评测”后查看结果。</div>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
                 <script th:inline="javascript">
                     const taskId = /*[[${task.taskId}]]*/ 0;
                     const testCases = JSON.parse(/*[[${task.testCasesJson}]]*/ '[]');
+                    const allowedLanguage = /*[[${task.allowedLanguage}]]*/ 'python';
+                    const configuredTemplate = /*[[${task.codeTemplate}]]*/ '';
                     const language = document.getElementById('language');
                     const fallbackEditor = document.getElementById('codeEditor');
+                    const allowedLanguageText = document.getElementById('allowedLanguageText');
                     let monacoEditor = null;
                     const templates = {
                         python: 'print("Hello World")\n',
                         java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello World");\n    }\n}\n',
                         c: '#include <stdio.h>\n\nint main(void) {\n    printf("Hello World\\n");\n    return 0;\n}\n'
                     };
+                    const languageNames = {python: 'Python', java: 'Java', c: 'C'};
                     const monacoLanguages = {python: 'python', java: 'java', c: 'c'};
+
+                    language.value = allowedLanguage || 'python';
+                    allowedLanguageText.textContent = languageNames[language.value] || language.value;
+                    fallbackEditor.value = configuredTemplate && configuredTemplate.trim() ? configuredTemplate : templates[language.value];
 
                     function currentCode() {
                         return monacoEditor ? monacoEditor.getValue() : fallbackEditor.value;
@@ -90,20 +99,32 @@
                         }
                     }
 
+                    function escapeHtml(value) {
+                        return String(value || '').replace(/[&<>"']/g, ch => ({
+                            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                        }[ch]));
+                    }
+
+                    function formatMs(value) {
+                        const number = Number(value || 0);
+                        return number > 0 ? number.toFixed(0) + ' ms' : '-';
+                    }
+
+                    function formatMemory(value) {
+                        const number = Number(value || 0);
+                        if (number <= 0) return '云端未返回';
+                        if (number >= 1024) return (number / 1024).toFixed(1) + ' MB';
+                        return number.toFixed(0) + ' KB';
+                    }
+
                     document.getElementById('templateBtn').addEventListener('click', () => setCode(templates[language.value]));
-                    language.addEventListener('change', () => {
-                        setLanguage(language.value);
-                        if (!currentCode().trim() || currentCode().trim() === 'print("Hello World")') {
-                            setCode(templates[language.value]);
-                        }
-                    });
 
                     if (window.require) {
                         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
                         require(['vs/editor/editor.main'], function () {
                             monacoEditor = monaco.editor.create(document.getElementById('monacoEditor'), {
                                 value: fallbackEditor.value,
-                                language: 'python',
+                                language: monacoLanguages[language.value] || 'python',
                                 theme: 'vs',
                                 automaticLayout: true,
                                 minimap: { enabled: false },
@@ -111,6 +132,7 @@
                                 scrollBeyondLastLine: false
                             });
                             fallbackEditor.style.display = 'none';
+                            setLanguage(language.value);
                         }, function () {
                             document.getElementById('monacoEditor').style.display = 'none';
                             fallbackEditor.style.display = 'block';
@@ -124,7 +146,8 @@
                         const output = document.getElementById('judgeOutput');
                         const button = document.getElementById('judgeBtn');
                         button.disabled = true;
-                        output.textContent = '评测中...';
+                        output.className = 'judge-result-panel is-loading';
+                        output.innerHTML = '<span class="loading-spinner"></span><strong>评测中...</strong>';
                         try {
                             const response = await fetch('/api/v2/judge/submit', {
                                 method: 'POST',
@@ -138,20 +161,27 @@
                             });
                             const data = await response.json();
                             if (data.code !== 200) {
-                                output.textContent = data.message || '评测失败';
+                                output.className = 'judge-result-panel status-IE';
+                                output.innerHTML = '<h3>评测失败</h3><p>' + escapeHtml(data.message || '评测失败') + '</p>';
                                 return;
                             }
                             const result = data.data;
-                            const judgeLabel = result.usedLocalJudge ? ' [本地评测]' : '';
+                            output.className = 'judge-result-panel status-' + escapeHtml(result.status || 'IE');
                             output.innerHTML =
-                                '<strong>评测方式：</strong>' + (result.usedLocalJudge ? '本地评测' : '云端评测') +
-                                ' ｜ <strong>状态：</strong>' + result.status +
-                                ' ｜ <strong>得分：</strong>' + result.score +
-                                ' ｜ <strong>通过：</strong>' + result.passedCases + '/' + result.totalCases +
-                                (result.errorMessage ? '<p class="message error">' + result.errorMessage + '</p>' : '') +
-                                '<pre>' + JSON.stringify(result.caseResults, null, 2) + '</pre>';
+                                '<div class="judge-result-head">' +
+                                '<strong>' + escapeHtml(result.status || '-') + '</strong>' +
+                                '<span>' + escapeHtml(result.usedLocalJudge ? '本地评测' : '云端评测') + '</span>' +
+                                '</div>' +
+                                '<div class="judge-result-grid">' +
+                                '<div><span>得分</span><strong>' + Number(result.score || 0).toFixed(1) + '</strong></div>' +
+                                '<div><span>通过</span><strong>' + escapeHtml(result.passedCases) + '/' + escapeHtml(result.totalCases) + '</strong></div>' +
+                                '<div><span>时间</span><strong>' + escapeHtml(formatMs(result.timeUsedMs)) + '</strong></div>' +
+                                '<div><span>空间</span><strong>' + escapeHtml(formatMemory(result.memoryUsedKb)) + '</strong></div>' +
+                                '</div>' +
+                                '<p>' + escapeHtml(result.diagnosis || result.errorMessage || '评测完成。') + '</p>';
                         } catch (e) {
-                            output.textContent = '评测请求失败：' + e.message;
+                            output.className = 'judge-result-panel status-IE';
+                            output.innerHTML = '<h3>评测请求失败</h3><p>' + escapeHtml(e.message) + '</p>';
                         } finally {
                             button.disabled = false;
                         }

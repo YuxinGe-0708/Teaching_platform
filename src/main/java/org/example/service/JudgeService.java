@@ -48,6 +48,7 @@ public class JudgeService {
         public int totalCases;
         public double score;
         public double timeUsedMs;
+        public double memoryUsedKb;
         public String errorMessage;
         public List<CaseResult> caseResults = new ArrayList<>();
         public boolean usedLocalJudge;
@@ -60,6 +61,7 @@ public class JudgeService {
         public String expectedOutput;
         public String actualOutput;
         public double timeMs;
+        public double memoryKb;
         public String message;
     }
 
@@ -108,6 +110,7 @@ public class JudgeService {
             CaseResult caseResult = submitCase(code, languageId, tc, i + 1);
             result.caseResults.add(caseResult);
             result.timeUsedMs += caseResult.timeMs;
+            result.memoryUsedKb = Math.max(result.memoryUsedKb, caseResult.memoryKb);
             int w = parseWeight(tc.get("weight"));
             totalWeight += w;
             if ("AC".equals(caseResult.status)) {
@@ -171,6 +174,7 @@ public class JudgeService {
             if (remoteTime > 0) {
                 cr.timeMs = remoteTime * 1000D;
             }
+            cr.memoryKb = json.path("memory").asDouble(0D);
         } catch (RestClientException e) {
             throw e;
         } catch (Exception e) {

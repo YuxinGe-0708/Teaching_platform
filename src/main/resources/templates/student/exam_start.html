@@ -5,23 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>考试须知 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
-    <style>
-        .exam-start-panel { max-width: 800px; margin: 0 auto; }
-        .exam-info { background: #1a1a2e; border: 1px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 4px; color: #e0e0e0; }
-        .exam-info h2 { color: #f5f0e8; }
-        .exam-info dt { color: #999; font-size: 0.9rem; margin-bottom: 4px; }
-        .exam-info dd { margin: 0 0 12px 0; font-size: 1.1rem; color: #f5f0e8; }
-        .discipline-list { background: #1a1a2e; border: 1px solid #333; padding: 20px; margin-bottom: 24px; border-radius: 4px; color: #e0e0e0; }
-        .discipline-list h3 { margin-top: 0; color: #e6b422; }
-        .discipline-list ol { padding-left: 20px; line-height: 2; }
-        .discipline-list li { margin-bottom: 6px; }
-        .start-btn-wrap { text-align: center; margin: 24px 0; }
-        .start-btn { padding: 14px 48px; font-size: 1.2rem; cursor: pointer; background: #4a7c59; color: #f5f0e8; border: none; border-radius: 4px; transition: background 0.2s; }
-        .start-btn:hover { background: #3a6c49; }
-        .start-btn:disabled { background: #555; cursor: not-allowed; }
-        .exam-content-preview { background: #1a1a2e; border: 1px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 4px; max-height: 400px; overflow-y: auto; color: #e0e0e0; }
-        .exam-content-preview h3 { color: #f5f0e8; }
-    </style>
 </head>
 <body>
 <div class="app-layout">
@@ -34,55 +17,42 @@
         <section class="content">
             <div class="message error" th:if="${error}" th:text="${error}"></div>
 
-            <div class="exam-start-panel" th:if="${error == null}">
-                <div class="exam-info">
-                    <h2>考试信息</h2>
-                    <dl>
-                        <dt>考试名称</dt>
-                        <dd th:text="${task.title}">考试名称</dd>
-                        <dt>所属课程</dt>
-                        <dd th:text="${course.courseName}">课程名称</dd>
-                        <dt>满分</dt>
-                        <dd th:text="${task.fullScore} + ' 分'">100 分</dd>
-                        <dt>截止时间</dt>
-                        <dd>
-                            <span th:if="${task.endTime != null}" th:text="${#dates.format(task.endTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
-                            <span th:if="${task.endTime == null}">无限制</span>
-                        </dd>
-                    </dl>
+            <div class="panel" th:if="${error == null}">
+                <h2>考试信息</h2>
+                <div class="score-metrics">
+                    <div><span>考试名称</span><strong th:text="${task.title}">考试名称</strong></div>
+                    <div><span>所属课程</span><strong th:text="${course.courseName}">课程</strong></div>
+                    <div><span>满分</span><strong th:text="${task.fullScore}">100</strong></div>
+                    <div><span>截止时间</span><strong th:text="${task.endTime != null ? #dates.format(task.endTime, 'yyyy-MM-dd HH:mm') : '不限'}">不限</strong></div>
                 </div>
+                <div class="task-content" th:if="${taskContentHtml != null && taskContentHtml != ''}" th:utext="${taskContentHtml}"></div>
+            </div>
 
-                <div class="discipline-list">
-                    <h3>考试纪律</h3>
-                    <ol>
-                        <li>请在规定时间内独立完成考试，不得代考或抄袭他人答案。</li>
-                        <li>考试过程中请勿关闭或刷新浏览器页面，答题内容会实时保存。</li>
-                        <li>考试倒计时归零后，系统将自动提交您已作答的内容。</li>
-                        <li>一经提交（手动或自动），不可修改或重新作答。</li>
-                        <li>客观题部分由系统自动判分，请确保答案格式正确。</li>
-                        <li>若因网络等原因导致提交失败，请及时联系任课教师。</li>
-                    </ol>
-                </div>
+            <div class="panel" th:if="${error == null && (record == null || record.notStarted)}">
+                <h2>考试须知</h2>
+                <ol>
+                    <li>请在规定时间内独立完成考试。</li>
+                    <li>作答过程会自动暂存，仍建议提交前确认所有题目都已填写。</li>
+                    <li>如题目要求附件，请在交卷前上传；教师可下载附件并人工评分。</li>
+                    <li>提交后不可再次修改答案。</li>
+                </ol>
+                <form th:action="@{/student/exam/begin}" method="post">
+                    <input type="hidden" name="taskId" th:value="${task.taskId}">
+                    <button type="submit" class="primary">开始考试</button>
+                </form>
+            </div>
 
-                <div class="exam-content-preview" th:if="${taskContentHtml != null && taskContentHtml != ''}">
-                    <h3>考试题目预览</h3>
-                    <div th:utext="${taskContentHtml}"></div>
-                </div>
+            <div class="panel" th:if="${error == null && record != null && record.inProgress}">
+                <h2>考试进行中</h2>
+                <p class="muted">你已经开始本次考试，可以继续作答。</p>
+                <a class="btn primary" th:href="@{/student/exam/take(taskId=${task.taskId})}">继续考试</a>
+            </div>
 
-                <div class="start-btn-wrap" th:if="${record == null || record.notStarted}">
-                    <form th:action="@{/student/exam/begin}" method="post">
-                        <input type="hidden" name="taskId" th:value="${task.taskId}">
-                        <button type="submit" class="start-btn">开始考试</button>
-                    </form>
-                    <p class="muted" style="margin-top: 12px;">点击"开始考试"后将开始计时，请合理安排时间。</p>
-                </div>
-
-                <div class="panel" th:if="${record != null && record.submitted}">
-                    <h3>考试已结束</h3>
-                    <p>提交状态：<span class="status-badge" th:text="${record.status == 'AUTO_SUBMITTED' ? '超时自动交卷' : '已交卷'}"></span></p>
-                    <p th:if="${record.submitTime != null}">交卷时间：<span th:text="${#dates.format(record.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
-                    <p th:if="${record.score != null}">得分：<span th:text="${record.score}"></span></p>
-                </div>
+            <div class="panel" th:if="${error == null && record != null && record.submitted}">
+                <h2>考试已提交</h2>
+                <p>提交状态：<span class="status-badge" th:text="${record.status == 'AUTO_SUBMITTED' ? '超时自动交卷' : '已交卷'}"></span></p>
+                <p th:if="${record.submitTime != null}">交卷时间：<span th:text="${#dates.format(record.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
+                <p th:if="${record.score != null}">得分：<span th:text="${record.score}"></span></p>
             </div>
         </section>
     </main>

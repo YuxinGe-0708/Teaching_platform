@@ -186,6 +186,18 @@ public class TeachingResourceController {
                 .body(file);
     }
 
+    @GetMapping("/resource-square/download/{resourceId}")
+    public ResponseEntity<Resource> downloadSquareResource(@PathVariable Long resourceId, HttpSession session) throws Exception {
+        TeachingResource resource = resourceMapper.findById(resourceId);
+        if (resource == null) return ResponseEntity.notFound().build();
+        resourceMapper.incrementDownloadCount(resourceId);
+        Resource file = fileResource(resource);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"")
+                .body(file);
+    }
+
     @GetMapping("/student/resource/video/{resourceId}")
     public String videoPage(@PathVariable Long resourceId, HttpSession session, Model model) {
         User user = requireRole(session, "student");

@@ -225,6 +225,8 @@ public class TeacherController {
                              @RequestParam(required = false) String sampleInput,
                              @RequestParam(required = false) String expectedOutput,
                              @RequestParam(required = false) String testCases,
+                             @RequestParam(required = false) String allowedLanguage,
+                             @RequestParam(required = false) String examQuestions,
                              @RequestParam(required = false) Integer timeLimitMs,
                              @RequestParam(required = false) Integer memoryLimitMb,
                              @RequestParam(required = false) String codeTemplate,
@@ -240,7 +242,14 @@ public class TeacherController {
         task.setTitle(title);
         task.setType(UserController.dbTaskType(taskType));
         task.setMaxScore(fullScore == null ? 100 : fullScore.intValue());
-        task.setDescription(TaskMetadataUtils.buildDescription(UserController.firstNonBlank(content, description), examAnswer, sampleInput, expectedOutput, testCases));
+        task.setDescription(TaskMetadataUtils.buildDescription(
+                UserController.firstNonBlank(content, description),
+                examAnswer,
+                sampleInput,
+                expectedOutput,
+                testCases,
+                allowedLanguage,
+                examQuestions));
         task.setTimeLimitMs(timeLimitMs == null ? 15000 : timeLimitMs);
         task.setMemoryLimitMb(memoryLimitMb == null ? 128 : memoryLimitMb);
         task.setCodeTemplate(codeTemplate);

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>资源广场 - 教学平台</title>
+    <title>资源广场 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
     <style>
         .resource-hero {
@@ -58,14 +58,17 @@
         .resource-card .res-type.pdf { background: #2a634b; color: #fff; }
         .resource-card .res-type.video { background: #d89632; }
         .resource-card .res-type.link { background: #7b5ea7; color: #fff; }
-        .resource-card .res-type.other { background: #ccc; }
+        .resource-card .res-type.other,
+        .resource-card .res-type.code { background: #ccc; }
         .resource-card h3 { margin: 0; font-size: 18px; }
         .resource-card .res-meta {
             font-size: 13px;
             color: var(--muted);
             display: flex;
             justify-content: space-between;
+            gap: 12px;
         }
+        .resource-card .card-actions { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -74,40 +77,43 @@
     <main class="main-area">
         <section class="resource-hero">
             <h1>资源广场</h1>
-            <p>浏览全平台公开的教学资源，包含课件、视频、文档等各类学习资料</p>
+            <p>浏览全平台公开教学资源，包含课件、视频、文档和代码资料。</p>
         </section>
 
         <div class="filter-bar">
             <label>资源类型：</label>
             <select id="typeFilter" onchange="filterResources()">
                 <option value="">全部类型</option>
-                <option value="ppt">PPT课件</option>
-                <option value="pdf">PDF文档</option>
+                <option value="ppt">PPT 课件</option>
+                <option value="pdf">PDF 文档</option>
                 <option value="video">视频</option>
-                <option value="link">链接</option>
+                <option value="code">代码资料</option>
                 <option value="other">其他</option>
             </select>
             <label style="margin-left:16px;">所属课程：</label>
             <select id="courseFilter" onchange="filterResources()">
                 <option value="">全部课程</option>
-                <option th:each="c : ${courseNames}" th:value="${c}" th:text="${c}">课程名</option>
+                <option th:each="c : ${courseNames}" th:value="${c}" th:text="${c}">课程名称</option>
             </select>
         </div>
 
         <div class="resource-list" th:if="${resources != null and !resources.isEmpty()}">
             <div class="resource-card" th:each="r : ${resources}" th:attr="data-type=${r.type},data-course=${r.courseName}">
-                <span class="res-type" th:classappend="${r.type}" th:text="${r.type}">ppt</span>
+                <span class="res-type" th:classappend="${r.type}" th:text="${r.type}">pdf</span>
                 <h3 th:text="${r.title}">资源标题</h3>
-                <span class="muted" th:if="${r.chapter != null}" th:text="'章节: ' + ${r.chapter}">章节</span>
+                <span class="muted" th:if="${r.chapter != null}" th:text="'章节：' + ${r.chapter}">章节</span>
                 <div class="res-meta">
-                    <span th:text="${r.courseName}">课程名</span>
+                    <span th:text="${r.courseName}">课程名称</span>
                     <span th:text="${#dates.format(r.createdAt, 'yyyy-MM-dd')}">日期</span>
+                </div>
+                <div class="card-actions">
+                    <a class="btn primary" th:href="@{/resource-square/download/{id}(id=${r.id})}">下载资源</a>
                 </div>
             </div>
         </div>
 
         <div class="content" th:if="${resources == null or resources.isEmpty()}">
-            <div class="empty">📭 资源广场暂无可浏览的资源，待教师上传后将在此展示。</div>
+            <div class="empty">资源广场暂无可浏览资源，待教师上传后将在此展示。</div>
         </div>
     </main>
 </div>

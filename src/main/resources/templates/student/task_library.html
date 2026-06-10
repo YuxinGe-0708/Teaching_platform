@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>作业考试 - TeachingPlatform</title>
+    <title>实验作业考试 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
 </head>
 <body>
 <div class="app-layout">
     <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
-        <header class="topbar"><h1>作业 / 考试聚合</h1></header>
+        <header class="topbar"><h1>实验作业 / 考试聚合</h1></header>
         <section class="content">
             <div class="toolbar">
                 <a class="btn" th:classappend="${type == 'all' ? ' primary' : ''}" href="/student/tasks?type=all">全部</a>
-                <a class="btn" th:classappend="${type == 'homework' ? ' primary' : ''}" href="/student/tasks?type=homework">作业</a>
+                <a class="btn" th:classappend="${type == 'homework' ? ' primary' : ''}" href="/student/tasks?type=homework">实验作业</a>
                 <a class="btn" th:classappend="${type == 'exam' ? ' primary' : ''}" href="/student/tasks?type=exam">考试</a>
                 <a class="btn" th:classappend="${type == 'programming' ? ' primary' : ''}" href="/student/tasks?type=programming">编程实训</a>
             </div>

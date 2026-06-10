@@ -50,7 +50,10 @@ public class ScoreService {
     public Map<String, Object> studentCourseScore(Long studentId, Long courseId) {
         Course course = courseMapper.findById(courseId);
         List<Task> tasks = taskMapper.findByCourseId(courseId);
-        List<Submission> submissions = submissionMapper.findByStudentId(studentId);
+        Set<Long> courseTaskIds = tasks.stream().map(Task::getId).collect(Collectors.toSet());
+        List<Submission> submissions = submissionMapper.findByStudentId(studentId).stream()
+                .filter(s -> s.getTaskId() != null && courseTaskIds.contains(s.getTaskId()))
+                .collect(Collectors.toList());
         Map<Long, Submission> byTask = submissions.stream()
                 .filter(s -> s.getTaskId() != null)
                 .collect(Collectors.toMap(Submission::getTaskId, s -> s, (a, b) -> a));
@@ -68,7 +71,7 @@ public class ScoreService {
         summary.put("examScore", categoryAverage(tasks, byTask, "exam"));
         summary.put("practiceScore", categoryAverage(tasks, byTask, "programming"));
         summary.put("finalScore", finalScore(tasks, byTask));
-        summary.put("submittedCount", byTask.size());
+        summary.put("submittedCount", tasks.stream().filter(t -> byTask.containsKey(t.getId())).count());
         summary.put("taskCount", tasks.size());
         summary.put("taskRows", taskRows);
         summary.put("learningProgress", learningProgress(studentId, courseId));
@@ -110,8 +113,10 @@ public class ScoreService {
 
     public Map<String, Object> learningProgress(Long studentId, Long courseId) {
         List<Task> tasks = taskMapper.findByCourseId(courseId);
+        Set<Long> courseTaskIds = tasks.stream().map(Task::getId).collect(Collectors.toSet());
         Set<Long> submittedTaskIds = submissionMapper.findByStudentId(studentId).stream()
                 .map(Submission::getTaskId)
+                .filter(taskId -> taskId != null && courseTaskIds.contains(taskId))
                 .collect(Collectors.toSet());
         long finishedTasks = tasks.stream().filter(t -> submittedTaskIds.contains(t.getId())).count();
         double taskProgress = tasks.isEmpty() ? 100 : finishedTasks * 100.0 / tasks.size();
@@ -206,7 +211,7 @@ public class ScoreService {
     private String displayTaskType(String type) {
         if ("exam".equals(type)) return "考试";
         if ("programming".equals(type)) return "编程实训";
-        return "作业";
+        return "实验作业";
     }
 
     private double asDouble(Object value) {
