@@ -32,7 +32,10 @@
                         <td>
                             <span class="status-badge" th:text="${task.completed ? (task.submission.score == null ? '已提交' : '已评分') : '未提交'}">状态</span>
                         </td>
-                        <td><a class="btn primary" th:href="@{/student/task/detail(taskId=${task.taskId})}">进入</a></td>
+                        <td>
+                            <a class="btn primary" th:if="${task.taskKind == 'exam'}" th:href="@{/student/exam/start(taskId=${task.taskId})}">进入考试</a>
+                            <a class="btn primary" th:if="${task.taskKind != 'exam'}" th:href="@{/student/task/detail(taskId=${task.taskId})}">进入</a>
+                        </td>
                     </tr>
                     <tr th:if="${#lists.isEmpty(tasks)}"><td colspan="6">暂无任务。</td></tr>
                     </tbody>

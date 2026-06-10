@@ -120,7 +120,8 @@
                         <p class="muted">满分：<span th:text="${task.fullScore}"></span></p>
                         <p th:text="${task.description ?: '暂无任务说明'}">任务说明</p>
                         <div class="card-actions">
-                            <a class="btn primary" th:href="@{/student/task/detail(taskId=${task.taskId})}" th:text="${task.taskKind == 'programming' ? '进入 IDE' : (task.taskKind == 'exam' ? '进入考试' : '进入作业')}">进入</a>
+                            <a class="btn primary" th:if="${task.taskKind == 'exam'}" th:href="@{/student/exam/start(taskId=${task.taskId})}">进入考试</a>
+                            <a class="btn primary" th:if="${task.taskKind != 'exam'}" th:href="@{/student/task/detail(taskId=${task.taskId})}" th:text="${task.taskKind == 'programming' ? '进入 IDE' : '进入作业'}">进入</a>
                         </div>
                     </article>
                 </div>

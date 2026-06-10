@@ -114,6 +114,23 @@ CREATE INDEX idx_submission_task ON `submission`(`task_id`);
 CREATE INDEX idx_submission_student ON `submission`(`student_id`);
 CREATE INDEX idx_notification_user ON `notification`(`user_id`, `is_read`);
 
+-- 考试记录表
+CREATE TABLE IF NOT EXISTS `exam_record` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `task_id` BIGINT NOT NULL,
+    `student_id` BIGINT NOT NULL,
+    `start_time` TIMESTAMP NULL COMMENT '开始答题时间',
+    `submit_time` TIMESTAMP NULL COMMENT '交卷时间',
+    `content` TEXT COMMENT '答题内容',
+    `score` DECIMAL(5,1) DEFAULT NULL,
+    `status` VARCHAR(20) NOT NULL DEFAULT 'NOT_STARTED' COMMENT 'NOT_STARTED/IN_PROGRESS/SUBMITTED/AUTO_SUBMITTED',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_exam_student_task` (`student_id`, `task_id`),
+    FOREIGN KEY (`task_id`) REFERENCES `task`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`student_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- CourseClass table (merge from dev branch)
 CREATE TABLE IF NOT EXISTS `course_class` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,

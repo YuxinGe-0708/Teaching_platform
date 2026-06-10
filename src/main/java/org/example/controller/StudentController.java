@@ -3,6 +3,7 @@ package org.example.controller;
 import org.example.entity.Course;
 import org.example.entity.CourseClass;
 import org.example.entity.CourseEnrollment;
+import org.example.entity.ExamRecord;
 import org.example.entity.OperationLog;
 import org.example.entity.StudyNote;
 import org.example.entity.Submission;
@@ -10,6 +11,7 @@ import org.example.entity.Task;
 import org.example.entity.User;
 import org.example.mapper.CourseClassMapper;
 import org.example.mapper.CourseEnrollmentMapper;
+import org.example.mapper.ExamRecordMapper;
 import org.example.mapper.OperationLogMapper;
 import org.example.mapper.SubmissionMapper;
 import org.example.mapper.TeachingResourceMapper;
@@ -18,6 +20,7 @@ import org.example.mapper.StudyNoteMapper;
 import org.example.mapper.UserMapper;
 import org.example.service.AiService;
 import org.example.service.CourseService;
+import org.example.service.ExamService;
 import org.example.service.ScoreService;
 import org.example.service.TaskService;
 import org.example.util.MarkdownUtils;
@@ -65,6 +68,8 @@ public class StudentController {
     private final UserMapper userMapper;
     private final StudyNoteMapper studyNoteMapper;
     private final AiService aiService;
+    private final ExamService examService;
+    private final ExamRecordMapper examRecordMapper;
 
     public StudentController(CourseService courseService,
                              TaskService taskService,
@@ -77,7 +82,9 @@ public class StudentController {
                              CourseClassMapper courseClassMapper,
                              UserMapper userMapper,
                              StudyNoteMapper studyNoteMapper,
-                             AiService aiService) {
+                             AiService aiService,
+                             ExamService examService,
+                             ExamRecordMapper examRecordMapper) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
@@ -90,6 +97,8 @@ public class StudentController {
         this.userMapper = userMapper;
         this.studyNoteMapper = studyNoteMapper;
         this.aiService = aiService;
+        this.examService = examService;
+        this.examRecordMapper = examRecordMapper;
     }
 
     @GetMapping("/course/selection")
@@ -301,6 +310,11 @@ public class StudentController {
         if (task == null) return "redirect:/student/course/my";
         Course course = courseService.findById(task.getCourseId());
         if (course == null || !isEnrolled(user.getId(), course.getId())) return "redirect:/student/course/my";
+
+        if ("exam".equals(task.getType())) {
+            return "redirect:/student/exam/start?taskId=" + taskId;
+        }
+
         Submission submission = taskService.getSubmission(user.getId(), taskId);
         String visibleMarkdown = TaskMetadataUtils.visibleMarkdown(task.getDescription());
         model.addAttribute("user", user);
@@ -326,6 +340,9 @@ public class StudentController {
         if (user == null) return "redirect:/login";
         Task task = taskService.findById(taskId);
         if (task == null) return "redirect:/student/course/my";
+        if ("exam".equals(task.getType())) {
+            return "redirect:/student/exam/start?taskId=" + taskId;
+        }
         String filePath = saveFile(file);
         String finalContent = content == null ? "" : content;
         if (finalContent.trim().isEmpty() && filePath == null) {
@@ -375,6 +392,164 @@ public class StudentController {
         submission.setJudgeResult(correct ? "AC" : "WA");
         submission.setFeedback(correct ? "系统自动判分：答案正确。" : "系统自动判分：答案与标准答案不一致。");
         submissionMapper.grade(submission);
+    }
+
+    @GetMapping("/exam/start")
+    public String examStart(@RequestParam Long taskId, HttpSession session, Model model) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        Task task = taskService.findById(taskId);
+        if (task == null || !"exam".equals(task.getType())) return "redirect:/student/tasks";
+        Course course = courseService.findById(task.getCourseId());
+        if (course == null || !isEnrolled(user.getId(), course.getId())) return "redirect:/student/course/my";
+
+        ExamRecord record = examService.getExamRecord(user.getId(), taskId);
+        if (record != null && record.isSubmitted()) {
+            model.addAttribute("error", "您已完成并提交了本次考试，不能重复参加。");
+            model.addAttribute("user", user);
+            model.addAttribute("task", UserController.toTaskView(task));
+            model.addAttribute("record", record);
+            return "student/exam_start";
+        }
+        if (record != null && record.isInProgress()) {
+            return "redirect:/student/exam/take?taskId=" + taskId;
+        }
+
+        String visibleMarkdown = TaskMetadataUtils.visibleMarkdown(task.getDescription());
+        model.addAttribute("user", user);
+        model.addAttribute("task", UserController.toTaskView(task));
+        model.addAttribute("course", UserController.toCourseView(course));
+        model.addAttribute("taskContentHtml", MarkdownUtils.toHtml(visibleMarkdown));
+        model.addAttribute("record", record);
+        return "student/exam_start";
+    }
+
+    @PostMapping("/exam/begin")
+    public String examBegin(@RequestParam Long taskId, HttpSession session, Model model) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        Task task = taskService.findById(taskId);
+        if (task == null || !"exam".equals(task.getType())) return "redirect:/student/tasks";
+
+        ExamRecord record = examService.getExamRecord(user.getId(), taskId);
+        if (record != null && record.isSubmitted()) {
+            model.addAttribute("error", "您已完成并提交了本次考试，不能重复参加。");
+            return examStart(taskId, session, model);
+        }
+
+        examService.beginExam(user.getId(), taskId);
+        return "redirect:/student/exam/take?taskId=" + taskId;
+    }
+
+    @GetMapping("/exam/take")
+    public String examTake(@RequestParam Long taskId, HttpSession session, Model model) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        Task task = taskService.findById(taskId);
+        if (task == null || !"exam".equals(task.getType())) return "redirect:/student/tasks";
+        Course course = courseService.findById(task.getCourseId());
+        if (course == null || !isEnrolled(user.getId(), course.getId())) return "redirect:/student/course/my";
+
+        ExamRecord record = examService.getExamRecord(user.getId(), taskId);
+        if (record == null) return "redirect:/student/exam/start?taskId=" + taskId;
+
+        if (record.isSubmitted()) {
+            model.addAttribute("user", user);
+            model.addAttribute("task", UserController.toTaskView(task));
+            model.addAttribute("course", UserController.toCourseView(course));
+            model.addAttribute("record", record);
+            model.addAttribute("alreadySubmitted", true);
+            model.addAttribute("autoSubmitted", false);
+            return "student/exam_take";
+        }
+
+        long remainingSeconds = examService.getRemainingSeconds(record, task);
+        if (remainingSeconds <= 0 && record.isInProgress()) {
+            examService.autoSubmitExam(user.getId(), taskId, record.getContent());
+            examService.createSubmissionFromExam(record, task);
+            model.addAttribute("user", user);
+            model.addAttribute("task", UserController.toTaskView(task));
+            model.addAttribute("course", UserController.toCourseView(course));
+            model.addAttribute("record", record);
+            model.addAttribute("alreadySubmitted", true);
+            model.addAttribute("autoSubmitted", true);
+            return "student/exam_take";
+        }
+
+        String visibleMarkdown = TaskMetadataUtils.visibleMarkdown(task.getDescription());
+        model.addAttribute("user", user);
+        model.addAttribute("task", UserController.toTaskView(task));
+        model.addAttribute("course", UserController.toCourseView(course));
+        model.addAttribute("taskContentHtml", MarkdownUtils.toHtml(visibleMarkdown));
+        model.addAttribute("record", record);
+        model.addAttribute("remainingSeconds", remainingSeconds);
+        model.addAttribute("alreadySubmitted", false);
+        return "student/exam_take";
+    }
+
+    @PostMapping("/exam/submit")
+    public String examSubmit(@RequestParam Long taskId,
+                             @RequestParam(required = false) String content,
+                             @RequestParam(required = false, defaultValue = "false") boolean auto,
+                             HttpSession session,
+                             Model model) {
+        User user = requireStudent(session);
+        if (user == null) return "redirect:/login";
+        Task task = taskService.findById(taskId);
+        if (task == null || !"exam".equals(task.getType())) return "redirect:/student/tasks";
+
+        String answer = content == null ? "" : content;
+        ExamRecord record;
+        if (auto) {
+            ExamRecord current = examService.getExamRecord(user.getId(), taskId);
+            if (current != null && current.isSubmitted()) {
+                record = current;
+            } else {
+                String currentContent = current != null ? current.getContent() : "";
+                String finalContent = answer.isEmpty() ? currentContent : answer;
+                record = examService.autoSubmitExam(user.getId(), taskId, finalContent);
+            }
+        } else {
+            ExamRecord current = examService.getExamRecord(user.getId(), taskId);
+            if (current != null && current.isSubmitted()) {
+                record = current;
+            } else {
+                record = examService.submitExam(user.getId(), taskId, answer);
+            }
+        }
+
+        if (record != null && !record.isSubmitted()) {
+            record = examService.submitExam(user.getId(), taskId, answer);
+        }
+
+        examService.createSubmissionFromExam(record, task);
+        log(user, "考试交卷", task.getTitle());
+
+        model.addAttribute("user", user);
+        model.addAttribute("task", UserController.toTaskView(task));
+        model.addAttribute("record", record);
+        model.addAttribute("alreadySubmitted", true);
+        model.addAttribute("autoSubmitted", auto);
+        return "student/exam_take";
+    }
+
+    @PostMapping("/exam/save")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public java.util.Map<String, Object> examSave(@RequestParam Long taskId,
+                                                   @RequestParam(required = false) String content,
+                                                   HttpSession session) {
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        User user = requireStudent(session);
+        if (user == null) {
+            result.put("code", 401);
+            result.put("msg", "请先登录");
+            return result;
+        }
+        ExamRecord record = examService.saveProgress(user.getId(), taskId, content);
+        result.put("code", 200);
+        result.put("msg", "已保存");
+        result.put("saved", record != null && !record.isSubmitted());
+        return result;
     }
 
     private User requireStudent(HttpSession session) {

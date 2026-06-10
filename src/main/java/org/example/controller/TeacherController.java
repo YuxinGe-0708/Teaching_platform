@@ -3,11 +3,13 @@ package org.example.controller;
 import org.example.entity.Course;
 import org.example.entity.CourseClass;
 import org.example.entity.CourseEnrollment;
+import org.example.entity.ExamRecord;
 import org.example.entity.Submission;
 import org.example.entity.Task;
 import org.example.entity.User;
 import org.example.mapper.CourseClassMapper;
 import org.example.mapper.CourseEnrollmentMapper;
+import org.example.mapper.ExamRecordMapper;
 import org.example.mapper.SubmissionMapper;
 import org.example.mapper.UserMapper;
 import org.example.service.CourseService;
@@ -49,6 +51,7 @@ public class TeacherController {
     private final CourseEnrollmentMapper enrollmentMapper;
     private final UserMapper userMapper;
     private final ScoreService scoreService;
+    private final ExamRecordMapper examRecordMapper;
 
     public TeacherController(CourseService courseService,
                              TaskService taskService,
@@ -56,7 +59,8 @@ public class TeacherController {
                              CourseClassMapper courseClassMapper,
                              CourseEnrollmentMapper enrollmentMapper,
                              UserMapper userMapper,
-                             ScoreService scoreService) {
+                             ScoreService scoreService,
+                             ExamRecordMapper examRecordMapper) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
@@ -64,6 +68,7 @@ public class TeacherController {
         this.enrollmentMapper = enrollmentMapper;
         this.userMapper = userMapper;
         this.scoreService = scoreService;
+        this.examRecordMapper = examRecordMapper;
     }
 
     @GetMapping("/course/manage")
@@ -255,6 +260,9 @@ public class TeacherController {
         model.addAttribute("task", UserController.toTaskView(task));
         model.addAttribute("taskContentHtml", MarkdownUtils.toHtml(TaskMetadataUtils.visibleMarkdown(task.getDescription())));
         model.addAttribute("submissions", submissionMapper.findByTaskId(taskId));
+        if ("exam".equals(task.getType())) {
+            model.addAttribute("examRecords", examRecordMapper.findByTaskId(taskId));
+        }
         return "teacher/task_detail";
     }
 

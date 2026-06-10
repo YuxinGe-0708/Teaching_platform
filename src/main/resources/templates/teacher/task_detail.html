@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
@@ -17,21 +17,52 @@
                 <p class="muted">满分：<span th:text="${task.fullScore}"></span> ｜ 状态：<span th:text="${task.status}"></span></p>
                 <div class="task-content" th:if="${taskContentHtml != null && taskContentHtml != ''}" th:utext="${taskContentHtml}">任务内容</div>
             </div>
-            <table>
-                <thead><tr><th>学生</th><th>提交时间</th><th>状态</th><th>得分</th><th>评测</th><th>附件</th><th>操作</th></tr></thead>
-                <tbody>
-                <tr th:each="sub : ${submissions}">
-                    <td th:text="${sub.studentName != null ? sub.studentName : '学生ID:' + sub.studentId}">学生</td>
-                    <td th:text="${#dates.format(sub.submitTime, 'yyyy-MM-dd HH:mm')}">提交时间</td>
-                    <td><span class="status-badge" th:text="${sub.submitStatus}">状态</span></td>
-                    <td th:text="${sub.score != null ? sub.score + '分' : '未批改'}">得分</td>
-                    <td th:text="${sub.judgeStatus}">评测</td>
-                    <td><a th:if="${sub.fileUrl != null}" class="btn" th:href="@{/teacher/task/download(filePath=${sub.fileUrl})}">下载</a><span th:if="${sub.fileUrl == null}">-</span></td>
-                    <td><a class="btn primary" th:href="@{/teacher/task/grade/{submissionId}(submissionId=${sub.submissionId})}">批改</a></td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(submissions)}"><td colspan="7">暂无提交。</td></tr>
-                </tbody>
-            </table>
+
+            <!-- Exam records table -->
+            <div th:if="${examRecords != null}">
+                <h2>考试记录</h2>
+                <table>
+                    <thead><tr><th>学生</th><th>考试状态</th><th>开始时间</th><th>交卷时间</th><th>得分</th><th>提交内容</th><th>操作</th></tr></thead>
+                    <tbody>
+                    <tr th:each="er : ${examRecords}">
+                        <td th:text="${er.studentName != null ? er.studentName : '学生ID:' + er.studentId}">学生</td>
+                        <td>
+                            <span th:if="${er.status == 'NOT_STARTED'}" class="status-badge">未开始</span>
+                            <span th:if="${er.status == 'IN_PROGRESS'}" class="status-badge" style="background:#e6b422;">答题中</span>
+                            <span th:if="${er.status == 'SUBMITTED'}" class="status-badge" style="background:#4a7c59;">已交卷</span>
+                            <span th:if="${er.status == 'AUTO_SUBMITTED'}" class="status-badge" style="background:#c44;">超时自动交卷</span>
+                        </td>
+                        <td th:text="${er.startTime != null ? #dates.format(er.startTime, 'yyyy-MM-dd HH:mm:ss') : '-'}">开始时间</td>
+                        <td th:text="${er.submitTime != null ? #dates.format(er.submitTime, 'yyyy-MM-dd HH:mm:ss') : '-'}">交卷时间</td>
+                        <td th:text="${er.score != null ? er.score + '分' : '未评分'}">得分</td>
+                        <td th:text="${er.content != null && er.content.length() > 50 ? er.content.substring(0, 50) + '...' : er.content}">内容</td>
+                        <td>
+                            <a th:each="sub : ${submissions}" th:if="${sub.studentId == er.studentId}" class="btn primary" th:href="@{/teacher/task/grade/{submissionId}(submissionId=${sub.submissionId})}">批改</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(examRecords)}"><td colspan="7">暂无考试记录。</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Regular submissions table -->
+            <div th:if="${examRecords == null}">
+                <table>
+                    <thead><tr><th>学生</th><th>提交时间</th><th>状态</th><th>得分</th><th>评测</th><th>附件</th><th>操作</th></tr></thead>
+                    <tbody>
+                    <tr th:each="sub : ${submissions}">
+                        <td th:text="${sub.studentName != null ? sub.studentName : '学生ID:' + sub.studentId}">学生</td>
+                        <td th:text="${#dates.format(sub.submitTime, 'yyyy-MM-dd HH:mm')}">提交时间</td>
+                        <td><span class="status-badge" th:text="${sub.submitStatus}">状态</span></td>
+                        <td th:text="${sub.score != null ? sub.score + '分' : '未批改'}">得分</td>
+                        <td th:text="${sub.judgeStatus}">评测</td>
+                        <td><a th:if="${sub.fileUrl != null}" class="btn" th:href="@{/teacher/task/download(filePath=${sub.fileUrl})}">下载</a><span th:if="${sub.fileUrl == null}">-</span></td>
+                        <td><a class="btn primary" th:href="@{/teacher/task/grade/{submissionId}(submissionId=${sub.submissionId})}">批改</a></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(submissions)}"><td colspan="7">暂无提交。</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
     </main>
 </div>

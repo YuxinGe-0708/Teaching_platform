@@ -268,6 +268,22 @@ public class DatabaseInitializer {
         addIndexIfMissing("task", "idx_task_end_time", "(`end_time`)");
         addIndexIfMissing("submission", "idx_submission_task", "(`task_id`)");
         addIndexIfMissing("submission", "idx_submission_student", "(`student_id`)");
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS `exam_record` ("
+                + "`id` BIGINT AUTO_INCREMENT PRIMARY KEY,"
+                + "`task_id` BIGINT NOT NULL,"
+                + "`student_id` BIGINT NOT NULL,"
+                + "`start_time` TIMESTAMP NULL COMMENT '开始答题时间',"
+                + "`submit_time` TIMESTAMP NULL COMMENT '交卷时间',"
+                + "`content` TEXT COMMENT '答题内容',"
+                + "`score` DECIMAL(5,1) DEFAULT NULL,"
+                + "`status` VARCHAR(20) NOT NULL DEFAULT 'NOT_STARTED' COMMENT 'NOT_STARTED/IN_PROGRESS/SUBMITTED/AUTO_SUBMITTED',"
+                + "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                + "`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                + "UNIQUE KEY `uk_exam_student_task` (`student_id`, `task_id`),"
+                + "FOREIGN KEY (`task_id`) REFERENCES `task`(`id`) ON DELETE CASCADE,"
+                + "FOREIGN KEY (`student_id`) REFERENCES `user`(`id`) ON DELETE CASCADE"
+                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
         addIndexIfMissing("notification", "idx_notification_user", "(`user_id`, `is_read`)");
     }
 }

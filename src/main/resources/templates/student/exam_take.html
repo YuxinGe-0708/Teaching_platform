@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在考试 - TeachingPlatform</title>
+    <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <style>
+        .exam-container { max-width: 900px; margin: 0 auto; }
+        .countdown-bar { position: sticky; top: 0; z-index: 100; background: var(--bg-header, #1a2a1a); border: 1px solid var(--border-color, #333); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-radius: 4px; }
+        .countdown-bar .label { font-size: 1rem; color: var(--text-muted, #999); }
+        .countdown-bar .timer { font-size: 1.8rem; font-weight: bold; font-family: 'Courier New', monospace; }
+        .countdown-bar .timer.normal { color: #4a7c59; }
+        .countdown-bar .timer.warning { color: #e6b422; animation: blink 1s infinite; }
+        .countdown-bar .timer.danger { color: #c44; animation: blink 0.5s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .exam-question { background: #1a1a2e; border: 1px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 4px; color: #e0e0e0; }
+        .exam-question h3 { color: #f5f0e8; }
+        .answer-section { background: #1a1a2e; border: 1px solid #333; padding: 20px; margin-bottom: 20px; border-radius: 4px; color: #e0e0e0; }
+        .answer-section h3 { color: #f5f0e8; }
+        .answer-section textarea { width: 100%; min-height: 300px; background: #0d0d1a; color: #e0e0e0; border: 1px solid #333; padding: 12px; font-size: 1rem; font-family: 'Courier New', monospace; resize: vertical; border-radius: 4px; }
+        .answer-section textarea:focus { outline: none; border-color: #4a7c59; }
+        .action-row { display: flex; gap: 12px; justify-content: flex-end; margin-top: 12px; }
+        .submit-btn { padding: 12px 36px; font-size: 1.1rem; cursor: pointer; background: #4a7c59; color: #f5f0e8; border: none; border-radius: 4px; transition: background 0.2s; }
+        .submit-btn:hover { background: #3a6c49; }
+        .submit-btn:disabled { background: #555; cursor: not-allowed; }
+        .save-hint { font-size: 0.85rem; color: #999; text-align: right; margin-top: 6px; }
+        .result-panel { background: #1a1a2e; border: 1px solid #333; padding: 20px; border-radius: 4px; text-align: center; color: #e0e0e0; }
+        .result-panel h2 { color: #f5f0e8; }
+        .result-panel .result-icon { font-size: 3rem; margin-bottom: 12px; }
+        .result-panel .result-icon.success { color: #4a7c59; }
+        .result-panel .result-icon.autosubmit { color: #e6b422; }
+    </style>
+</head>
+<body>
+<div class="app-layout">
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
+    <main class="main-area">
+        <header class="topbar">
+            <h1 th:text="'考试：' + ${task.title}">考试</h1>
+            <a class="btn" th:href="@{/student/exam/start(taskId=${task.taskId})}">考试信息</a>
+        </header>
+        <section class="content">
+            <div class="exam-container">
+                <!-- 已交卷结果展示 -->
+                <div class="result-panel" th:if="${alreadySubmitted}">
+                    <div class="result-icon" th:classappend="${autoSubmitted ? 'autosubmit' : 'success'}" th:text="${autoSubmitted ? '⏰' : '✓'}">✓</div>
+                    <h2 th:text="${autoSubmitted ? '考试时间到，系统已自动交卷' : '考试已提交'}">考试已提交</h2>
+                    <p>提交方式：<span th:text="${autoSubmitted ? '超时自动提交' : '主动提交'}"></span></p>
+                    <p th:if="${record.submitTime != null}">交卷时间：<span th:text="${#dates.format(record.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
+                    <p th:if="${record.score != null}">得分：<strong th:text="${record.score}"></strong> / <span th:text="${task.fullScore}"></span></p>
+                    <a class="btn" th:href="@{/student/tasks}">返回任务列表</a>
+                </div>
+
+                <!-- 考试进行中 -->
+                <th:block th:if="${!alreadySubmitted}">
+                    <div class="countdown-bar" id="countdownBar">
+                        <span class="label">剩余时间</span>
+                        <span class="timer normal" id="countdown">--:--:--</span>
+                    </div>
+
+                    <div class="exam-question" th:if="${taskContentHtml != null && taskContentHtml != ''}">
+                        <h3>考试题目</h3>
+                        <div th:utext="${taskContentHtml}"></div>
+                    </div>
+
+                    <div class="answer-section">
+                        <h3>答题区域</h3>
+                        <form id="examForm" th:action="@{/student/exam/submit}" method="post">
+                            <input type="hidden" name="taskId" th:value="${task.taskId}">
+                            <textarea id="examAnswer" name="content" th:text="${record != null ? record.content : ''}" placeholder="请在此输入您的答案..."></textarea>
+                            <div class="action-row">
+                                <button type="button" class="btn" id="saveBtn">暂存草稿</button>
+                                <button type="submit" class="submit-btn" id="submitBtn">提交试卷</button>
+                            </div>
+                        </form>
+                        <p class="save-hint" id="saveHint">答题内容每分钟自动保存</p>
+                    </div>
+                </th:block>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script th:if="${!alreadySubmitted}" th:inline="javascript">
+    const taskId = /*[[${task.taskId}]]*/ 0;
+    let remainingSeconds = /*[[${remainingSeconds}]]*/ 0;
+    const countdownEl = document.getElementById('countdown');
+    const countdownBar = document.getElementById('countdownBar');
+    const submitBtn = document.getElementById('submitBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const saveHint = document.getElementById('saveHint');
+    const answerArea = document.getElementById('examAnswer');
+    const examForm = document.getElementById('examForm');
+
+    let submitted = false;
+    const autoSaveInterval = 60000; // 60 seconds
+    const submitUrl = '/student/exam/submit';
+    const saveUrl = '/student/exam/save';
+
+    function formatTime(seconds) {
+        if (seconds <= 0) return '00:00:00';
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = seconds % 60;
+        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    function updateCountdown() {
+        if (remainingSeconds <= 0) {
+            countdownEl.textContent = '00:00:00';
+            countdownEl.className = 'timer danger';
+            autoSubmit();
+            return;
+        }
+        countdownEl.textContent = formatTime(remainingSeconds);
+        if (remainingSeconds <= 300) {
+            countdownEl.className = 'timer danger';
+        } else if (remainingSeconds <= 600) {
+            countdownEl.className = 'timer warning';
+        } else {
+            countdownEl.className = 'timer normal';
+        }
+        remainingSeconds--;
+    }
+
+    async function autoSave() {
+        if (submitted) return;
+        try {
+            const resp = await fetch(saveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'taskId=' + encodeURIComponent(taskId) + '&content=' + encodeURIComponent(answerArea.value)
+            });
+            const data = await resp.json();
+            if (data.code === 200) {
+                saveHint.textContent = '已自动保存 ' + new Date().toLocaleTimeString('zh-CN');
+            }
+        } catch (e) {
+            saveHint.textContent = '自动保存失败';
+        }
+    }
+
+    async function autoSubmit() {
+        if (submitted) return;
+        submitted = true;
+        submitBtn.disabled = true;
+        saveBtn.disabled = true;
+        saveHint.textContent = '考试时间到，正在自动提交...';
+        try {
+            const resp = await fetch(submitUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'taskId=' + encodeURIComponent(taskId) + '&content=' + encodeURIComponent(answerArea.value) + '&auto=true'
+            });
+            if (resp.redirected) {
+                window.location.href = resp.url;
+            } else {
+                window.location.reload();
+            }
+        } catch (e) {
+            saveHint.textContent = '自动提交失败，请手动提交';
+            submitted = false;
+            submitBtn.disabled = false;
+        }
+    }
+
+    // Countdown timer - tick every second
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+
+    // Auto-save every 60 seconds
+    setInterval(autoSave, autoSaveInterval);
+
+    // Manual save button
+    saveBtn.addEventListener('click', async () => {
+        if (submitted) return;
+        saveHint.textContent = '保存中...';
+        await autoSave();
+    });
+
+    // Confirm before submit
+    examForm.addEventListener('submit', (e) => {
+        if (submitted) {
+            e.preventDefault();
+            return;
+        }
+        if (answerArea.value.trim() === '') {
+            if (!confirm('答案内容为空，确定要提交空白试卷吗？')) {
+                e.preventDefault();
+                return;
+            }
+        }
+        if (!confirm('确定要提交试卷吗？提交后将不可修改。')) {
+            e.preventDefault();
+            return;
+        }
+        submitted = true;
+        submitBtn.disabled = true;
+    });
+
+    // Warn before leaving
+    window.addEventListener('beforeunload', (e) => {
+        if (!submitted && answerArea.value.trim() !== '') {
+            e.preventDefault();
+            e.returnValue = '考试尚未提交，确定离开吗？';
+            return e.returnValue;
+        }
+    });
+
+    // Warn before going back
+    window.addEventListener('popstate', (e) => {
+        if (!submitted && answerArea.value.trim() !== '') {
+            if (!confirm('考试尚未提交，确定离开吗？')) {
+                history.pushState(null, '', window.location.href);
+            }
+        }
+    });
+    history.pushState(null, '', window.location.href);
+</script>
+</body>
+</html>
