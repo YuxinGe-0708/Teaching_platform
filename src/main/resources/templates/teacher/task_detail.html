@@ -52,7 +52,9 @@
                             <td th:text="${sub.judgeStatus}">评测</td>
                             <td>
                                 <a th:if="${sub.fileUrl != null}" class="btn" th:href="@{/teacher/task/download(filePath=${sub.fileUrl})}">下载</a>
-                                <span th:if="${sub.fileUrl == null}">-</span>
+                                <span th:if="${sub.fileUrl == null && examAttachmentCounts != null && examAttachmentCounts[sub.submissionId] != null && examAttachmentCounts[sub.submissionId] > 0}"
+                                      th:text="${examAttachmentCounts[sub.submissionId]} + ' 个附件，进入批改页下载'">进入批改页下载</span>
+                                <span th:if="${sub.fileUrl == null && (examAttachmentCounts == null || examAttachmentCounts[sub.submissionId] == null || examAttachmentCounts[sub.submissionId] == 0)}">-</span>
                             </td>
                             <td><a class="btn primary" th:href="@{/teacher/task/grade/{submissionId}(submissionId=${sub.submissionId})}">批改</a></td>
                         </tr>

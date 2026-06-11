@@ -5,6 +5,7 @@ import org.example.entity.Submission;
 import org.example.entity.Task;
 import org.example.mapper.ExamRecordMapper;
 import org.example.mapper.SubmissionMapper;
+import org.example.util.ExamContentUtils;
 import org.example.util.TaskMetadataUtils;
 import org.springframework.stereotype.Service;
 
@@ -77,31 +78,35 @@ public class ExamService {
     }
 
     private ExamRecord doSubmit(Long studentId, Long taskId, String content, String status) {
+        Timestamp now = new Timestamp(System.currentTimeMillis());
         ExamRecord record = examRecordMapper.findByStudentAndTask(studentId, taskId);
         if (record == null) {
             record = new ExamRecord();
             record.setTaskId(taskId);
             record.setStudentId(studentId);
-            record.setStartTime(new Timestamp(System.currentTimeMillis()));
+            record.setStartTime(now);
             record.setContent(content != null ? content : "");
-            record.setSubmitTime(new Timestamp(System.currentTimeMillis()));
+            record.setSubmitTime(now);
             record.setStatus(status);
             examRecordMapper.insert(record);
+            examRecordMapper.submit(record);
             return record;
         }
         if (record.isSubmitted()) return record;
         record.setContent(content != null ? content : "");
-        record.setSubmitTime(new Timestamp(System.currentTimeMillis()));
+        record.setSubmitTime(now);
         record.setStatus(status);
         examRecordMapper.submit(record);
         return record;
     }
 
     public void createSubmissionFromExam(ExamRecord record, Task task) {
+        if (record == null || task == null) return;
         Submission submission = submissionMapper.findByStudentAndTask(record.getStudentId(), record.getTaskId());
         String content = record.getContent() != null ? record.getContent() : "";
-        boolean teacherGraded = submission != null && "graded".equals(submission.getStatus())
-                && submission.getFeedback() != null && !submission.getFeedback().startsWith("系统自动判分");
+        boolean autoGraded = submission != null && "graded".equals(submission.getStatus())
+                && submission.getFeedback() != null && submission.getFeedback().startsWith("系统自动判分");
+        boolean teacherGraded = submission != null && "graded".equals(submission.getStatus()) && !autoGraded;
 
         if (submission == null) {
             submission = new Submission();
@@ -121,13 +126,20 @@ public class ExamService {
             autoGradeExam(task, submission, content);
         }
         record.setScore(submission.getScore());
+        if (record.getSubmitTime() == null) {
+            record.setSubmitTime(new Timestamp(System.currentTimeMillis()));
+        }
+        if (record.getStatus() == null || !record.isSubmitted()) {
+            record.setStatus("SUBMITTED");
+        }
         examRecordMapper.submit(record);
     }
 
     private void autoGradeExam(Task task, Submission submission, String content) {
         String answer = TaskMetadataUtils.examAnswer(task.getDescription());
         if (answer == null || answer.trim().isEmpty()) return;
-        boolean correct = answer.trim().equalsIgnoreCase(content == null ? "" : content.trim());
+        String submittedAnswer = ExamContentUtils.firstAnswerText(content);
+        boolean correct = answer.trim().equalsIgnoreCase(submittedAnswer.trim());
         submission.setScore(correct ? Double.valueOf(task.getMaxScore() == null ? 100 : task.getMaxScore()) : 0D);
         submission.setStatus("graded");
         submission.setJudgeResult(correct ? "AC" : "WA");

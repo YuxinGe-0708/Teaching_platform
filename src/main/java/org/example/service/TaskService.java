@@ -6,7 +6,10 @@ import org.example.mapper.SubmissionMapper;
 import org.example.mapper.TaskMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class TaskService {
@@ -32,11 +35,11 @@ public class TaskService {
     }
 
     public List<Task> getCourseTasks(Long courseId) {
-        return taskMapper.findByCourseId(courseId);
+        return distinctTasks(taskMapper.findByCourseId(courseId));
     }
 
     public List<Task> getStudentTasks(Long studentId) {
-        return taskMapper.findByStudentId(studentId);
+        return distinctTasks(taskMapper.findByStudentId(studentId));
     }
 
     public Task updateTask(Task task) {
@@ -74,5 +77,14 @@ public class TaskService {
 
     public List<Submission> getStudentSubmissions(Long studentId) {
         return submissionMapper.findByStudentId(studentId);
+    }
+
+    private List<Task> distinctTasks(List<Task> tasks) {
+        Map<Long, Task> unique = new LinkedHashMap<>();
+        for (Task task : tasks) {
+            if (task == null || task.getId() == null) continue;
+            unique.putIfAbsent(task.getId(), task);
+        }
+        return new ArrayList<>(unique.values());
     }
 }

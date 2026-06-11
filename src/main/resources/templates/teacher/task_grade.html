@@ -1,33 +1,81 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>批改任务 - TeachingPlatform</title>
     <link rel="stylesheet" th:href="@{/css/cyberpunk.css}">
+    <style>
+        .question-grade-list { display: grid; gap: 14px; }
+        .question-grade-card { border: 2px solid var(--border-color); padding: 14px; background: #fdfbf7; }
+        .question-grade-card pre { white-space: pre-wrap; word-break: break-word; }
+        .grade-row { display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); gap: 12px; align-items: start; }
+        .attachment-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        @media (max-width: 720px) { .grade-row { grid-template-columns: 1fr; } }
+    </style>
 </head>
 <body>
 <div class="app-layout">
     <aside th:replace="fragments/sidebar :: sidebar"></aside>
     <main class="main-area">
-        <header class="topbar"><h1>批改任务</h1><a class="btn" href="/teacher/task/manage">返回</a></header>
+        <header class="topbar">
+            <h1>批改任务</h1>
+            <a class="btn" th:href="${submission != null ? '/teacher/task/detail/' + submission.taskId : '/teacher/task/manage'}">返回</a>
+        </header>
         <section class="content">
             <div class="panel" th:if="${submission != null}">
                 <h2 th:text="${submission.taskTitle}">实验作业</h2>
                 <p>学生：<span th:text="${submission.studentName != null ? submission.studentName : '学生ID:' + submission.studentId}"></span></p>
                 <p>提交时间：<span th:text="${#dates.format(submission.submitTime, 'yyyy-MM-dd HH:mm:ss')}"></span></p>
                 <p>评测结果：<span th:text="${submission.judgeStatus}">-</span></p>
-                <div style="border:2px solid var(--border-color); padding:14px; margin:16px 0; background:#fdfbf7;">
-                    <h3>提交内容</h3>
-                    <pre th:text="${submission.content != null ? submission.content : '无内容'}"></pre>
-                    <a th:if="${submission.fileUrl != null}" class="btn" th:href="@{/teacher/task/download(filePath=${submission.fileUrl})}">查看附件</a>
-                </div>
-                <form action="/teacher/task/grade" method="post" class="form">
+
+                <form action="/teacher/task/grade" method="post" class="form" id="gradeForm">
                     <input type="hidden" name="submissionId" th:value="${submission.submissionId}">
-                    <label for="score">得分</label>
-                    <input id="score" type="number" name="score" step="0.5" th:value="${submission.score != null ? submission.score : ''}" required>
-                    <label for="comment">评语</label>
-                    <textarea id="comment" name="comment" th:text="${submission.comment}"></textarea>
+                    <input type="hidden" name="questionScores" id="questionScores">
+                    <input type="hidden" name="questionComments" id="questionComments">
+
+                    <div th:if="${questionRows != null}" class="question-grade-list">
+                        <article class="question-grade-card" th:each="row, stat : ${questionRows}" th:attr="data-question-id=${row.id}">
+                            <span class="status-badge" th:text="'第 ' + ${stat.index + 1} + ' 题 / ' + ${row.score} + ' 分'">第 1 题</span>
+                            <h3 th:text="${row.title}">题目</h3>
+                            <p th:text="${row.content}">题干</p>
+                            <h4>学生答案</h4>
+                            <pre th:text="${row.answer != null && row.answer != '' ? row.answer : '未填写'}">答案</pre>
+                            <div>
+                                <strong>本题附件</strong>
+                                <div class="attachment-actions" th:if="${!#lists.isEmpty(row.attachments)}">
+                                    <a class="btn" th:each="file : ${row.attachments}"
+                                       th:href="@{/teacher/task/download(filePath=${file.path})}"
+                                       th:text="${file.name}">下载附件</a>
+                                </div>
+                                <p class="muted" th:if="${#lists.isEmpty(row.attachments)}">本题未上传附件。</p>
+                            </div>
+                            <div class="grade-row">
+                                <div>
+                                    <label>本题得分</label>
+                                    <input class="question-score" type="number" min="0" step="0.5"
+                                           th:attr="max=${row.score}" th:value="${row.grade}">
+                                </div>
+                                <div>
+                                    <label>本题评语</label>
+                                    <textarea class="question-comment" th:text="${row.comment}" style="min-height:72px;"></textarea>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div th:if="${questionRows == null}" style="border:2px solid var(--border-color); padding:14px; margin:16px 0; background:#fdfbf7;">
+                        <h3>提交内容</h3>
+                        <pre th:text="${submission.content != null ? submission.content : '无内容'}"></pre>
+                        <a th:if="${submission.fileUrl != null}" class="btn" th:href="@{/teacher/task/download(filePath=${submission.fileUrl})}">下载附件</a>
+                    </div>
+
+                    <label for="score" th:if="${questionRows == null}">得分</label>
+                    <input id="score" th:if="${questionRows == null}" type="number" name="score" step="0.5"
+                           th:value="${submission.score != null ? submission.score : ''}" required>
+
+                    <label for="comment">总评语</label>
+                    <textarea id="comment" name="comment" th:text="${visibleComment != null ? visibleComment : submission.comment}"></textarea>
                     <button type="submit">保存批改</button>
                 </form>
             </div>
@@ -35,5 +83,25 @@
         </section>
     </main>
 </div>
+<script>
+const gradeForm = document.getElementById('gradeForm');
+if (gradeForm) {
+    gradeForm.addEventListener('submit', () => {
+        const scores = {};
+        const comments = {};
+        document.querySelectorAll('.question-grade-card').forEach(card => {
+            const id = card.getAttribute('data-question-id');
+            const score = card.querySelector('.question-score');
+            const comment = card.querySelector('.question-comment');
+            if (id && score && score.value !== '') scores[id] = score.value;
+            if (id && comment && comment.value.trim() !== '') comments[id] = comment.value.trim();
+        });
+        const scoreField = document.getElementById('questionScores');
+        const commentField = document.getElementById('questionComments');
+        if (scoreField) scoreField.value = JSON.stringify(scores);
+        if (commentField) commentField.value = JSON.stringify(comments);
+    });
+}
+</script>
 </body>
 </html>

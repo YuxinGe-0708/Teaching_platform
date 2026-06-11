@@ -23,11 +23,11 @@ import org.example.service.CourseService;
 import org.example.service.ExamService;
 import org.example.service.ScoreService;
 import org.example.service.TaskService;
+import org.example.util.DownloadUtils;
+import org.example.util.ExamContentUtils;
 import org.example.util.MarkdownUtils;
 import org.example.util.TaskMetadataUtils;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpSession;
@@ -172,8 +173,10 @@ public class StudentController {
         Map<Long, Submission> byTask = submissions.stream()
                 .filter(s -> s.getTaskId() != null)
                 .collect(Collectors.toMap(Submission::getTaskId, s -> s, (a, b) -> a));
+        Set<Long> addedTaskIds = new java.util.LinkedHashSet<>();
         for (Course course : courseService.getStudentCourses(user.getId())) {
             for (Task task : taskService.getCourseTasks(course.getId())) {
+                if (task.getId() == null || !addedTaskIds.add(task.getId())) continue;
                 if (!"published".equals(task.getStatus())) continue;
                 if (!"all".equals(activeType) && !activeType.equals(task.getType())) continue;
                 Map<String, Object> row = UserController.toTaskView(task);
@@ -373,14 +376,7 @@ public class StudentController {
 
     @GetMapping("/task/download")
     public ResponseEntity<Resource> downloadTaskFile(@RequestParam String filePath) throws Exception {
-        Path path = Paths.get(filePath);
-        Resource resource = new UrlResource(path.toUri());
-        if (resource.exists() || resource.isReadable()) {
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
-        }
-        throw new RuntimeException("Could not read the file");
+        return DownloadUtils.attachment(filePath);
     }
 
     private void autoGradeExam(Task task, Submission submission, String content) {
@@ -408,6 +404,8 @@ public class StudentController {
             model.addAttribute("error", "您已完成并提交了本次考试，不能重复参加。");
             model.addAttribute("user", user);
             model.addAttribute("task", UserController.toTaskView(task));
+            model.addAttribute("course", UserController.toCourseView(course));
+            model.addAttribute("taskContentHtml", MarkdownUtils.toHtml(TaskMetadataUtils.visibleMarkdown(task.getDescription())));
             model.addAttribute("record", record);
             return "student/exam_start";
         }
@@ -430,6 +428,8 @@ public class StudentController {
         if (user == null) return "redirect:/login";
         Task task = taskService.findById(taskId);
         if (task == null || !"exam".equals(task.getType())) return "redirect:/student/tasks";
+        Course course = courseService.findById(task.getCourseId());
+        if (course == null || !isEnrolled(user.getId(), course.getId())) return "redirect:/student/course/my";
 
         ExamRecord record = examService.getExamRecord(user.getId(), taskId);
         if (record != null && record.isSubmitted()) {
@@ -465,7 +465,7 @@ public class StudentController {
 
         long remainingSeconds = examService.getRemainingSeconds(record, task);
         if (remainingSeconds <= 0 && record.isInProgress()) {
-            examService.autoSubmitExam(user.getId(), taskId, record.getContent());
+            record = examService.autoSubmitExam(user.getId(), taskId, record.getContent());
             examService.createSubmissionFromExam(record, task);
             model.addAttribute("user", user);
             model.addAttribute("task", UserController.toTaskView(task));
@@ -491,6 +491,7 @@ public class StudentController {
     public String examSubmit(@RequestParam Long taskId,
                              @RequestParam(required = false) String content,
                              @RequestParam(required = false) MultipartFile file,
+                             @RequestParam(required = false, defaultValue = "1") String uploadQuestionId,
                              @RequestParam(required = false, defaultValue = "false") boolean auto,
                              HttpSession session,
                              Model model) {
@@ -498,8 +499,14 @@ public class StudentController {
         if (user == null) return "redirect:/login";
         Task task = taskService.findById(taskId);
         if (task == null || !"exam".equals(task.getType())) return "redirect:/student/tasks";
+        Course course = courseService.findById(task.getCourseId());
+        if (course == null || !isEnrolled(user.getId(), course.getId())) return "redirect:/student/course/my";
 
         String answer = content == null ? "" : content;
+        String submittedFilePath = saveFile(file);
+        if (submittedFilePath != null) {
+            answer = ExamContentUtils.addAttachment(answer, uploadQuestionId, submittedFilePath, originalName(file));
+        }
         ExamRecord record;
         if (auto) {
             ExamRecord current = examService.getExamRecord(user.getId(), taskId);
@@ -524,20 +531,11 @@ public class StudentController {
         }
 
         examService.createSubmissionFromExam(record, task);
-        String filePath = saveFile(file);
-        if (filePath != null) {
-            Submission submission = taskService.getSubmission(user.getId(), taskId);
-            if (submission != null) {
-                submission.setContent(record == null || record.getContent() == null ? "" : record.getContent());
-                submission.setFilePath(filePath);
-                submissionMapper.updateContent(submission);
-            }
-        }
         log(user, "考试交卷", task.getTitle());
 
         model.addAttribute("user", user);
         model.addAttribute("task", UserController.toTaskView(task));
-        model.addAttribute("course", UserController.toCourseView(courseService.findById(task.getCourseId())));
+        model.addAttribute("course", UserController.toCourseView(course));
         model.addAttribute("record", record);
         model.addAttribute("alreadySubmitted", true);
         model.addAttribute("autoSubmitted", auto);
@@ -545,7 +543,7 @@ public class StudentController {
     }
 
     @PostMapping("/exam/save")
-    @org.springframework.web.bind.annotation.ResponseBody
+    @ResponseBody
     public java.util.Map<String, Object> examSave(@RequestParam Long taskId,
                                                    @RequestParam(required = false) String content,
                                                    HttpSession session) {
@@ -556,10 +554,67 @@ public class StudentController {
             result.put("msg", "请先登录");
             return result;
         }
+        Task task = taskService.findById(taskId);
+        Course course = task == null ? null : courseService.findById(task.getCourseId());
+        if (task == null || !"exam".equals(task.getType()) || course == null || !isEnrolled(user.getId(), course.getId())) {
+            result.put("code", 403);
+            result.put("msg", "无权暂存该考试");
+            return result;
+        }
+        ExamRecord current = examService.getExamRecord(user.getId(), taskId);
+        if (current == null || current.isSubmitted()) {
+            result.put("code", 400);
+            result.put("msg", "考试未开始或已提交，不能暂存");
+            result.put("saved", false);
+            return result;
+        }
         ExamRecord record = examService.saveProgress(user.getId(), taskId, content);
         result.put("code", 200);
         result.put("msg", "已保存");
         result.put("saved", record != null && !record.isSubmitted());
+        return result;
+    }
+
+    @PostMapping("/exam/upload")
+    @ResponseBody
+    public java.util.Map<String, Object> examUpload(@RequestParam Long taskId,
+                                                    @RequestParam String questionId,
+                                                    @RequestParam(required = false) String content,
+                                                    @RequestParam("file") MultipartFile file,
+                                                    HttpSession session) {
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        User user = requireStudent(session);
+        if (user == null) {
+            result.put("code", 401);
+            result.put("msg", "请先登录");
+            return result;
+        }
+        Task task = taskService.findById(taskId);
+        Course course = task == null ? null : courseService.findById(task.getCourseId());
+        if (task == null || !"exam".equals(task.getType()) || course == null || !isEnrolled(user.getId(), course.getId())) {
+            result.put("code", 403);
+            result.put("msg", "无权上传该考试附件");
+            return result;
+        }
+        ExamRecord record = examService.getExamRecord(user.getId(), taskId);
+        if (record == null || record.isSubmitted()) {
+            result.put("code", 400);
+            result.put("msg", "考试未开始或已提交，不能上传附件");
+            return result;
+        }
+        String filePath = saveFile(file);
+        if (filePath == null) {
+            result.put("code", 400);
+            result.put("msg", "附件保存失败，请重新选择文件");
+            return result;
+        }
+        String baseContent = content == null || content.trim().isEmpty() ? record.getContent() : content;
+        String updatedContent = ExamContentUtils.addAttachment(baseContent, questionId, filePath, originalName(file));
+        examService.saveProgress(user.getId(), taskId, updatedContent);
+        result.put("code", 200);
+        result.put("msg", "上传成功");
+        result.put("fileName", originalName(file));
+        result.put("filePath", filePath);
         return result;
     }
 
@@ -618,17 +673,24 @@ public class StudentController {
     private String saveFile(MultipartFile file) {
         if (file == null || file.isEmpty()) return null;
         try {
-            String filename = file.getOriginalFilename();
+            String filename = originalName(file);
             if (filename == null || filename.trim().isEmpty()) return null;
             filename = Paths.get(filename).getFileName().toString();
             Path uploadRoot = Paths.get(UPLOAD_DIR).toAbsolutePath().normalize();
             Files.createDirectories(uploadRoot);
-            Path target = uploadRoot.resolve(System.currentTimeMillis() + "_" + filename);
+            Path target = uploadRoot.resolve(System.currentTimeMillis() + "_" + filename).normalize();
+            if (!target.startsWith(uploadRoot)) return null;
             Files.copy(file.getInputStream(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             return target.toString();
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private String originalName(MultipartFile file) {
+        String filename = file == null ? "" : file.getOriginalFilename();
+        if (filename == null || filename.trim().isEmpty()) return "attachment";
+        return Paths.get(filename).getFileName().toString();
     }
 
     private boolean contains(String value, String lower) {

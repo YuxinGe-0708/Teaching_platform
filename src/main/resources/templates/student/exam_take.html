@@ -15,6 +15,8 @@
         .timer.warning { color: var(--accent-yellow); }
         .timer.danger { color: var(--accent-red); }
         .exam-question-card textarea { min-height: 260px; }
+        .attachment-list { display: grid; gap: 6px; margin-top: 8px; }
+        .attachment-list span { color: var(--text-muted); font-size: 13px; }
         @media (max-width: 900px) { .exam-shell { grid-template-columns: 1fr; } .question-nav { position: static; } }
     </style>
 </head>
@@ -45,6 +47,7 @@
                 <form id="examForm" th:action="@{/student/exam/submit}" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="taskId" th:value="${task.taskId}">
                     <input type="hidden" id="contentField" name="content">
+                    <input type="hidden" id="uploadQuestionId" name="uploadQuestionId" value="1">
                     <div class="exam-shell">
                         <div class="panel question-nav" id="questionNav"></div>
                         <div class="panel exam-question-card">
@@ -53,9 +56,10 @@
                             <div class="task-content" id="questionContent"></div>
                             <label for="answerArea">答案</label>
                             <textarea id="answerArea" placeholder="请在此输入本题答案。"></textarea>
-                            <div id="uploadNotice" class="message success" style="display:none;margin-top:12px;">本题要求或允许上传附件，请在交卷前选择文件。</div>
-                            <label for="file" style="margin-top:12px;">附件（可选，简答/设计题可上传）</label>
-                            <input id="file" type="file" name="file">
+                            <div id="uploadNotice" class="message success" style="display:none;margin-top:12px;">请选择本题附件。</div>
+                            <label for="file" style="margin-top:12px;">本题附件</label>
+                            <input id="file" type="file">
+                            <div id="attachmentList" class="attachment-list"></div>
                             <div class="toolbar" style="margin-top:16px;">
                                 <button type="button" class="btn" id="prevBtn">上一题</button>
                                 <button type="button" class="btn" id="nextBtn">下一题</button>
@@ -72,12 +76,12 @@
 
 <script th:if="${!alreadySubmitted}" th:inline="javascript">
     const taskId = /*[[${task.taskId}]]*/ 0;
-    const questions = JSON.parse(/*[[${task.examQuestionsJson}]]*/ '[]');
+    let questions = /*[(${task.examQuestionsJson})]*/ [];
     const rawContent = /*[[${record != null ? record.content : ''}]]*/ '';
     let remainingSeconds = /*[[${remainingSeconds}]]*/ 0;
     let activeIndex = 0;
     let submitted = false;
-    let answers = {};
+    let examData = {answers: {}, attachments: {}};
 
     const countdownEl = document.getElementById('countdown');
     const saveHint = document.getElementById('saveHint');
@@ -91,14 +95,36 @@
     const examForm = document.getElementById('examForm');
     const submitBtn = document.getElementById('submitBtn');
     const saveBtn = document.getElementById('saveBtn');
+    const fileInput = document.getElementById('file');
+    const attachmentList = document.getElementById('attachmentList');
+    const uploadQuestionId = document.getElementById('uploadQuestionId');
+
+    function normalizeQuestion(question, index) {
+        const safe = question && typeof question === 'object' ? question : {};
+        return {
+            id: String(safe.id || (index + 1)),
+            title: safe.title || ('第 ' + (index + 1) + ' 题'),
+            type: safe.type || 'short',
+            content: safe.content || '请完成作答。',
+            score: safe.score || 100
+        };
+    }
 
     function initAnswers() {
         try {
             const parsed = JSON.parse(rawContent || '{}');
-            answers = parsed && typeof parsed === 'object' ? parsed : {};
+            if (parsed && typeof parsed === 'object' && parsed.answers && typeof parsed.answers === 'object') {
+                examData = parsed;
+            } else {
+                examData = {answers: parsed && typeof parsed === 'object' ? parsed : {}, attachments: {}};
+            }
         } catch (e) {
-            answers = questions.length ? {[questions[0].id]: rawContent || ''} : {};
+            examData = {answers: questions.length ? {[questions[0].id]: rawContent || ''} : {}, attachments: {}};
         }
+        if (!examData || typeof examData !== 'object') examData = {answers: {}, attachments: {}};
+        if (!examData.answers || typeof examData.answers !== 'object') examData.answers = {};
+        if (!examData.attachments || typeof examData.attachments !== 'object') examData.attachments = {};
+        contentField.value = JSON.stringify(examData);
     }
 
     function escapeHtml(value) {
@@ -110,28 +136,42 @@
     function persistCurrent() {
         const q = questions[activeIndex];
         if (!q) return;
-        answers[q.id] = answerArea.value;
-        contentField.value = JSON.stringify(answers);
+        examData.answers[q.id] = answerArea.value;
+        contentField.value = JSON.stringify(examData);
     }
 
     function renderNav() {
         questionNav.innerHTML = questions.map((q, index) => {
-            const answered = answers[q.id] && String(answers[q.id]).trim() ? '已答' : '未答';
+            q = normalizeQuestion(q, index);
+            const answered = examData.answers[q.id] && String(examData.answers[q.id]).trim() ? '已答' : '未答';
+            const uploaded = Array.isArray(examData.attachments[q.id]) && examData.attachments[q.id].length ? '，有附件' : '';
             return '<button type="button" class="' + (index === activeIndex ? 'active' : '') + '" data-index="' + index + '">' +
-                escapeHtml(q.title || ('第 ' + (index + 1) + ' 题')) + '<br><small>' + answered + ' ｜ ' + escapeHtml(q.score) + ' 分</small></button>';
+                escapeHtml(q.title || ('第 ' + (index + 1) + ' 题')) + '<br><small>' + answered + uploaded + ' · ' + escapeHtml(q.score) + ' 分</small></button>';
         }).join('');
         questionNav.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', () => switchQuestion(Number(btn.getAttribute('data-index'))));
         });
     }
 
+    function renderAttachments(questionId) {
+        const files = Array.isArray(examData.attachments[questionId]) ? examData.attachments[questionId] : [];
+        attachmentList.innerHTML = files.length
+            ? files.map(file => '<span>已上传：' + escapeHtml(file.name || '附件') + '</span>').join('')
+            : '<span>本题暂无附件</span>';
+    }
+
     function renderQuestion() {
-        const q = questions[activeIndex] || {id: '1', title: '题目', content: '请完成作答。', type: 'short', score: 100};
-        questionMeta.textContent = '第 ' + (activeIndex + 1) + ' 题 ｜ ' + q.score + ' 分';
+        const q = normalizeQuestion(questions[activeIndex], activeIndex);
+        questionMeta.textContent = '第 ' + (activeIndex + 1) + ' 题 · ' + q.score + ' 分';
         questionTitle.textContent = q.title || ('第 ' + (activeIndex + 1) + ' 题');
         questionContent.innerHTML = '<p>' + escapeHtml(q.content).replace(/\n/g, '<br>') + '</p>';
-        answerArea.value = answers[q.id] || '';
+        answerArea.value = examData.answers[q.id] || '';
+        uploadQuestionId.value = q.id;
+        fileInput.value = '';
+        uploadNotice.className = 'message success';
         uploadNotice.style.display = q.type === 'upload' ? 'block' : 'none';
+        uploadNotice.textContent = q.type === 'upload' ? '本题支持上传附件，选择文件后会立即保存。' : '选择文件后会保存到当前题。';
+        renderAttachments(q.id);
         renderNav();
     }
 
@@ -175,6 +215,8 @@
             if (data.code === 200) {
                 saveHint.textContent = '已暂存 ' + new Date().toLocaleTimeString('zh-CN');
                 renderNav();
+            } else {
+                saveHint.textContent = data.msg || '暂存失败';
             }
         } catch (e) {
             saveHint.textContent = '暂存失败';
@@ -200,6 +242,7 @@
             saveHint.textContent = '自动提交失败，请手动提交';
             submitted = false;
             submitBtn.disabled = false;
+            saveBtn.disabled = false;
         }
     }
 
@@ -207,18 +250,53 @@
     document.getElementById('nextBtn').addEventListener('click', () => switchQuestion(activeIndex + 1));
     saveBtn.addEventListener('click', autoSave);
     answerArea.addEventListener('input', persistCurrent);
+    fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        const q = normalizeQuestion(questions[activeIndex], activeIndex);
+        if (!file || !q) return;
+        persistCurrent();
+        uploadNotice.className = 'message success';
+        uploadNotice.style.display = 'block';
+        uploadNotice.textContent = '正在上传附件...';
+        const data = new FormData();
+        data.append('taskId', taskId);
+        data.append('questionId', q.id);
+        data.append('content', contentField.value);
+        data.append('file', file);
+        try {
+            const resp = await fetch('/student/exam/upload', {method: 'POST', body: data});
+            const result = await resp.json();
+            if (result.code !== 200) {
+                uploadNotice.className = 'message error';
+                uploadNotice.textContent = result.msg || '上传失败';
+                return;
+            }
+            if (!Array.isArray(examData.attachments[q.id])) examData.attachments[q.id] = [];
+            examData.attachments[q.id].push({name: result.fileName || file.name, path: result.filePath || ''});
+            contentField.value = JSON.stringify(examData);
+            uploadNotice.className = 'message success';
+            uploadNotice.textContent = '上传成功：' + (result.fileName || file.name);
+            renderAttachments(q.id);
+            renderNav();
+        } catch (e) {
+            uploadNotice.className = 'message error';
+            uploadNotice.textContent = '上传失败：' + e.message;
+        } finally {
+            fileInput.value = '';
+        }
+    });
     examForm.addEventListener('submit', (event) => {
         if (submitted) {
             event.preventDefault();
             return;
         }
         persistCurrent();
-        const emptyCount = questions.filter(q => !answers[q.id] || !String(answers[q.id]).trim()).length;
+        const emptyCount = questions.filter(q => !examData.answers[q.id] || !String(examData.answers[q.id]).trim()).length;
         if (emptyCount > 0 && !confirm('还有 ' + emptyCount + ' 道题未填写，确定提交吗？')) {
             event.preventDefault();
             return;
         }
-        if (!confirm('确定提交试卷吗？提交后不可修改。')) {
+        if (!confirm('确定提交试卷吗？提交后不能修改。')) {
             event.preventDefault();
             return;
         }
@@ -227,6 +305,7 @@
     });
 
     initAnswers();
+    if (!Array.isArray(questions)) questions = [];
     if (!questions.length) questions.push({id: '1', title: '题目', content: '请完成作答。', type: 'short', score: 100});
     renderQuestion();
     updateCountdown();

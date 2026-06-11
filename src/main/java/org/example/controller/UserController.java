@@ -125,7 +125,7 @@ public class UserController {
             return "login";
         }
         session.setAttribute("currentUser", user);
-        return "redirect:/home";
+        return "redirect:/";
     }
 
     @GetMapping("/home")

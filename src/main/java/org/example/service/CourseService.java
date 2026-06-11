@@ -9,7 +9,10 @@ import org.example.mapper.CourseEnrollmentMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -50,15 +53,15 @@ public class CourseService {
     }
 
     public List<Course> getTeacherCourses(Long teacherId) {
-        return courseMapper.findByTeacherId(teacherId);
+        return distinctCourses(courseMapper.findByTeacherId(teacherId));
     }
 
     public List<Course> searchTeacherCourses(Long teacherId, String keyword, String sort) {
-        return courseMapper.searchTeacherCourses(teacherId, keyword == null ? "" : keyword.trim(), sort);
+        return distinctCourses(courseMapper.searchTeacherCourses(teacherId, keyword == null ? "" : keyword.trim(), sort));
     }
 
     public List<Course> getStudentCourses(Long studentId) {
-        return courseMapper.findByStudentId(studentId);
+        return distinctCourses(courseMapper.findByStudentId(studentId));
     }
 
     public List<Course> getAllActiveCourses() {
@@ -130,5 +133,14 @@ public class CourseService {
 
     public void deleteCourse(Long id) {
         courseMapper.delete(id);
+    }
+
+    private List<Course> distinctCourses(List<Course> courses) {
+        Map<Long, Course> unique = new LinkedHashMap<>();
+        for (Course course : courses) {
+            if (course == null || course.getId() == null) continue;
+            unique.putIfAbsent(course.getId(), course);
+        }
+        return new ArrayList<>(unique.values());
     }
 }

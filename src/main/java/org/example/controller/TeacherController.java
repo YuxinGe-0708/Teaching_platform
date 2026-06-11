@@ -15,10 +15,11 @@ import org.example.mapper.UserMapper;
 import org.example.service.CourseService;
 import org.example.service.ScoreService;
 import org.example.service.TaskService;
+import org.example.util.DownloadUtils;
+import org.example.util.ExamContentUtils;
 import org.example.util.MarkdownUtils;
 import org.example.util.TaskMetadataUtils;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -30,11 +31,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.servlet.http.HttpSession;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -193,13 +194,17 @@ public class TeacherController {
         User user = requireTeacher(session);
         if (user == null) return "redirect:/login";
         List<Course> courses = courseService.getTeacherCourses(user.getId());
-        List<Map<String, Object>> tasks = courses.stream()
+        List<Map<String, Object>> taskRows = courses.stream()
                 .flatMap(course -> taskService.getCourseTasks(course.getId()).stream())
                 .map(UserController::toTaskView)
                 .collect(Collectors.toList());
+        Map<Object, Map<String, Object>> uniqueTasks = new LinkedHashMap<>();
+        for (Map<String, Object> taskRow : taskRows) {
+            uniqueTasks.putIfAbsent(taskRow.get("taskId"), taskRow);
+        }
         model.addAttribute("user", user);
         model.addAttribute("courses", UserController.toCourseViews(courses));
-        model.addAttribute("tasks", tasks);
+        model.addAttribute("tasks", new ArrayList<>(uniqueTasks.values()));
         return "teacher/task_manage";
     }
 
@@ -229,7 +234,6 @@ public class TeacherController {
                              @RequestParam(required = false) String examQuestions,
                              @RequestParam(required = false) Integer timeLimitMs,
                              @RequestParam(required = false) Integer memoryLimitMb,
-                             @RequestParam(required = false) String codeTemplate,
                              @RequestParam(required = false, defaultValue = "published") String status,
                              @RequestParam(required = false) Double fullScore,
                              HttpSession session) {
@@ -252,7 +256,7 @@ public class TeacherController {
                 examQuestions));
         task.setTimeLimitMs(timeLimitMs == null ? 15000 : timeLimitMs);
         task.setMemoryLimitMb(memoryLimitMb == null ? 128 : memoryLimitMb);
-        task.setCodeTemplate(codeTemplate);
+        task.setCodeTemplate(null);
         task.setEndTime(parseTimestamp(endTime));
         task.setStatus(normalizeTaskStatus(status));
         taskService.createTask(task);
@@ -268,9 +272,17 @@ public class TeacherController {
         model.addAttribute("user", user);
         model.addAttribute("task", UserController.toTaskView(task));
         model.addAttribute("taskContentHtml", MarkdownUtils.toHtml(TaskMetadataUtils.visibleMarkdown(task.getDescription())));
-        model.addAttribute("submissions", submissionMapper.findByTaskId(taskId));
+        List<Submission> submissions = submissionMapper.findByTaskId(taskId);
+        model.addAttribute("submissions", submissions);
         if ("exam".equals(task.getType())) {
             model.addAttribute("examRecords", examRecordMapper.findByTaskId(taskId));
+            Map<Long, Integer> examAttachmentCounts = new HashMap<>();
+            for (Submission submission : submissions) {
+                if (submission.getId() != null) {
+                    examAttachmentCounts.put(submission.getId(), ExamContentUtils.attachmentCount(submission.getContent()));
+                }
+            }
+            model.addAttribute("examAttachmentCounts", examAttachmentCounts);
         }
         return "teacher/task_detail";
     }
@@ -283,27 +295,58 @@ public class TeacherController {
         if (submission == null || !ownsTask(user, taskService.findById(submission.getTaskId()))) {
             return "redirect:/teacher/task/manage";
         }
+        Task task = taskService.findById(submission.getTaskId());
         model.addAttribute("user", user);
         model.addAttribute("submission", submission);
+        model.addAttribute("task", UserController.toTaskView(task));
+        if (task != null && "exam".equals(task.getType())) {
+            model.addAttribute("questionRows", ExamContentUtils.questionRows(
+                    TaskMetadataUtils.examQuestionsJson(task.getDescription()),
+                    submission.getContent(),
+                    submission.getFeedback()));
+            model.addAttribute("visibleComment", ExamContentUtils.visibleFeedback(submission.getFeedback()));
+        }
         return "teacher/task_grade";
     }
 
     @PostMapping("/task/grade")
     public String submitGrade(@RequestParam Long submissionId,
-                              @RequestParam Double score,
+                              @RequestParam(required = false) Double score,
                               @RequestParam(required = false) String comment,
+                              @RequestParam(required = false) String questionScores,
+                              @RequestParam(required = false) String questionComments,
                               HttpSession session) {
         User user = requireTeacher(session);
         if (user == null) return "redirect:/login";
         Submission submission = submissionMapper.findById(submissionId);
         if (submission != null && ownsTask(user, taskService.findById(submission.getTaskId()))) {
-            submission.setScore(score);
-            submission.setFeedback(comment);
+            Task task = taskService.findById(submission.getTaskId());
+            Double finalScore = score;
+            if (task != null && "exam".equals(task.getType()) && questionScores != null && !questionScores.trim().isEmpty()) {
+                finalScore = sumScores(questionScores);
+                submission.setFeedback(ExamContentUtils.buildFeedback(comment, questionScores, questionComments));
+            } else {
+                submission.setFeedback(comment);
+            }
+            submission.setScore(finalScore == null ? 0D : finalScore);
             submission.setStatus("graded");
             submission.setJudgeResult(submission.getJudgeResult() == null ? "" : submission.getJudgeResult());
             submissionMapper.grade(submission);
+            if (task != null && "exam".equals(task.getType())) {
+                ExamRecord record = examRecordMapper.findByStudentAndTask(submission.getStudentId(), submission.getTaskId());
+                if (record != null) {
+                    record.setScore(submission.getScore());
+                    if (record.getStatus() == null || !record.isSubmitted()) {
+                        record.setStatus("SUBMITTED");
+                    }
+                    if (record.getSubmitTime() == null) {
+                        record.setSubmitTime(new Timestamp(System.currentTimeMillis()));
+                    }
+                    examRecordMapper.submit(record);
+                }
+            }
         }
-        return "redirect:/teacher/task/manage";
+        return submission == null ? "redirect:/teacher/task/manage" : "redirect:/teacher/task/detail/" + submission.getTaskId();
     }
 
     @GetMapping("/task/delete")
@@ -335,14 +378,7 @@ public class TeacherController {
 
     @GetMapping("/task/download")
     public ResponseEntity<Resource> downloadSubmission(@RequestParam String filePath) throws Exception {
-        Path path = Paths.get(filePath);
-        Resource resource = new UrlResource(path.toUri());
-        if (resource.exists() || resource.isReadable()) {
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
-        }
-        throw new RuntimeException("Could not read the file");
+        return DownloadUtils.attachment(filePath);
     }
 
     @GetMapping("/course/class/{courseId}")
@@ -487,9 +523,13 @@ public class TeacherController {
 
     private Timestamp parseTimestamp(String raw) {
         if (raw == null || raw.trim().isEmpty()) return null;
-        String text = raw.trim().replace('T', ' ');
-        if (text.length() == 16) text += ":00";
-        return Timestamp.valueOf(LocalDateTime.parse(text.replace(' ', 'T')));
+        try {
+            String text = raw.trim().replace('T', ' ');
+            if (text.length() == 16) text += ":00";
+            return Timestamp.valueOf(LocalDateTime.parse(text.replace(' ', 'T')));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String normalizeCourseStatus(String status) {
@@ -577,5 +617,20 @@ public class TeacherController {
     private String csv(Object value) {
         String text = value == null ? "" : String.valueOf(value);
         return "\"" + text.replace("\"", "\"\"") + "\"";
+    }
+
+    private Double sumScores(String questionScores) {
+        double total = 0D;
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            Map<?, ?> scores = mapper.readValue(questionScores, Map.class);
+            for (Object value : scores.values()) {
+                if (value == null || String.valueOf(value).trim().isEmpty()) continue;
+                total += Double.parseDouble(String.valueOf(value));
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return total;
     }
 }

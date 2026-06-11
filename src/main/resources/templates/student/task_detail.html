@@ -55,7 +55,6 @@
                         <option value="java">Java</option>
                         <option value="c">C</option>
                     </select>
-                    <button type="button" class="btn" id="templateBtn">载入模板</button>
                     <button type="button" class="btn primary" id="judgeBtn">运行评测</button>
                 </div>
                 <div id="monacoEditor" class="monaco-editor-box"></div>
@@ -67,7 +66,6 @@
                     const taskId = /*[[${task.taskId}]]*/ 0;
                     const testCases = JSON.parse(/*[[${task.testCasesJson}]]*/ '[]');
                     const allowedLanguage = /*[[${task.allowedLanguage}]]*/ 'python';
-                    const configuredTemplate = /*[[${task.codeTemplate}]]*/ '';
                     const language = document.getElementById('language');
                     const fallbackEditor = document.getElementById('codeEditor');
                     const allowedLanguageText = document.getElementById('allowedLanguageText');
@@ -82,7 +80,7 @@
 
                     language.value = allowedLanguage || 'python';
                     allowedLanguageText.textContent = languageNames[language.value] || language.value;
-                    fallbackEditor.value = configuredTemplate && configuredTemplate.trim() ? configuredTemplate : templates[language.value];
+                    fallbackEditor.value = templates[language.value];
 
                     function currentCode() {
                         return monacoEditor ? monacoEditor.getValue() : fallbackEditor.value;
@@ -116,8 +114,6 @@
                         if (number >= 1024) return (number / 1024).toFixed(1) + ' MB';
                         return number.toFixed(0) + ' KB';
                     }
-
-                    document.getElementById('templateBtn').addEventListener('click', () => setCode(templates[language.value]));
 
                     if (window.require) {
                         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });

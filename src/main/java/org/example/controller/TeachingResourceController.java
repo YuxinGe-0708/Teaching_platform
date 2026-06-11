@@ -12,6 +12,7 @@ import org.example.dto.ApiResponse;
 import org.example.entity.ResourceProgress;
 import org.example.service.AiService;
 import org.example.service.CourseService;
+import org.example.util.DownloadUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -179,11 +180,7 @@ public class TeachingResourceController {
             return ResponseEntity.status(403).build();
         }
         resourceMapper.incrementDownloadCount(resourceId);
-        Resource file = fileResource(resource);
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"")
-                .body(file);
+        return DownloadUtils.attachment(resource.getFilePath());
     }
 
     @GetMapping("/resource-square/download/{resourceId}")
@@ -191,11 +188,7 @@ public class TeachingResourceController {
         TeachingResource resource = resourceMapper.findById(resourceId);
         if (resource == null) return ResponseEntity.notFound().build();
         resourceMapper.incrementDownloadCount(resourceId);
-        Resource file = fileResource(resource);
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFilename() + "\"")
-                .body(file);
+        return DownloadUtils.attachment(resource.getFilePath());
     }
 
     @GetMapping("/student/resource/video/{resourceId}")
@@ -216,11 +209,7 @@ public class TeachingResourceController {
         if (resource == null || !resource.isVideo()) {
             return ResponseEntity.status(403).build();
         }
-        Resource file = fileResource(resource);
-        return ResponseEntity.ok()
-                .contentType(videoType(file.getFilename()))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFilename() + "\"")
-                .body(file);
+        return DownloadUtils.inline(resource.getFilePath(), videoType(Paths.get(resource.getFilePath()).getFileName().toString()));
     }
 
     @GetMapping("/student/resource/notes/{resourceId}")

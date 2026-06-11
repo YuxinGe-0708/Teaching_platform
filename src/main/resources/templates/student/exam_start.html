@@ -12,7 +12,7 @@
     <main class="main-area">
         <header class="topbar">
             <h1 th:text="'考试：' + ${task.title}">考试</h1>
-            <a class="btn" th:href="@{/student/course/detail/{id}(id=${course.courseId})}">返回课程</a>
+            <a class="btn" th:href="${course != null ? '/student/course/detail/' + course.courseId : '/student/tasks?type=exam'}">返回课程</a>
         </header>
         <section class="content">
             <div class="message error" th:if="${error}" th:text="${error}"></div>
@@ -21,7 +21,7 @@
                 <h2>考试信息</h2>
                 <div class="score-metrics">
                     <div><span>考试名称</span><strong th:text="${task.title}">考试名称</strong></div>
-                    <div><span>所属课程</span><strong th:text="${course.courseName}">课程</strong></div>
+                    <div><span>所属课程</span><strong th:text="${course != null ? course.courseName : '-'}">课程</strong></div>
                     <div><span>满分</span><strong th:text="${task.fullScore}">100</strong></div>
                     <div><span>截止时间</span><strong th:text="${task.endTime != null ? #dates.format(task.endTime, 'yyyy-MM-dd HH:mm') : '不限'}">不限</strong></div>
                 </div>
