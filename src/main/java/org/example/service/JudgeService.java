@@ -223,6 +223,7 @@ public class JudgeService {
     private HttpHeaders headers() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("User-Agent", "Mozilla/5.0 TeachingPlatform/1.0");
         String key = apiKey == null ? "" : apiKey.trim();
         if (!key.isEmpty()) {
             if (key.toLowerCase().startsWith("bearer ")) {
