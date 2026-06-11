@@ -25,13 +25,14 @@
                         <form action="/teacher/task/status" method="post" class="form-inline">
                             <input type="hidden" name="taskId" th:value="${t.taskId}">
                             <select name="status">
-                                <option value="published">发布</option>
-                                <option value="draft">草稿</option>
-                                <option value="closed">关闭</option>
-                                <option value="expired">过期</option>
-                                <option value="retracted">撤回</option>
+                                <option value="published" th:selected="${t.status == '已发布'}">发布</option>
+                                <option value="draft" th:selected="${t.status == '草稿'}">草稿</option>
+                                <option value="closed" th:selected="${t.status == '已关闭'}">关闭</option>
+                                <option value="expired" th:selected="${t.status == '已过期'}">过期</option>
+                                <option value="retracted" th:selected="${t.status == '已撤回'}">撤回</option>
                             </select>
-                            <input type="datetime-local" name="endTime">
+                            <input type="datetime-local" name="endTime"
+                                   th:value="${t.endTime == null ? '' : #dates.format(t.endTime, 'yyyy-MM-dd''T''HH:mm')}">
                             <button type="submit" class="btn">更新</button>
                         </form>
                     </td>

@@ -111,7 +111,7 @@ public final class TaskMetadataUtils {
 
         for (String line : lines) {
             String t = line.trim();
-            if (t.matches("-{3,}CASE-{3,}")) {
+            if (isMarker(t, "CASE")) {
                 if (section != null) {
                     addMultiLineCase(cases, currentInput, currentOutput, currentWeight);
                     currentInput = new StringBuilder();
@@ -119,9 +119,9 @@ public final class TaskMetadataUtils {
                     currentWeight = new StringBuilder();
                 }
                 section = "input";
-            } else if (t.matches("-{3,}OUTPUT-{3,}")) {
+            } else if (isMarker(t, "OUTPUT")) {
                 section = "output";
-            } else if (t.matches("-{3,}WEIGHT-{3,}")) {
+            } else if (isMarker(t, "WEIGHT")) {
                 section = "weight";
             } else if (section != null) {
                 StringBuilder buf;
@@ -149,6 +149,11 @@ public final class TaskMetadataUtils {
         }
         sb.append("]");
         return sb.toString();
+    }
+
+    private static boolean isMarker(String line, String marker) {
+        if (line == null || marker == null) return false;
+        return line.matches("(?i)-{3,}\\s*" + marker + "\\s*-{3,}");
     }
 
     private static List<ExamQuestion> parseExamQuestions(String raw) {

@@ -1,5 +1,7 @@
 package org.example.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dto.ApiResponse;
 import org.example.entity.Submission;
 import org.example.entity.Task;
@@ -26,6 +28,7 @@ public class JudgeController {
     private final JudgeService judgeService;
     private final TaskService taskService;
     private final SubmissionMapper submissionMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public JudgeController(JudgeService judgeService, TaskService taskService, SubmissionMapper submissionMapper) {
         this.judgeService = judgeService;
@@ -63,6 +66,7 @@ public class JudgeController {
             if (!sameLanguage(allowedLanguage, language)) {
                 return ApiResponse.fail(400, "该实训仅允许提交 " + displayLanguage(allowedLanguage) + " 代码");
             }
+            testCases = serverTestCases(task);
         }
 
         JudgeService.JudgeResult result = judgeService.judge(code, language, testCases);
@@ -88,6 +92,17 @@ public class JudgeController {
         data.put("usedLocalJudge", result.usedLocalJudge);
 
         return ApiResponse.ok("评测完成", data);
+    }
+
+    private List<Map<String, String>> serverTestCases(Task task) {
+        try {
+            return objectMapper.readValue(
+                    TaskMetadataUtils.testCasesJson(task.getDescription()),
+                    new TypeReference<List<Map<String, String>>>() {}
+            );
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
     private Long parseTaskId(Object rawTaskId) {
