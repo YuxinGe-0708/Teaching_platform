@@ -60,6 +60,7 @@
                             <div id="judgeFields" style="margin-top:16px;">
                                 <label for="allowedLanguage">限制提交语言</label>
                                 <select id="allowedLanguage" name="allowedLanguage">
+                                    <option value="any">不限编程语言</option>
                                     <option value="python">Python</option>
                                     <option value="java">Java</option>
                                     <option value="c">C</option>
@@ -68,16 +69,12 @@
                                 <input id="timeLimitMs" type="number" name="timeLimitMs" value="15000" min="1000" step="500">
                                 <label for="memoryLimitMb">内存限制（MB）</label>
                                 <input id="memoryLimitMb" type="number" name="memoryLimitMb" value="128" min="16" step="16">
-                                <label for="testCases">多测试用例</label>
+                                <label for="testCases">测试用例</label>
                                 <textarea id="testCases" name="testCases" style="min-height:200px;"
                                           placeholder="---CASE---&#10;1 2&#10;---OUTPUT---&#10;3&#10;---WEIGHT---&#10;1"></textarea>
                                 <p class="muted" style="font-size:12px;margin-top:4px;">
                                     每组数据点用 <code>---CASE---</code>、<code>---OUTPUT---</code>、<code>---WEIGHT---</code> 分隔；分隔符两侧可有空格。测试用例不会展示给学生。
                                 </p>
-                                <label for="sampleInput">编程测试输入</label>
-                                <textarea id="sampleInput" name="sampleInput" style="min-height:80px;" placeholder="没有输入可留空"></textarea>
-                                <label for="expectedOutput">期望输出</label>
-                                <textarea id="expectedOutput" name="expectedOutput" style="min-height:80px;" placeholder="例如：Hello World"></textarea>
                             </div>
                         </div>
                     </div>

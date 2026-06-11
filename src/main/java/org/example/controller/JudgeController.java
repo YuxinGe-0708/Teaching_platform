@@ -63,7 +63,7 @@ public class JudgeController {
                 return ApiResponse.fail(404, "评测任务不存在");
             }
             String allowedLanguage = TaskMetadataUtils.allowedLanguage(task.getDescription());
-            if (!sameLanguage(allowedLanguage, language)) {
+            if (!"any".equals(allowedLanguage) && !sameLanguage(allowedLanguage, language)) {
                 return ApiResponse.fail(400, "该实训仅允许提交 " + displayLanguage(allowedLanguage) + " 代码");
             }
             testCases = serverTestCases(task);

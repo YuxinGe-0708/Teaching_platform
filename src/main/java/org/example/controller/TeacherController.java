@@ -227,8 +227,6 @@ public class TeacherController {
                              @RequestParam(required = false) String allowedFileTypes,
                              @RequestParam(required = false) String endTime,
                              @RequestParam(required = false) String examAnswer,
-                             @RequestParam(required = false) String sampleInput,
-                             @RequestParam(required = false) String expectedOutput,
                              @RequestParam(required = false) String testCases,
                              @RequestParam(required = false) String allowedLanguage,
                              @RequestParam(required = false) String examQuestions,
@@ -249,8 +247,6 @@ public class TeacherController {
         task.setDescription(TaskMetadataUtils.buildDescription(
                 UserController.firstNonBlank(content, description),
                 examAnswer,
-                sampleInput,
-                expectedOutput,
                 testCases,
                 allowedLanguage,
                 examQuestions));

@@ -78,9 +78,22 @@
                     const languageNames = {python: 'Python', java: 'Java', c: 'C'};
                     const monacoLanguages = {python: 'python', java: 'java', c: 'c'};
 
-                    language.value = allowedLanguage || 'python';
-                    allowedLanguageText.textContent = languageNames[language.value] || language.value;
+                    if (allowedLanguage && allowedLanguage !== 'any') {
+                        language.value = allowedLanguage;
+                        language.disabled = true;
+                        allowedLanguageText.textContent = languageNames[language.value] || language.value;
+                    } else {
+                        language.value = 'python';
+                        language.disabled = false;
+                        allowedLanguageText.textContent = '不限编程语言';
+                    }
                     fallbackEditor.value = templates[language.value];
+
+                    language.addEventListener('change', function () {
+                        allowedLanguageText.textContent = languageNames[language.value] || language.value;
+                        fallbackEditor.value = templates[language.value];
+                        setLanguage(language.value);
+                    });
 
                     function currentCode() {
                         return monacoEditor ? monacoEditor.getValue() : fallbackEditor.value;

@@ -81,17 +81,17 @@ public class TestDataSeeder {
     }
 
     private void seedTasks() {
-        task("CS101", "Java 基础语法作业", "homework", "请完成变量、分支、循环练习，并上传实验报告。", null, null, null, null, 100, "published");
-        task("CS101", "Java 期中客观题", "exam", "单选题：Java 中入口方法名称是什么？", "main", null, null, null, 100, "published");
-        task("CS101", "两数求和编程题", "programming", "读取两个整数，输出它们的和。", null, "1 2", "3", "1 2 | 3 | 1\n10 20 | 30 | 2\n-1 4 | 3 | 1", 100, "published");
-        task("CS101", "未发布草稿任务", "homework", "这是一条草稿任务，学生端不应看到。", null, null, null, null, 100, "draft");
+        task("CS101", "Java 基础语法作业", "homework", "请完成变量、分支、循环练习，并上传实验报告。", null, null, 100, "published");
+        task("CS101", "Java 期中客观题", "exam", "单选题：Java 中入口方法名称是什么？", "main", null, 100, "published");
+        task("CS101", "两数求和编程题", "programming", "读取两个整数，输出它们的和。", null, "---CASE---\n1 2\n---OUTPUT---\n3\n---WEIGHT---\n1\n---CASE---\n10 20\n---OUTPUT---\n30\n---WEIGHT---\n2\n---CASE---\n-1 4\n---OUTPUT---\n3\n---WEIGHT---\n1", 100, "published");
+        task("CS101", "未发布草稿任务", "homework", "这是一条草稿任务，学生端不应看到。", null, null, 100, "draft");
 
-        task("DS202", "链表与栈作业", "homework", "完成链表插入、删除和栈模拟队列的练习。", null, null, null, null, 100, "published");
-        task("DS202", "排序算法测验", "exam", "填空题：快速排序平均时间复杂度是？", "O(nlogn)", null, null, null, 100, "published");
-        task("DS202", "最大值编程题", "programming", "输入若干整数，输出最大值。", null, "3\n1 8 2", "8", "3;1 8 2 | 8 | 1\n5;9 2 4 7 1 | 9 | 1", 100, "published");
+        task("DS202", "链表与栈作业", "homework", "完成链表插入、删除和栈模拟队列的练习。", null, null, 100, "published");
+        task("DS202", "排序算法测验", "exam", "填空题：快速排序平均时间复杂度是？", "O(nlogn)", null, 100, "published");
+        task("DS202", "最大值编程题", "programming", "输入若干整数，输出最大值。", null, "---CASE---\n3\n1 8 2\n---OUTPUT---\n8\n---WEIGHT---\n1\n---CASE---\n5\n9 2 4 7 1\n---OUTPUT---\n9\n---WEIGHT---\n1", 100, "published");
 
-        task("DB301", "SQL 查询作业", "homework", "完成 SELECT、JOIN、GROUP BY 练习。", null, null, null, null, 100, "published");
-        task("DB301", "事务概念测验", "exam", "判断题：事务的隔离性属于 ACID 特性。", "是", null, null, null, 100, "published");
+        task("DB301", "SQL 查询作业", "homework", "完成 SELECT、JOIN、GROUP BY 练习。", null, null, 100, "published");
+        task("DB301", "事务概念测验", "exam", "判断题：事务的隔离性属于 ACID 特性。", "是", null, 100, "published");
     }
 
     private void seedSubmissions() {
@@ -165,10 +165,10 @@ public class TestDataSeeder {
     }
 
     private void task(String courseCode, String title, String type, String markdown, String examAnswer,
-                      String sampleInput, String expectedOutput, String testCases, int maxScore, String status) {
+                      String testCases, int maxScore, String status) {
         Long courseId = courseId(courseCode);
         if (courseId == null || exists("SELECT COUNT(*) FROM task WHERE course_id = ? AND title = ?", courseId, title)) return;
-        String desc = TaskMetadataUtils.buildDescription(markdown, examAnswer, sampleInput, expectedOutput, testCases);
+        String desc = TaskMetadataUtils.buildDescription(markdown, examAnswer, testCases, null, null);
         String template = "programming".equals(type) ? "python:\n# 请在这里编写代码\n\njava:\npublic class Main { public static void main(String[] args) { } }\n\nc:\n#include <stdio.h>\nint main(){return 0;}" : null;
         jdbcTemplate.update("INSERT INTO task (title, description, course_id, type, max_score, time_limit_ms, memory_limit_mb, code_template, end_time, status) "
                         + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 14 DAY), ?)",

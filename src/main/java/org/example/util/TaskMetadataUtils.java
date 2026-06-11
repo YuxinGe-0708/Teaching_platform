@@ -12,21 +12,10 @@ public final class TaskMetadataUtils {
     private TaskMetadataUtils() {
     }
 
-    public static String buildDescription(String markdown, String examAnswer, String sampleInput, String expectedOutput) {
-        return buildDescription(markdown, examAnswer, sampleInput, expectedOutput, null);
-    }
-
-    public static String buildDescription(String markdown, String examAnswer, String sampleInput, String expectedOutput, String testCases) {
-        return buildDescription(markdown, examAnswer, sampleInput, expectedOutput, testCases, null, null);
-    }
-
-    public static String buildDescription(String markdown, String examAnswer, String sampleInput, String expectedOutput,
-                                          String testCases, String allowedLanguage, String examQuestions) {
+    public static String buildDescription(String markdown, String examAnswer, String testCases, String allowedLanguage, String examQuestions) {
         String body = markdown == null ? "" : markdown;
         StringBuilder meta = new StringBuilder();
         append(meta, "examAnswer", examAnswer);
-        append(meta, "sampleInput", sampleInput);
-        append(meta, "expectedOutput", expectedOutput);
         append(meta, "testCases", testCases);
         append(meta, "allowedLanguage", normalizeLanguage(allowedLanguage));
         append(meta, "examQuestions", examQuestions);
@@ -69,14 +58,15 @@ public final class TaskMetadataUtils {
     public static String testCasesJson(String description) {
         String configured = testCases(description);
         if (configured != null && !configured.trim().isEmpty()) {
-            return parseMultiLineCases(configured.trim());
+            String parsed = parseMultiLineCases(configured.trim());
+            if (!"[]".equals(parsed)) return parsed;
         }
         String expected = expectedOutput(description);
-        if (expected == null || expected.trim().isEmpty()) {
-            expected = "Hello World";
+        if (expected != null && !expected.trim().isEmpty()) {
+            String input = sampleInput(description);
+            return "[{\"input\":\"" + json(input == null ? "" : input) + "\",\"expectedOutput\":\"" + json(expected) + "\"}]";
         }
-        String input = sampleInput(description);
-        return "[{\"input\":\"" + json(input == null ? "" : input) + "\",\"expectedOutput\":\"" + json(expected) + "\"}]";
+        return "[]";
     }
 
     public static String examQuestionsJson(String description) {
@@ -233,6 +223,7 @@ public final class TaskMetadataUtils {
         String value = language.trim().toLowerCase();
         if ("py".equals(value)) return "python";
         if ("gcc".equals(value)) return "c";
+        if ("any".equals(value)) return "any";
         if ("python".equals(value) || "java".equals(value) || "c".equals(value)) return value;
         return "";
     }

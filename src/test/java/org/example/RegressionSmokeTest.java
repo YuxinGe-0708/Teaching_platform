@@ -7,8 +7,6 @@ public class RegressionSmokeTest {
         String description = TaskMetadataUtils.buildDescription(
                 "考试说明",
                 "",
-                "1 2",
-                "3",
                 "---CASE---\n1 2\n---OUTPUT---\n3\n---WEIGHT---\n2",
                 "java",
                 "---QUESTION---\ntitle: 第一题\ntype: short\nscore: 40\n请简述事务特性。\n"
@@ -22,8 +20,6 @@ public class RegressionSmokeTest {
 
         String spacedCases = TaskMetadataUtils.buildDescription(
                 "两数求和",
-                "",
-                "",
                 "",
                 "--- CASE---\n"
                         + "1 2\n"
@@ -51,7 +47,7 @@ public class RegressionSmokeTest {
         assertContains(TaskMetadataUtils.testCasesJson(spacedCases), "\"input\":\"-5 8\"", "spaced marker case 3 input");
         assertNotContains(TaskMetadataUtils.testCasesJson(spacedCases), "Hello World", "spaced marker should not fall back");
 
-        String fallback = TaskMetadataUtils.buildDescription("单题内容", "", "", "", null);
+        String fallback = TaskMetadataUtils.buildDescription("单题内容", "", null, null, null);
         assertContains(TaskMetadataUtils.examQuestionsJson(fallback), "单题内容", "fallback exam question");
         assertEquals("python", TaskMetadataUtils.allowedLanguage(fallback), "default allowed language");
 
