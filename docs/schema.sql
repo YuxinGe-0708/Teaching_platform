@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS `course` (
     `hours` INT DEFAULT 0,
     `teacher_id` BIGINT NOT NULL,
     `invite_code` VARCHAR(20) UNIQUE,
-    `cover_url` VARCHAR(500) DEFAULT '',
     `allow_join` TINYINT(1) DEFAULT 1,
     `status` VARCHAR(20) DEFAULT 'active' COMMENT 'draft/active/closed/archived/deleted',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

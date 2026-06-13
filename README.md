@@ -2,7 +2,7 @@
 
 Spring Boot + Thymeleaf + Vue 3 + MyBatis + MySQL 教学平台。
 
-前端入口统一使用 `src/main/resources/templates/` 下的 Thymeleaf 页面；Vue 3 只嵌入在模板页面中做局部交互，不再使用独立 SPA 或前端工程目录。
+前端统一使用 `src/main/resources/templates/` 下的 Thymeleaf 模板页面；AI 助手页面通过 Vue 3 CDN 做局部交互。
 
 ## 技术栈
 
@@ -32,7 +32,7 @@ Get-Content docs\schema.sql | mysql -u root -p
 启动项目前设置环境变量：
 
 ```powershell
-$env:DB_URL="jdbc:mysql://10.33.134.116:3306/teaching_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8"
+$env:DB_URL="jdbc:mysql://<你的MySQL主机IP>:3306/teaching_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8"
 $env:DB_USERNAME="tp_dev"
 $env:DB_PASSWORD="123456"
 $env:AI_API_KEY="<你的 AI Key>"
@@ -93,17 +93,14 @@ mvn spring-boot:run
 - 学生 AI：`http://localhost:8080/student/ai`
 - 教师 AI：`http://localhost:8080/teacher/ai`
 
-## 数据同步
+## 主要数据表
 
-以下运行时操作都会写入 MySQL：
-
-- 注册、登录、个人信息修改：`user`
-- 教师创建、编辑、删除课程：`course`
-- 教师创建、删除班级：`course_class`
-- 学生选课、退课：`course_enrollment`，并记录 `operation_log`
-- 教师发布、删除作业：`task`
-- 学生提交作业和编程评测：`submission`
-- 教师批改：`submission.score/status/feedback`
+- `user` — 用户（注册、登录、个人信息）
+- `course` — 课程（创建、编辑、删除）
+- `course_class` — 班级
+- `course_enrollment` — 选课记录，写入选课时记录 `operation_log`
+- `task` — 任务（作业/考试/编程实训）
+- `submission` — 提交与批改
 
 ## AI 配置
 

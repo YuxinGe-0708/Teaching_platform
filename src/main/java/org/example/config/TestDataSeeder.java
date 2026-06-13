@@ -33,8 +33,6 @@ public class TestDataSeeder {
         seedEnrollments();
         seedTasks();
         seedSubmissions();
-        seedResources();
-        seedProgress();
         seedDiscussion();
         seedNotesAndNotifications();
     }
@@ -105,21 +103,6 @@ public class TestDataSeeder {
         submit("student_003", "SQL 查询作业", "SQL 作业提交。", 88, "graded", "AC", "JOIN 使用正确。");
     }
 
-    private void seedResources() {
-        resource("CS101", "第 1 章 Java 基础 PDF", "pdf", "第 1 章 Java 基础", "uploads/resources/seed/java-basic.pdf", 123456, 8);
-        resource("CS101", "Java 面向对象讲解视频", "video", "第 2 章 面向对象", "uploads/resources/seed/java-oop.mp4", 3456789, 0);
-        resource("CS101", "Java 代码模板包", "code", "第 3 章 实训", "uploads/resources/seed/java-template.zip", 20480, 3);
-        resource("DS202", "栈与队列课件", "ppt", "第 2 章 栈和队列", "uploads/resources/seed/stack-queue.pptx", 888888, 5);
-        resource("DS202", "排序算法 PDF", "pdf", "第 5 章 排序", "uploads/resources/seed/sort.pdf", 456789, 12);
-        resource("DB301", "SQL 入门 PDF", "pdf", "第 1 章 SQL", "uploads/resources/seed/sql-basic.pdf", 321000, 6);
-    }
-
-    private void seedProgress() {
-        progress("student_001", "Java 面向对象讲解视频", 72.5, 580, 800);
-        progress("student_002", "Java 面向对象讲解视频", 35.0, 280, 800);
-        progress("student_005", "排序算法 PDF", 100, 0, 0);
-    }
-
     private void seedDiscussion() {
         post("CS101", "student_001", "question", "teacher", true, "Java 循环边界问题", "for 循环里的 i < n 和 i <= n 什么时候用？");
         post("CS101", "teacher_demo", "discussion", "all", false, "第二周实验提示", "请大家重点关注输入输出格式，编程题会严格匹配输出。");
@@ -142,9 +125,9 @@ public class TestDataSeeder {
     private void course(String code, String name, String category, int hours, int credits, Long teacherId,
                         String inviteCode, String description, String status, boolean allowJoin) {
         if (exists("SELECT COUNT(*) FROM course WHERE code = ?", code)) return;
-        jdbcTemplate.update("INSERT INTO course (name, code, description, credits, subject_category, hours, teacher_id, invite_code, cover_url, allow_join, status) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                name, code, description, credits, category, hours, teacherId, inviteCode, "", allowJoin, status);
+        jdbcTemplate.update("INSERT INTO course (name, code, description, credits, subject_category, hours, teacher_id, invite_code, allow_join, status) "
+                        + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                name, code, description, credits, category, hours, teacherId, inviteCode, allowJoin, status);
     }
 
     private void classFor(String courseCode, String name, String inviteCode, int maxCount) {
@@ -182,22 +165,6 @@ public class TestDataSeeder {
         if (exists("SELECT COUNT(*) FROM submission WHERE student_id = ? AND task_id = ?", studentId, taskId)) return;
         jdbcTemplate.update("INSERT INTO submission (task_id, student_id, content, file_path, score, status, judge_result, feedback) VALUES (?, ?, ?, '', ?, ?, ?, ?)",
                 taskId, studentId, content, score, status, judgeResult, feedback);
-    }
-
-    private void resource(String courseCode, String title, String type, String chapter, String path, long fileSize, int downloads) {
-        Long courseId = courseId(courseCode);
-        if (courseId == null || exists("SELECT COUNT(*) FROM resource WHERE course_id = ? AND title = ?", courseId, title)) return;
-        jdbcTemplate.update("INSERT INTO resource (course_id, title, file_path, type, chapter, file_size, download_count) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                courseId, title, path, type, chapter, fileSize, downloads);
-    }
-
-    private void progress(String username, String resourceTitle, double percent, double position, double duration) {
-        Long studentId = userId(username);
-        Long resourceId = resourceId(resourceTitle);
-        if (studentId == null || resourceId == null) return;
-        if (exists("SELECT COUNT(*) FROM resource_progress WHERE student_id = ? AND resource_id = ?", studentId, resourceId)) return;
-        jdbcTemplate.update("INSERT INTO resource_progress (student_id, resource_id, progress, last_position, duration) VALUES (?, ?, ?, ?, ?)",
-                studentId, resourceId, percent, position, duration);
     }
 
     private void post(String courseCode, String username, String type, String targetRole, boolean anonymous, String title, String content) {
@@ -254,10 +221,6 @@ public class TestDataSeeder {
 
     private Long taskId(String title) {
         return id("SELECT id FROM task WHERE title = ?", title);
-    }
-
-    private Long resourceId(String title) {
-        return id("SELECT id FROM resource WHERE title = ?", title);
     }
 
     private Long postId(String title) {

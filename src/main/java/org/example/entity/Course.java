@@ -10,7 +10,6 @@ public class Course {
     private Integer hours;
     private Long teacherId;
     private String inviteCode;
-    private String coverUrl;
     private Boolean allowJoin;
     private String status;
     private String teacherName;
@@ -36,8 +35,6 @@ public class Course {
     public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
     public String getInviteCode() { return inviteCode; }
     public void setInviteCode(String inviteCode) { this.inviteCode = inviteCode; }
-    public String getCoverUrl() { return coverUrl; }
-    public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
     public Boolean getAllowJoin() { return allowJoin == null || allowJoin; }
     public void setAllowJoin(Boolean allowJoin) { this.allowJoin = allowJoin; }
     public String getStatus() { return status; }

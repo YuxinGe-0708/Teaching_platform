@@ -25,8 +25,6 @@
                     <input id="credit" type="number" name="credit" step="0.5" th:value="${course.credit}" required>
                     <label for="hours">学时</label>
                     <input id="hours" type="number" name="hours" min="0" th:value="${course.hours}">
-                    <label for="coverUrl">课程封面地址</label>
-                    <input id="coverUrl" type="url" name="coverUrl" th:value="${course.coverUrl}">
                     <label class="check-row"><input type="checkbox" name="allowJoin" value="true" th:checked="${course.allowJoin}"> 允许学生自主加入</label>
                     <label for="description">课程简介</label>
                     <textarea id="description" name="description" th:text="${course.description}"></textarea>

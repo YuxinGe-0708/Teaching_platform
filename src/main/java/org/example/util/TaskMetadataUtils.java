@@ -230,7 +230,6 @@ public final class TaskMetadataUtils {
 
     private static String normalizeQuestionType(String type) {
         String value = type == null ? "" : type.trim().toLowerCase();
-        if (value.contains("choice") || value.contains("选择")) return "choice";
         if (value.contains("upload") || value.contains("附件")) return "upload";
         return "short";
     }

@@ -104,7 +104,6 @@ public class TeacherController {
                                @RequestParam Double credit,
                                @RequestParam(required = false) String subjectCategory,
                                @RequestParam(required = false) Integer hours,
-                               @RequestParam(required = false) String coverUrl,
                                @RequestParam(required = false, defaultValue = "true") Boolean allowJoin,
                                @RequestParam(required = false, defaultValue = "active") String status,
                                @RequestParam(required = false) String description,
@@ -117,7 +116,6 @@ public class TeacherController {
         course.setCredits(credit == null ? 0 : credit.intValue());
         course.setSubjectCategory(subjectCategory);
         course.setHours(hours == null ? 0 : hours);
-        course.setCoverUrl(coverUrl);
         course.setAllowJoin(allowJoin == null || allowJoin);
         course.setStatus(normalizeCourseStatus(status));
         course.setTeacherId(user.getId());
@@ -144,7 +142,6 @@ public class TeacherController {
                                @RequestParam Double credit,
                                @RequestParam(required = false) String subjectCategory,
                                @RequestParam(required = false) Integer hours,
-                               @RequestParam(required = false) String coverUrl,
                                @RequestParam(required = false, defaultValue = "true") Boolean allowJoin,
                                @RequestParam String description,
                                HttpSession session) {
@@ -157,7 +154,6 @@ public class TeacherController {
             course.setCredits(credit == null ? 0 : credit.intValue());
             course.setSubjectCategory(subjectCategory);
             course.setHours(hours == null ? 0 : hours);
-            course.setCoverUrl(coverUrl);
             course.setAllowJoin(allowJoin == null || allowJoin);
             course.setDescription(description);
             courseService.updateCourse(course);

@@ -202,7 +202,6 @@ public class UserController {
         view.put("hours", course.getHours());
         view.put("teacherId", course.getTeacherName() == null ? course.getTeacherId() : course.getTeacherName());
         view.put("description", course.getDescription());
-        view.put("coverUrl", course.getCoverUrl());
         view.put("allowJoin", course.getAllowJoin());
         view.put("studentCount", course.getStudentCount() == null ? 0 : course.getStudentCount());
         view.put("status", displayCourseStatus(course.getStatus()));

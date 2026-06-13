@@ -38,11 +38,11 @@ public interface CourseMapper {
     @Select("SELECT COUNT(*) FROM course")
     int countAll();
 
-    @Insert("INSERT INTO course (name, code, description, credits, subject_category, hours, teacher_id, invite_code, cover_url, allow_join, status) VALUES (#{name}, #{code}, #{description}, #{credits}, #{subjectCategory}, #{hours}, #{teacherId}, #{inviteCode}, #{coverUrl}, #{allowJoin}, #{status})")
+    @Insert("INSERT INTO course (name, code, description, credits, subject_category, hours, teacher_id, invite_code, allow_join, status) VALUES (#{name}, #{code}, #{description}, #{credits}, #{subjectCategory}, #{hours}, #{teacherId}, #{inviteCode}, #{allowJoin}, #{status})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Course course);
 
-    @Update("UPDATE course SET name=#{name}, code=#{code}, description=#{description}, credits=#{credits}, subject_category=#{subjectCategory}, hours=#{hours}, invite_code=#{inviteCode}, cover_url=#{coverUrl}, allow_join=#{allowJoin} WHERE id=#{id}")
+    @Update("UPDATE course SET name=#{name}, code=#{code}, description=#{description}, credits=#{credits}, subject_category=#{subjectCategory}, hours=#{hours}, invite_code=#{inviteCode}, allow_join=#{allowJoin} WHERE id=#{id}")
     int update(Course course);
 
     @Update("UPDATE course SET status=#{status} WHERE id=#{id}")
