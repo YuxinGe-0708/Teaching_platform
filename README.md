@@ -13,6 +13,38 @@ Spring Boot + Thymeleaf + Vue 3 + MyBatis + MySQL 教学平台。
 - MyBatis
 - MySQL 8.x
 
+## 用 Docker 启动数据库
+
+只需要安装 Docker，数据库容器会自动建库、建表并导入测试数据：
+
+```powershell
+docker compose up -d mysql
+```
+
+- 镜像：`mysql:8.0.40`（官方镜像，无需自写 Dockerfile）
+- 首次启动自动执行 `db/init/01_schema.sql` 和 `db/init/02_test_data.sql`
+- 数据持久化在 Docker 卷 `mysql-data` 中
+- 参数可在 `.env` 中覆盖，默认见 `.env.example`
+
+默认连接信息：
+
+- 数据库：`teaching_platform`
+- 用户：`tp_dev`
+- 密码：`123456`
+- 端口：`3306`
+
+常用命令：
+
+```powershell
+docker compose ps
+docker compose logs -f mysql
+docker compose exec mysql mysql -u tp_dev -p123456 teaching_platform -e "SHOW TABLES;"
+docker compose down          # 停止但保留数据
+docker compose down -v       # 停止并清空数据，重新初始化
+```
+
+数据库就绪后，再按下面的“共享数据库配置”或“运行”部分启动后端，后端连接 `localhost:3306` 即可。
+
 ## 共享数据库配置
 
 团队共用一台 MySQL 时，只需要在主机电脑创建数据库和用户一次，然后所有人连接同一个地址。
