@@ -1,0 +1,11 @@
+.git
+.idea
+.vscode
+.env
+target
+uploads
+db
+docs
+tmp
+maven.zip
+*.iml

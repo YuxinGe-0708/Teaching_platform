@@ -125,6 +125,33 @@ mvn spring-boot:run
 - 学生 AI：`http://localhost:8080/student/ai`
 - 教师 AI：`http://localhost:8080/teacher/ai`
 
+## 前后端容器化
+
+在保留原 Thymeleaf 页面和业务接口的前提下，前后端可以分别运行在独立容器中：Nginx frontend 作为统一入口，Spring Boot backend 处理原有页面、接口和文件，MySQL 使用现有数据库容器。原来的数据库命令不变：
+
+```powershell
+docker compose up -d mysql
+```
+
+完整启动应用容器：
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+docker compose -f docker-compose.yml -f docker-compose.app.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.app.yml ps
+```
+
+打开 `http://localhost:3000/login`。详细结构、版本镜像和回归检查见 [docs/frontend-backend-containerization.md](docs/frontend-backend-containerization.md)。
+
+启动后可重复执行完整回归检查。业务脚本会创建唯一命名的临时数据，验证完成后自动清理：
+
+```powershell
+.\scripts\container-smoke.ps1
+.\scripts\container-business-regression.ps1
+.\scripts\container-ai-smoke.ps1
+```
+
 ## 主要数据表
 
 - `user` — 用户（注册、登录、个人信息）

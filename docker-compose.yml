@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.0.40
+    image: ${MYSQL_IMAGE:-mysql:8.0.40}
     container_name: teachplatform-mysql
     restart: unless-stopped
     environment:
@@ -18,7 +18,7 @@ services:
       - mysql-data:/var/lib/mysql
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
       interval: 10s
       timeout: 5s
       retries: 10

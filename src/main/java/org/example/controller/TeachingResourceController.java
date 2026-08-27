@@ -14,8 +14,6 @@ import org.example.service.AiService;
 import org.example.service.CourseService;
 import org.example.util.DownloadUtils;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -30,16 +28,11 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpSession;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @Controller
 @RequestMapping
 public class TeachingResourceController {
-
-    private static final String RESOURCE_DIR = "uploads" + File.separator + "resources" + File.separator;
 
     private final CourseService courseService;
     private final TeachingResourceMapper resourceMapper;
@@ -209,7 +202,7 @@ public class TeachingResourceController {
         if (resource == null || !resource.isVideo()) {
             return ResponseEntity.status(403).build();
         }
-        return DownloadUtils.inline(resource.getFilePath(), videoType(Paths.get(resource.getFilePath()).getFileName().toString()));
+        return DownloadUtils.inline(resource.getFilePath(), videoType(DownloadUtils.resolvePath(resource.getFilePath()).getFileName().toString()));
     }
 
     @GetMapping("/student/resource/notes/{resourceId}")
@@ -274,12 +267,7 @@ public class TeachingResourceController {
     private String saveFile(Long courseId, MultipartFile file) {
         if (file == null || file.isEmpty()) return null;
         try {
-            Path root = Paths.get(RESOURCE_DIR, String.valueOf(courseId)).toAbsolutePath().normalize();
-            Files.createDirectories(root);
-            Path target = root.resolve(System.currentTimeMillis() + "_" + originalName(file)).normalize();
-            if (!target.startsWith(root)) return null;
-            Files.copy(file.getInputStream(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return target.toString();
+            return DownloadUtils.store(file, "resources", String.valueOf(courseId));
         } catch (Exception e) {
             return null;
         }
@@ -303,13 +291,6 @@ public class TeachingResourceController {
         return Paths.get(filename).getFileName().toString();
     }
 
-    private Resource fileResource(TeachingResource resource) throws Exception {
-        Path path = Paths.get(resource.getFilePath()).toAbsolutePath().normalize();
-        Resource file = new UrlResource(path.toUri());
-        if (file.exists() && file.isReadable()) return file;
-        throw new IllegalArgumentException("资源文件不存在或不可读");
-    }
-
     private MediaType videoType(String filename) {
         String lower = filename == null ? "" : filename.toLowerCase();
         if (lower.endsWith(".webm")) return MediaType.parseMediaType("video/webm");
@@ -318,7 +299,7 @@ public class TeachingResourceController {
     }
 
     private String generatePdfNotes(TeachingResource resource) {
-        try (PDDocument document = PDDocument.load(Paths.get(resource.getFilePath()).toFile())) {
+        try (PDDocument document = PDDocument.load(DownloadUtils.resolvePath(resource.getFilePath()).toFile())) {
             String text = new PDFTextStripper().getText(document);
             return aiService.summarizePdfText(resource.getCourseName(), resource.getTitle(), text);
         } catch (Exception e) {

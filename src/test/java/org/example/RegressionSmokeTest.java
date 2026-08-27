@@ -1,9 +1,17 @@
 package org.example;
 
 import org.example.util.TaskMetadataUtils;
+import org.example.util.DownloadUtils;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.springframework.mock.web.MockMultipartFile;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class RegressionSmokeTest {
-    public static void main(String[] args) {
+    @Test
+    void parsesTaskMetadata() {
         String description = TaskMetadataUtils.buildDescription(
                 "考试说明",
                 "",
@@ -50,8 +58,38 @@ public class RegressionSmokeTest {
         String fallback = TaskMetadataUtils.buildDescription("单题内容", "", null, null, null);
         assertContains(TaskMetadataUtils.examQuestionsJson(fallback), "单题内容", "fallback exam question");
         assertEquals("python", TaskMetadataUtils.allowedLanguage(fallback), "default allowed language");
+    }
 
-        System.out.println("RegressionSmokeTest passed");
+    @Test
+    void resolvesPortableUploadPaths(@TempDir Path root) throws Exception {
+        String previous = System.getProperty("app.upload.path");
+        System.setProperty("app.upload.path", root.toString());
+        try {
+            Path resolved = DownloadUtils.resolvePath("uploads/resources/2/demo.pdf");
+            if (!resolved.equals(root.resolve("resources/2/demo.pdf").toAbsolutePath().normalize())) {
+                throw new IllegalStateException("portable upload path resolved incorrectly: " + resolved);
+            }
+            if (!resolved.startsWith(root.toAbsolutePath().normalize())) {
+                throw new IllegalStateException("portable upload path escaped upload root");
+            }
+            Path legacyWindowsPath = DownloadUtils.resolvePath("C:\\old-project\\uploads\\resources\\2\\demo.pdf");
+            if (!legacyWindowsPath.equals(resolved)) {
+                throw new IllegalStateException("legacy Windows upload path resolved incorrectly: " + legacyWindowsPath);
+            }
+
+            MockMultipartFile upload = new MockMultipartFile(
+                    "file", "lesson.pdf", "application/pdf", "test-content".getBytes("UTF-8"));
+            String stored = DownloadUtils.store(upload, "resources", "2");
+            if (!stored.matches("uploads/resources/2/\\d+_lesson\\.pdf")) {
+                throw new IllegalStateException("stored path is not portable: " + stored);
+            }
+            if (!Files.exists(DownloadUtils.resolvePath(stored))) {
+                throw new IllegalStateException("stored upload does not exist");
+            }
+        } finally {
+            if (previous == null) System.clearProperty("app.upload.path");
+            else System.setProperty("app.upload.path", previous);
+        }
     }
 
     private static void assertEquals(String expected, String actual, String label) {
