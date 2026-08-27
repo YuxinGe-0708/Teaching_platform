@@ -40,9 +40,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpSession;
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.ArrayList;
@@ -54,8 +51,6 @@ import java.util.stream.Collectors;
 @Controller
 @RequestMapping("/student")
 public class StudentController {
-
-    private static final String UPLOAD_DIR = "uploads" + File.separator;
 
     private final CourseService courseService;
     private final TaskService taskService;
@@ -676,12 +671,7 @@ public class StudentController {
             String filename = originalName(file);
             if (filename == null || filename.trim().isEmpty()) return null;
             filename = Paths.get(filename).getFileName().toString();
-            Path uploadRoot = Paths.get(UPLOAD_DIR).toAbsolutePath().normalize();
-            Files.createDirectories(uploadRoot);
-            Path target = uploadRoot.resolve(System.currentTimeMillis() + "_" + filename).normalize();
-            if (!target.startsWith(uploadRoot)) return null;
-            Files.copy(file.getInputStream(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            return target.toString();
+            return DownloadUtils.store(file);
         } catch (Exception e) {
             return null;
         }

@@ -13,6 +13,38 @@ Spring Boot + Thymeleaf + Vue 3 + MyBatis + MySQL 教学平台。
 - MyBatis
 - MySQL 8.x
 
+## 用 Docker 启动数据库
+
+只需要安装 Docker，数据库容器会自动建库、建表并导入测试数据：
+
+```powershell
+docker compose up -d mysql
+```
+
+- 镜像：`mysql:8.0.40`（官方镜像，无需自写 Dockerfile）
+- 首次启动自动执行 `db/init/01_schema.sql` 和 `db/init/02_test_data.sql`
+- 数据持久化在 Docker 卷 `mysql-data` 中
+- 参数可在 `.env` 中覆盖，默认见 `.env.example`
+
+默认连接信息：
+
+- 数据库：`teaching_platform`
+- 用户：`tp_dev`
+- 密码：`123456`
+- 端口：`3306`
+
+常用命令：
+
+```powershell
+docker compose ps
+docker compose logs -f mysql
+docker compose exec mysql mysql -u tp_dev -p123456 teaching_platform -e "SHOW TABLES;"
+docker compose down          # 停止但保留数据
+docker compose down -v       # 停止并清空数据，重新初始化
+```
+
+数据库就绪后，再按下面的“共享数据库配置”或“运行”部分启动后端，后端连接 `localhost:3306` 即可。
+
 ## 共享数据库配置
 
 团队共用一台 MySQL 时，只需要在主机电脑创建数据库和用户一次，然后所有人连接同一个地址。
@@ -92,6 +124,33 @@ mvn spring-boot:run
 - `http://localhost:8080/home`
 - 学生 AI：`http://localhost:8080/student/ai`
 - 教师 AI：`http://localhost:8080/teacher/ai`
+
+## 前后端容器化
+
+在保留原 Thymeleaf 页面和业务接口的前提下，前后端可以分别运行在独立容器中：Nginx frontend 作为统一入口，Spring Boot backend 处理原有页面、接口和文件，MySQL 使用现有数据库容器。原来的数据库命令不变：
+
+```powershell
+docker compose up -d mysql
+```
+
+完整启动应用容器：
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+docker compose -f docker-compose.yml -f docker-compose.app.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.app.yml ps
+```
+
+打开 `http://localhost:3000/login`。详细结构、版本镜像和回归检查见 [docs/frontend-backend-containerization.md](docs/frontend-backend-containerization.md)。
+
+启动后可重复执行完整回归检查。业务脚本会创建唯一命名的临时数据，验证完成后自动清理：
+
+```powershell
+.\scripts\container-smoke.ps1
+.\scripts\container-business-regression.ps1
+.\scripts\container-ai-smoke.ps1
+```
 
 ## 主要数据表
 
