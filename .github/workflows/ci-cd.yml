@@ -61,7 +61,14 @@ jobs:
         run: ./scripts/container-smoke.ps1 -BaseUrl http://localhost:3000 -BackendUrl http://localhost:8081
       - name: Business integration regression
         shell: pwsh
-        run: ./scripts/container-business-regression.ps1 -BaseUrl http://localhost:3000
+        run: |
+          New-Item -ItemType Directory -Force ci-artifacts | Out-Null
+          try {
+            ./scripts/container-business-regression.ps1 -BaseUrl http://localhost:3000 *>&1 | Tee-Object ci-artifacts/business-regression.log
+          } catch {
+            $_ | Out-String | Tee-Object -Append ci-artifacts/business-regression.log
+            throw
+          }
       - name: Qwen AI integration smoke test
         if: env.AI_API_KEY != ''
         shell: pwsh

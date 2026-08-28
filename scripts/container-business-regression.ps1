@@ -176,6 +176,7 @@ function Remove-CreatedUpload([string]$StoredPath) {
     if (Test-Path -LiteralPath $candidate) { Remove-Item -LiteralPath $candidate -Force }
 }
 
+$regressionError = $null
 try {
     Write-Host "[1/9] Checking containers and public routes..." -ForegroundColor Cyan
     $services = & docker compose @composeFiles ps --status running --services
@@ -360,6 +361,11 @@ try {
     $errors = & docker compose @composeFiles logs --since $since backend 2>&1 | Select-String -Pattern 'ERROR|Exception|Whitelabel' -CaseSensitive:$false
     Assert-True (-not $errors) ("Backend logged errors during regression:`n" + ($errors -join "`n"))
     Write-Host "Business regression passed: $checks assertions." -ForegroundColor Green
+} catch {
+    $regressionError = $_
+    $message = [string]$_.Exception.Message
+    $annotationMessage = $message.Replace("`r", " ").Replace("`n", " ")
+    Write-Host "::error title=Business regression failed::$annotationMessage"
 } finally {
     Write-Host "Cleaning temporary regression data..." -ForegroundColor DarkGray
     try {
@@ -378,3 +384,5 @@ try {
         if (Test-Path -LiteralPath $tempPath) { Remove-Item -LiteralPath $tempPath -Force }
     }
 }
+
+if ($regressionError) { throw $regressionError }
