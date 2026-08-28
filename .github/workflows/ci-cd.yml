@@ -44,6 +44,10 @@ jobs:
         run: mvn -B test
       - name: Build application containers
         run: docker compose -f docker-compose.yml -f docker-compose.app.yml build
+      - name: Prepare integration upload storage
+        run: |
+          mkdir -p uploads
+          chmod -R a+rwX uploads
       - name: Start integration environment
         run: docker compose -f docker-compose.yml -f docker-compose.app.yml up -d
       - name: Wait for frontend health

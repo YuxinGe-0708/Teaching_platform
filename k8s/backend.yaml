@@ -11,6 +11,9 @@ spec:
     metadata:
       labels: { app: backend }
     spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
       imagePullSecrets:
         - name: swr-registry
       containers:
