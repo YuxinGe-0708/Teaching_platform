@@ -3,7 +3,10 @@ param(
     [string]$StudentUsername = "student_001",
     [string]$TeacherUsername = "teacher_demo",
     [string]$AdminUsername = "admin",
-    [string]$Password = "123456"
+    [string]$Password = "123456",
+    [string]$DbName,
+    [string]$DbUsername,
+    [string]$DbPassword
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,16 +29,20 @@ $tempFiles = New-Object System.Collections.Generic.List[string]
 $checks = 0
 $runStartedAt = [DateTime]::UtcNow
 
-function Get-DotEnvValue([string]$Name, [string]$DefaultValue) {
-    if (-not (Test-Path -LiteralPath ".env")) { return $DefaultValue }
-    $line = Get-Content -LiteralPath ".env" | Where-Object { $_ -match ('^' + [Regex]::Escape($Name) + '=') } | Select-Object -Last 1
-    if (-not $line) { return $DefaultValue }
-    return ($line -split '=', 2)[1]
+function Get-ConfigValue([string]$ExplicitValue, [string]$Name, [string]$DefaultValue) {
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitValue)) { return $ExplicitValue }
+    $environmentValue = [Environment]::GetEnvironmentVariable($Name)
+    if (-not [string]::IsNullOrWhiteSpace($environmentValue)) { return $environmentValue }
+    if (Test-Path -LiteralPath ".env") {
+        $line = Get-Content -LiteralPath ".env" | Where-Object { $_ -match ('^' + [Regex]::Escape($Name) + '=') } | Select-Object -Last 1
+        if ($line) { return ($line -split '=', 2)[1] }
+    }
+    return $DefaultValue
 }
 
-$dbName = Get-DotEnvValue "MYSQL_DATABASE" "teaching_platform"
-$dbUsername = Get-DotEnvValue "MYSQL_USER" "tp_dev"
-$dbPassword = Get-DotEnvValue "MYSQL_PASSWORD" "123456"
+$dbName = Get-ConfigValue $DbName "MYSQL_DATABASE" "teaching_platform"
+$dbUsername = Get-ConfigValue $DbUsername "MYSQL_USER" "tp_dev"
+$dbPassword = Get-ConfigValue $DbPassword "MYSQL_PASSWORD" "123456"
 
 function Invoke-Db([string]$Sql) {
     $result = & docker compose @composeFiles exec -T mysql mysql `
