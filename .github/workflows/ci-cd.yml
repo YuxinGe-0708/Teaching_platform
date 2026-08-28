@@ -132,6 +132,8 @@ jobs:
           context: .
           file: docker/backend/Dockerfile
           push: true
+          provenance: false
+          sbom: false
           build-args: |
             MAVEN_IMAGE=${{ vars.MAVEN_IMAGE || 'maven:3.8.8-eclipse-temurin-8' }}
             JAVA_IMAGE=${{ vars.JAVA_IMAGE || 'eclipse-temurin:8-jdk-jammy' }}
@@ -146,6 +148,8 @@ jobs:
           context: docker/frontend
           file: docker/frontend/Dockerfile
           push: true
+          provenance: false
+          sbom: false
           build-args: |
             NGINX_IMAGE=${{ vars.NGINX_IMAGE || 'nginx:1.27-alpine' }}
           tags: |
