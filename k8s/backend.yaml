@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: teaching-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      imagePullSecrets:
+        - name: swr-registry
+      containers:
+        - name: backend
+          image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-backend:__IMAGE_TAG__
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SERVER_FORWARD_HEADERS_STRATEGY
+              value: framework
+            - name: DB_URL
+              value: jdbc:mysql://mysql:3306/teaching_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+            - name: DB_USERNAME
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: MYSQL_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: MYSQL_PASSWORD } }
+            - name: APP_UPLOAD_PATH
+              value: /app/uploads
+            - name: AI_API_URL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_API_URL } }
+            - name: AI_API_KEY
+              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: AI_API_KEY, optional: true } }
+            - name: AI_MODEL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_MODEL } }
+            - name: AI_VISION_MODEL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_VISION_MODEL } }
+            - name: JUDGE0_API_URL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: JUDGE0_API_URL } }
+            - name: JUDGE0_API_KEY
+              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: JUDGE0_API_KEY, optional: true } }
+            - name: JUDGE0_TIMEOUT_MS
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: JUDGE0_TIMEOUT_MS } }
+            - name: JUDGE0_LOCAL_FALLBACK
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: JUDGE0_LOCAL_FALLBACK } }
+            - name: APP_SEED_TEST_DATA
+              value: "false"
+            - name: TZ
+              value: Asia/Shanghai
+          volumeMounts:
+            - { name: uploads, mountPath: /app/uploads }
+          readinessProbe:
+            httpGet: { path: /login, port: 8080 }
+            initialDelaySeconds: 35
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet: { path: /login, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+      volumes:
+        - name: uploads
+          persistentVolumeClaim: { claimName: uploads-data }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads-data
+  namespace: teaching-platform
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: teaching-platform
+spec:
+  selector: { app: backend }
+  ports:
+    - port: 8080
+      targetPort: 8080
