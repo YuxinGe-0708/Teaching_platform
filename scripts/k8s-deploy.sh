@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 namespace="${K8S_NAMESPACE:-teaching-platform}"
+deploy_target="${DEPLOY_TARGET:-cloud}"
 artifact_dir="deploy-artifacts"
 mkdir -p "$artifact_dir"
 exec > >(tee "$artifact_dir/deploy.log") 2>&1
@@ -15,9 +16,25 @@ for name in "${required[@]}"; do
 done
 
 secret_file="${RUNNER_TEMP:-/tmp}/teaching-platform-secret.yaml"
+port_forward_pid=""
 export AI_API_KEY="${AI_API_KEY:-}"
 export JUDGE0_API_KEY="${JUDGE0_API_KEY:-}"
-trap 'kubectl -n "$namespace" get pods -o wide > "$artifact_dir/pods.txt" 2>&1 || true; kubectl -n "$namespace" get events --sort-by=.lastTimestamp > "$artifact_dir/events.txt" 2>&1 || true; kubectl -n "$namespace" logs deployment/backend --all-containers --tail=300 > "$artifact_dir/backend.log" 2>&1 || true; kubectl -n "$namespace" logs deployment/frontend --all-containers --tail=100 > "$artifact_dir/frontend.log" 2>&1 || true; rm -f "$secret_file"' EXIT
+
+collect_artifacts() {
+  status=$?
+  trap - EXIT
+  set +e
+  if [[ -n "$port_forward_pid" ]]; then kill "$port_forward_pid" 2>/dev/null || true; fi
+  kubectl -n "$namespace" get all,pvc -o wide > "$artifact_dir/kubernetes-resources.txt" 2>&1 || true
+  kubectl -n "$namespace" get events --sort-by=.lastTimestamp > "$artifact_dir/events.txt" 2>&1 || true
+  kubectl -n "$namespace" describe pods > "$artifact_dir/pod-descriptions.txt" 2>&1 || true
+  kubectl -n "$namespace" logs deployment/mysql --all-containers --tail=300 > "$artifact_dir/mysql.log" 2>&1 || true
+  kubectl -n "$namespace" logs deployment/backend --all-containers --tail=300 > "$artifact_dir/backend.log" 2>&1 || true
+  kubectl -n "$namespace" logs deployment/frontend --all-containers --tail=100 > "$artifact_dir/frontend.log" 2>&1 || true
+  rm -f "$secret_file"
+  exit "$status"
+}
+trap collect_artifacts EXIT
 
 envsubst < k8s/secret.template.yaml > "$secret_file"
 kubectl apply -f k8s/namespace.yaml
@@ -36,8 +53,36 @@ sed -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" -e "s|__SWR_ORG__|$SWR_ORG|g" -e "s|
 sed -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" -e "s|__SWR_ORG__|$SWR_ORG|g" -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" k8s/frontend.yaml > "$frontend_file"
 kubectl apply -f "$backend_file"
 kubectl apply -f "$frontend_file"
+if [[ "$deploy_target" == "kind" ]]; then
+  kubectl -n "$namespace" set env deployment/backend APP_SEED_TEST_DATA=true
+  kubectl -n "$namespace" patch service frontend --type=merge \
+    -p '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":80,"nodePort":30080}]}}'
+fi
 kubectl -n "$namespace" rollout status deployment/backend --timeout=8m
 kubectl -n "$namespace" rollout status deployment/frontend --timeout=5m
+kubectl -n "$namespace" get all,pvc -o wide | tee "$artifact_dir/kubernetes-resources.txt"
+
+if [[ "$deploy_target" == "kind" ]]; then
+  frontend_url="http://127.0.0.1:3000"
+  for attempt in {1..30}; do
+    if curl --fail --silent --show-error "$frontend_url/healthz" | tee "$artifact_dir/health-response.txt" | grep -qx 'ok'; then
+      curl --fail --silent --show-error --dump-header "$artifact_dir/login-headers.txt" \
+        --output "$artifact_dir/login-page.html" "$frontend_url/login"
+      kubectl -n "$namespace" port-forward service/backend 8081:8080 > "$artifact_dir/backend-port-forward.log" 2>&1 &
+      port_forward_pid=$!
+      for backend_attempt in {1..20}; do
+        curl --fail --silent http://127.0.0.1:8081/login > /dev/null && break
+        sleep 1
+      done
+      pwsh -File scripts/container-smoke.ps1 -BaseUrl "$frontend_url" -BackendUrl http://127.0.0.1:8081
+      echo "Ephemeral kind deployment, health check, and login smoke test passed."
+      exit 0
+    fi
+    sleep 5
+  done
+  echo "kind frontend health check failed: $frontend_url/healthz" >&2
+  exit 1
+fi
 
 frontend_address=""
 for attempt in {1..30}; do

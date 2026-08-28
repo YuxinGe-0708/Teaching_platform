@@ -167,39 +167,62 @@ jobs:
           retention-days: 30
 
   deploy:
-    name: Deploy to Kubernetes
+    name: Deploy to ephemeral kind Kubernetes
     needs: publish
     if: github.event_name == 'push' && (github.ref == 'refs/heads/dev_dockerfile' || github.ref == 'refs/heads/codex/dev-dockerfile-work' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
-    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || 'staging' }}
     timeout-minutes: 20
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
+      - name: Create ephemeral Kubernetes cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: teaching-platform-demo
+          config: k8s/kind-config.yaml
+          wait: 120s
       - name: Install deployment tooling
         run: sudo apt-get update && sudo apt-get install -y gettext-base
-      - name: Configure Kubernetes access
-        shell: bash
+      - name: Load MySQL image into kind
         run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/kube"
-          printf '%s' '${{ secrets.KUBE_CONFIG_B64 }}' | base64 --decode > "$RUNNER_TEMP/kube/config"
-          chmod 600 "$RUNNER_TEMP/kube/config"
-          echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
+          docker pull mysql:8.0.43
+          kind load docker-image mysql:8.0.43 --name teaching-platform-demo
       - name: Deploy immutable image version
         shell: bash
         env:
+          DEPLOY_TARGET: kind
+          KIND_CLUSTER_NAME: teaching-platform-demo
           IMAGE_TAG: ${{ needs.publish.outputs.image_tag }}
           SWR_REGISTRY: ${{ secrets.SWR_REGISTRY }}
           SWR_ORG: ${{ secrets.SWR_ORG }}
           SWR_USERNAME: ${{ secrets.SWR_USERNAME }}
           SWR_PASSWORD: ${{ secrets.SWR_PASSWORD }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_ROOT_PASSWORD: ${{ secrets.DB_ROOT_PASSWORD }}
+          DB_PASSWORD: kind-demo-password
+          DB_ROOT_PASSWORD: kind-demo-root-password
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
         run: bash scripts/k8s-deploy.sh
+      - name: Write Kubernetes demonstration summary
+        if: success()
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ needs.publish.outputs.image_tag }}
+        run: |
+          {
+            echo "## Ephemeral Kubernetes deployment passed"
+            echo
+            echo "- Cluster: kind / teaching-platform-demo"
+            echo "- Namespace: teaching-platform"
+            echo "- Image version: \`$IMAGE_TAG\`"
+            echo "- Health endpoint: \`/healthz = ok\`"
+            echo "- Login and session smoke test: passed"
+            echo "- Lifetime: this workflow job only"
+            echo
+            echo '```text'
+            kubectl -n teaching-platform get deployments,pods,services,pvc -o wide
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload deployment records
         if: always()
         uses: actions/upload-artifact@v4
