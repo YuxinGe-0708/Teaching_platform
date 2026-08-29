@@ -1,6 +1,6 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
-    [string]$ComposeFile = 'docker-compose.yml',
+    [string[]]$ComposeFile = @('docker-compose.yml', 'docker-compose.app.yml'),
     [string]$Service = 'mysql',
     [string]$Database = 'teaching_platform',
     [string]$Username = 'tp_dev',
@@ -11,8 +11,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 function Invoke-MySqlSql([string]$Sql) {
-    $Sql | docker compose -f $ComposeFile exec -T $Service mysql `
-        "-u$Username" "-p$Password" $Database
+    $composeArgs = @()
+    foreach ($f in $ComposeFile) { $composeArgs += '-f'; $composeArgs += $f }
+    $composeArgs += @('exec', '-T', $Service, 'mysql', "-u$Username", "-p$Password", $Database)
+    $Sql | docker compose @composeArgs
     if ($LASTEXITCODE -ne 0) {
         throw "MySQL command failed with exit code $LASTEXITCODE"
     }
@@ -26,20 +28,24 @@ if ($migrationFiles.Count -eq 0) {
 }
 
 function Test-MigrationTable {
-    $exists = (& docker compose -f $ComposeFile exec -T $Service mysql `
-        "-u$Username" "-p$Password" -NBe `
-        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$Database' AND table_name='schema_migrations';" 2>$null).Trim()
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to query migration table state"
+    $ErrorActionPreference = 'Continue'
+    $composeArgs = @()
+    foreach ($f in $ComposeFile) { $composeArgs += '-f'; $composeArgs += $f }
+    $composeArgs += @('exec', '-T', $Service, 'mysql', "-u$Username", "-p$Password", '-NBe')
+    $composeArgs += "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$Database' AND table_name='schema_migrations';"
+    try {
+        $result = & docker compose @composeArgs 2>&1
+        if ($LASTEXITCODE -ne 0) { return $false }
+        return ($result.Trim() -eq '1')
+    } catch {
+        return $false
     }
-    return $exists -eq '1'
 }
 
 foreach ($file in $migrationFiles) {
     $version = $file.BaseName
     $escapedVersion = $version.Replace("'", "''")
 
-    # Bootstrap the bookkeeping table before querying it for the first migration.
     if (-not (Test-MigrationTable)) {
         if ($version -ne '000_schema_migrations') {
             throw "Migration bookkeeping table is missing and $version is not the bootstrap migration"
@@ -51,9 +57,11 @@ foreach ($file in $migrationFiles) {
         continue
     }
 
-    $alreadyApplied = (& docker compose -f $ComposeFile exec -T $Service mysql `
-        "-u$Username" "-p$Password" $Database -NBe `
-        "SELECT COUNT(*) FROM schema_migrations WHERE version='$escapedVersion';" 2>$null).Trim()
+    $checkArgs = @()
+    foreach ($f in $ComposeFile) { $checkArgs += '-f'; $checkArgs += $f }
+    $checkArgs += @('exec', '-T', $Service, 'mysql', "-u$Username", "-p$Password", $Database, '-NBe')
+    $checkArgs += "SELECT COUNT(*) FROM schema_migrations WHERE version='$escapedVersion';"
+    $alreadyApplied = (& docker compose @checkArgs 2>&1).Trim()
     if ($LASTEXITCODE -ne 0) {
         throw "Unable to query migration state before applying $version"
     }
