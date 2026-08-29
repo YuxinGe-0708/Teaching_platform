@@ -48,16 +48,30 @@ kubectl -n "$namespace" create configmap teaching-platform-db-migrations --from-
 kubectl apply -f k8s/mysql.yaml
 kubectl -n "$namespace" rollout status deployment/mysql --timeout=5m
 
+# The readiness probe uses TCP. Use the same path here instead of MySQL's
+# default Unix socket, which may not exist while the server is initializing.
+mysql_exec=(kubectl -n "$namespace" exec deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -h 127.0.0.1 -P 3306 --protocol=tcp -uroot)
+for attempt in {1..30}; do
+  if "${mysql_exec[@]}" teaching_platform -NBe 'SELECT 1' >/dev/null 2>&1; then
+    break
+  fi
+  if [[ "$attempt" == 30 ]]; then
+    echo "MySQL TCP connection was not ready before migrations" >&2
+    exit 1
+  fi
+  sleep 2
+done
+
 for migration_file in db/migrations/*.sql; do
   migration_version="$(basename "$migration_file" .sql)"
-  migration_applied="$(kubectl -n "$namespace" exec deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot teaching_platform -NBe "SELECT COUNT(*) FROM schema_migrations WHERE version='$migration_version';" 2>/dev/null || true)"
+  migration_applied="$("${mysql_exec[@]}" teaching_platform -NBe "SELECT COUNT(*) FROM schema_migrations WHERE version='$migration_version';" 2>/dev/null || true)"
   if [[ "$migration_applied" == "1" ]]; then
     echo "Skipping already applied migration $migration_version"
     continue
   fi
   echo "Applying migration $migration_version"
-  kubectl -n "$namespace" exec -i deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot teaching_platform < "$migration_file"
-  kubectl -n "$namespace" exec deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot -e "INSERT INTO teaching_platform.schema_migrations (version) VALUES ('$migration_version');"
+  kubectl -n "$namespace" exec -i deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -h 127.0.0.1 -P 3306 --protocol=tcp -uroot teaching_platform < "$migration_file"
+  "${mysql_exec[@]}" -e "INSERT INTO teaching_platform.schema_migrations (version) VALUES ('$migration_version');"
 done
 
 backend_file="${RUNNER_TEMP:-/tmp}/backend.yaml"
