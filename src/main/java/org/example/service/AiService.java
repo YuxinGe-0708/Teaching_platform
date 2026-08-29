@@ -60,7 +60,7 @@ public class AiService {
             Map<String, String> sysMsg = new HashMap<>();
             sysMsg.put("role", "system");
             sysMsg.put("content", "你是在线教学平台的 AI 助教。当前课程是《" + courseName
-                    + "》。请用中文回答，重点帮助学生理解课程知识、完成作业思路和排查学习问题。回答尽量简洁，不超过 500 字。");
+                + "》。请用中文回答，重点帮助学生理解课程知识、完成作业思路和排查学习问题。回答尽量简洁，不超过 500 字。");
             history.add(sysMsg);
         }
 
@@ -108,8 +108,8 @@ public class AiService {
         List<Map<String, String>> messages = new ArrayList<>();
         messages.add(message("system", "你是在线教学平台的 AI 助教，请为学生生成清晰、结构化的课程资料笔记。"));
         messages.add(message("user", "课程：" + courseName + "\n资料：" + resourceTitle
-                + "\n请根据下面 PDF 文本生成中文知识点概括，包含：核心概念、重点公式/步骤、易错点、复习建议。\n\n"
-                + source));
+            + "\n请根据下面 PDF 文本生成中文知识点概括，包含：核心概念、重点公式/步骤、易错点、复习建议。\n\n"
+            + source));
         try {
             String reply = sendTextMessages(model, messages);
             return reply == null || reply.trim().isEmpty() ? "AI 没有返回有效笔记，请稍后重试。" : reply;
@@ -133,7 +133,7 @@ public class AiService {
         List<Map<String, String>> messages = new ArrayList<>();
         messages.add(message("system", "你是教学平台的学习笔记整理助手。请只输出 Mermaid mindmap 语法，不要输出解释文字。"));
         messages.add(message("user", "课程：" + courseName + "\n笔记标题：" + noteTitle
-                + "\n请把下面内容整理为 Mermaid mindmap。根节点使用笔记标题，层级控制在 3 层内。\n\n" + source));
+            + "\n请把下面内容整理为 Mermaid mindmap。根节点使用笔记标题，层级控制在 3 层内。\n\n" + source));
         try {
             String reply = sendTextMessages(model, messages);
             if (reply == null || reply.trim().isEmpty()) return fallbackMindMap(noteTitle, source);
@@ -162,17 +162,17 @@ public class AiService {
             ObjectNode text = content.addObject();
             text.put("type", "text");
             text.put("text", "课程：" + courseName + "。视频：" + resourceTitle
-                    + "。请解释这张视频框选截图中的知识点，用中文回答，包含概念解释和学习提示。");
+                + "。请解释这张视频框选截图中的知识点，用中文回答，包含概念解释和学习提示。");
             ObjectNode image = content.addObject();
             image.put("type", "image_url");
             ObjectNode imageUrl = image.putObject("image_url");
             imageUrl.put("url", imageDataUrl);
 
             ResponseEntity<String> response = restTemplate.exchange(
-                    apiUrl,
-                    HttpMethod.POST,
-                    new HttpEntity<>(mapper.writeValueAsString(body), headers()),
-                    String.class
+                apiUrl,
+                HttpMethod.POST,
+                new HttpEntity<>(mapper.writeValueAsString(body), headers()),
+                String.class
             );
             return extractReply(response.getBody());
         } catch (HttpClientErrorException e) {
@@ -195,10 +195,10 @@ public class AiService {
             msg.put("content", message.get("content"));
         }
         ResponseEntity<String> response = restTemplate.exchange(
-                apiUrl,
-                HttpMethod.POST,
-                new HttpEntity<>(mapper.writeValueAsString(body), headers()),
-                String.class
+            apiUrl,
+            HttpMethod.POST,
+            new HttpEntity<>(mapper.writeValueAsString(body), headers()),
+            String.class
         );
         return extractReply(response.getBody());
     }
