@@ -1,4 +1,4 @@
-# TeachingPlatform
+﻿# TeachingPlatform
 
 Spring Boot + Thymeleaf + Vue 3 + MyBatis + MySQL 教学平台。
 
@@ -12,6 +12,74 @@ Spring Boot + Thymeleaf + Vue 3 + MyBatis + MySQL 教学平台。
 - Vue 3 CDN
 - MyBatis
 - MySQL 8.x
+
+
+## 微服务架构
+
+系统已拆分为 3 个业务微服务 + 1 个 API 网关（规划中），每个服务独立构建、测试和部署。
+
+| 服务 | 端口 | 数据库 | 职责 |
+|---|---|---|---|
+| `user-service` | 8082 | `user_db` | 注册、登录、角色权限、用户管理、通知 |
+| `learning-service` | 8083 | `learning_service_db` | 课程、班级、选退课、资源、进度、笔记、讨论 |
+| `assessment-service` | 8084 (规划中) | `assessment_db` | 作业、考试、提交、批改、成绩、编程判题 |
+
+### 数据表归属
+
+| 服务 | 独占表 |
+|---|---|
+| user-service | `user`, `notification`, `operation_log` |
+| learning-service | `course`, `course_class`, `course_enrollment`, `resource`, `resource_progress`, `study_note`, `discussion_post`, `discussion_reply` |
+| assessment-service | `task`, `submission`, `exam_record` |
+
+> 跨服务数据操作通过 `/internal` 接口完成，禁止跨服务直接联表查询。
+
+### 微服务目录结构
+
+```
+services/
+├── user-service/          # 用户与身份域
+│   ├── pom.xml
+│   ├── Dockerfile
+│   ├── k8s/user-service/deployment.yaml
+│   └── src/main/java/com/teach/user/...
+├── learning-service/      # 学习与内容域
+│   ├── pom.xml
+│   ├── Dockerfile
+│   ├── k8s/learning-service/deployment.yaml
+│   └── src/main/java/com/teach/learning/...
+└── assessment-service/    # 评测与成绩域（规划中）
+```
+
+### 单体与微服务并行
+
+当前单体应用（根目录）仍可完整运行，微服务逐步替代。CI/CD 流水线同时支持两种模式。
+
+### 跨服务接口契约
+
+learning-service 依赖 user-service 的接口：
+
+| 接口 | 用途 |
+|---|---|
+| `GET /internal/users/{id}` | 获取用户姓名、角色 |
+| `GET /internal/users/by-ids?ids=1,2,3` | 批量获取用户信息 |
+| `POST /internal/notifications` | 发送通知（如新回复提醒） |
+
+调用失败处理：重试 3 次（间隔 1s/2s/4s），全部失败返回降级数据（默认名称、空头像），不阻塞主流程。
+
+### CI/CD 流水线
+
+推送到 `dev_dockerfile` 分支自动触发：
+
+```
+ci ──→ publish ──→ deploy
+```
+
+- **ci**：编译、单元测试、容器化、集成测试、冒烟测试
+- **publish**：构建版本镜像 → 推送华为云 SWR
+- **deploy**：Kind 集群部署 → 健康检查 → 登录冒烟
+
+详见 [docs/ci-cd.md](docs/ci-cd.md)。
 
 ## 用 Docker 启动数据库
 
