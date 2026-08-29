@@ -6,13 +6,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class JudgeServiceUnitTest {
+public class JudgeServiceUnitTest {
 
   @Mock
   private LocalJudgeService localJudgeService;
@@ -38,23 +44,31 @@ class JudgeServiceUnitTest {
     testCases.add(tc2);
   }
 
-  // ========== J010: 判题状态码映射（正例） ==========
+  // ========== J010: 判题状态码映射（正例 - 反射测试私有 mapStatus 方法） ==========
   @Test
   void mapStatus_shouldReturnCorrectStatus() {
-    // Testing the private mapStatus method via reflection or indirectly
-    // We test through the judge method's behavior
-    // Since mapStatus is private, we test the judge method with mocked responses
+    // 通过反射测试 private mapStatus(int)
+    Object acStatus = ReflectionTestUtils.invokeMethod(judgeService, "mapStatus", 3);
+    Object waStatus = ReflectionTestUtils.invokeMethod(judgeService, "mapStatus", 4);
+    Object tleStatus = ReflectionTestUtils.invokeMethod(judgeService, "mapStatus", 5);
+
+    assertNotNull(acStatus, "状态码3映射不应为空");
+    assertNotNull(waStatus, "状态码4映射不应为空");
+    assertNotNull(tleStatus, "状态码5映射不应为空");
   }
 
   // ========== J011: 多测试用例权重与总分折算（正例） ==========
   @Test
-  void judge_shouldCalculateWeightedScoreCorrectly() {
-    // This tests the weight calculation logic in doCloudJudge
-    // Since the method requires external API calls, we test locally
-    // by mocking the judge service or using local fallback
+  void parseWeight_shouldCalculateTotalWeights() {
+    // 验证多用例权重解析与累加计算
+    int totalWeight = 0;
+    for (Map<String, String> tc : testCases) {
+      totalWeight += JudgeService.parseWeight(tc.get("weight"));
+    }
+    assertEquals(3, totalWeight, "用例总权重应为 1 + 2 = 3");
   }
 
-  // ========== parseWeight 工具方法测试 ==========
+  // ========== parseWeight 工具方法测试（边界与异常） ==========
   @Test
   void parseWeight_shouldReturnOne_whenNull() {
     int result = JudgeService.parseWeight(null);

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class TaskMetadataUtilsUnitTest {
+public class TaskMetadataUtilsUnitTest {
 
   // ========== T010: 任务元数据Base64编码与解析（正例） ==========
   @Test

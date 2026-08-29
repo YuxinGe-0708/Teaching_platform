@@ -16,7 +16,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class TaskServiceUnitTest {
+public class TaskServiceUnitTest {
 
   @Mock
   private TaskMapper taskMapper;

@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.entity.Task;
 import org.example.entity.User;
 import org.example.mapper.TaskMapper;
-import org.example.mapper.UserMapper;
 import org.example.service.TaskService;
 import org.example.service.UserService;
+import org.example.util.TaskMetadataUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class JudgeControllerIntegrationTest {
+public class JudgeControllerIntegrationTest {
 
   @Autowired
   private MockMvc mockMvc;
@@ -59,32 +59,39 @@ class JudgeControllerIntegrationTest {
     testTask.setMaxScore(100);
     testTask.setCourseId(1L);
     testTask.setStatus("published");
+    // ✅ 注入包含合法测试用例与语言的元数据
+    String metaDesc = TaskMetadataUtils.buildDescription(
+        "请编写程序输出 Hello World",
+        null,
+        "---CASE---\n\n---OUTPUT---\nHello World\n",
+        "python",
+        null
+    );
+    testTask.setDescription(metaDesc);
     testTask = taskService.createTask(testTask);
   }
 
-  // ========== J020: 学生提交Python代码评测全部通过（正例） ==========
+  // ========== J020: 学生提交Python代码评测（正例） ==========
   @Test
   void submitAndJudge_shouldReturnAC_whenCodeCorrect() throws Exception {
     Map<String, Object> request = new HashMap<>();
-    request.put("code", "import sys\nprint('Hello World')");
+    request.put("code", "print('Hello World')");
     request.put("language", "python");
     request.put("taskId", testTask.getId());
-
-    // Test cases for Hello World
-    // Since we don't have a real Judge0 API, we'll test the local fallback
 
     mockMvc.perform(post("/api/v2/judge/submit")
             .session(session)
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.code").value(200));
+        .andExpect(jsonPath("$.code").value(200))
+        .andExpect(jsonPath("$.message").value("评测完成"));
   }
 
   // ========== J021: 提交未允许的编程语言拦截（反例） ==========
   @Test
   void submitAndJudge_shouldReturnError_whenLanguageNotAllowed() throws Exception {
-    // Update task to allow only Python
+    // 设置仅允许 Python
     testTask.setDescription("<!--TP_META\nallowedLanguage=cHl0aG9u\nTP_META-->");
     taskMapper.update(testTask);
 
@@ -108,6 +115,7 @@ class JudgeControllerIntegrationTest {
     Map<String, Object> request = new HashMap<>();
     request.put("code", "print('Hello')");
     request.put("language", "python");
+    request.put("taskId", testTask.getId());
 
     mockMvc.perform(post("/api/v2/judge/submit")
             .contentType(MediaType.APPLICATION_JSON)
@@ -117,12 +125,13 @@ class JudgeControllerIntegrationTest {
         .andExpect(jsonPath("$.message").value("请先登录"));
   }
 
-  // ========== 空代码提交拦截 ==========
+  // ========== 空代码提交拦截（反例） ==========
   @Test
   void submitAndJudge_shouldReturnError_whenCodeEmpty() throws Exception {
     Map<String, Object> request = new HashMap<>();
     request.put("code", "");
     request.put("language", "python");
+    request.put("taskId", testTask.getId());
 
     mockMvc.perform(post("/api/v2/judge/submit")
             .session(session)
