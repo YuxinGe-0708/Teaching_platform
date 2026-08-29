@@ -6,14 +6,16 @@
 
 - `init/01_schema.sql`：建库、建表、索引（首次启动自动执行）。
 - `init/02_test_data.sql`：测试数据，账号密码统一为 `123456`（首次启动自动执行）。
-- `migrations/`：后续数据迁移脚本约定，见 `migrations/README.md`。
+- `migrations/000_schema_migrations.sql`：当前基线迁移，创建迁移记录表，不修改业务表。
+- `migrations/`：后续数据迁移脚本，按文件名顺序执行，见 `migrations/README.md`。
 
 ## 启动
 
 在项目根目录执行：
 
 ```powershell
-docker compose up -d mysql
+docker compose up -d --wait mysql
+./scripts/db-migrate.ps1
 ```
 
 MySQL 官方镜像只在数据目录为空时自动执行 `docker-entrypoint-initdb.d/` 下的脚本；本仓库已把 `db/init` 挂载到该目录。
