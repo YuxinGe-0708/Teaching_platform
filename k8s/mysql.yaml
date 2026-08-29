@@ -44,6 +44,7 @@ spec:
           volumeMounts:
             - { name: data, mountPath: /var/lib/mysql }
             - { name: init-sql, mountPath: /docker-entrypoint-initdb.d, readOnly: true }
+            - { name: migrations, mountPath: /opt/db-migrations, readOnly: true }
           readinessProbe:
             exec:
               command: ["sh", "-c", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$MYSQL_ROOT_PASSWORD\" --silent"]
@@ -56,6 +57,8 @@ spec:
           persistentVolumeClaim: { claimName: mysql-data }
         - name: init-sql
           configMap: { name: teaching-platform-db-init }
+        - name: migrations
+          configMap: { name: teaching-platform-db-migrations }
 ---
 apiVersion: v1
 kind: Service

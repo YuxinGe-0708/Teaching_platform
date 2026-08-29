@@ -15,15 +15,17 @@ Spring Boot + Thymeleaf + Vue 3 + MyBatis + MySQL 教学平台。
 
 ## 用 Docker 启动数据库
 
-只需要安装 Docker，数据库容器会自动建库、建表并导入测试数据：
+只需要安装 Docker，数据库容器会自动建库、建表并导入测试数据。MySQL 健康后再执行迁移：
 
 ```powershell
-docker compose up -d mysql
+docker compose up -d --wait mysql
+./scripts/db-migrate.ps1
 ```
 
 - 镜像：`mysql:8.0.40`（官方镜像，无需自写 Dockerfile）
 - 首次启动自动执行 `db/init/01_schema.sql` 和 `db/init/02_test_data.sql`
 - 数据持久化在 Docker 卷 `mysql-data` 中
+- 启动后执行 `scripts/db-migrate.ps1`，按顺序应用 `db/migrations/*.sql`；已执行版本会记录并跳过
 - 参数可在 `.env` 中覆盖，默认见 `.env.example`
 
 默认连接信息：
@@ -131,6 +133,7 @@ mvn spring-boot:run
 
 ```powershell
 docker compose up -d mysql
+./scripts/db-migrate.ps1
 ```
 
 完整启动应用容器：

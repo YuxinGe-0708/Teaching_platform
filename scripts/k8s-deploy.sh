@@ -44,8 +44,21 @@ kubectl -n "$namespace" create secret docker-registry swr-registry \
   --docker-server="$SWR_REGISTRY" --docker-username="$SWR_USERNAME" --docker-password="$SWR_PASSWORD" \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$namespace" create configmap teaching-platform-db-init --from-file=01_schema.sql=db/init/01_schema.sql --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap teaching-platform-db-migrations --from-file=db/migrations --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/mysql.yaml
 kubectl -n "$namespace" rollout status deployment/mysql --timeout=5m
+
+for migration_file in db/migrations/*.sql; do
+  migration_version="$(basename "$migration_file" .sql)"
+  migration_applied="$(kubectl -n "$namespace" exec deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot teaching_platform -NBe "SELECT COUNT(*) FROM schema_migrations WHERE version='$migration_version';" 2>/dev/null || true)"
+  if [[ "$migration_applied" == "1" ]]; then
+    echo "Skipping already applied migration $migration_version"
+    continue
+  fi
+  echo "Applying migration $migration_version"
+  kubectl -n "$namespace" exec -i deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot teaching_platform < "$migration_file"
+  kubectl -n "$namespace" exec deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot -e "INSERT INTO teaching_platform.schema_migrations (version) VALUES ('$migration_version');"
+done
 
 backend_file="${RUNNER_TEMP:-/tmp}/backend.yaml"
 frontend_file="${RUNNER_TEMP:-/tmp}/frontend.yaml"
