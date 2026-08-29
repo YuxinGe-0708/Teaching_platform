@@ -1,0 +1,269 @@
+name: Teaching Platform CI/CD
+
+on:
+  pull_request:
+    branches: [dev_dockerfile, dev, main, master]
+  push:
+    branches: [dev_dockerfile, codex/dev-dockerfile-work]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  COMPOSE_PROJECT_NAME: teaching-platform-ci
+  IMAGE_TAG: ${{ github.sha }}
+  MYSQL_ROOT_PASSWORD: ci-root-password
+  MYSQL_DATABASE: teaching_platform
+  MYSQL_USER: tp_ci
+  MYSQL_PASSWORD: ci-password
+  APP_SEED_TEST_DATA: 'true'
+  FRONTEND_PORT: '3000'
+  BACKEND_PORT: '8081'
+  AI_API_URL: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+  AI_API_KEY: ${{ secrets.AI_API_KEY }}
+  AI_MODEL: qwen-plus
+  AI_VISION_MODEL: qwen3-vl-plus
+
+jobs:
+  ci:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+
+      - name: Build application containers
+        run: docker compose -f docker-compose.yml -f docker-compose.app.yml build
+
+      - name: Prepare integration upload storage
+        run: |
+          mkdir -p uploads
+          chmod -R a+rwX uploads
+
+      - name: Start integration environment
+        run: docker compose -f docker-compose.yml -f docker-compose.app.yml up -d
+
+      - name: Wait for frontend health
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error http://localhost:3000/healthz | grep -qx 'ok'; then exit 0; fi
+            sleep 2
+          done
+          docker compose -f docker-compose.yml -f docker-compose.app.yml ps
+          exit 1
+
+      - name: Run database migrations
+        shell: pwsh
+        run: ./scripts/db-migrate.ps1 -Username "$env:MYSQL_USER" -Password "$env:MYSQL_PASSWORD" -Database "$env:MYSQL_DATABASE"
+
+      - name: Verify migration ledger
+        shell: pwsh
+        run: |
+          $version = (& docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$env:MYSQL_USER" "-p$env:MYSQL_PASSWORD" $env:MYSQL_DATABASE -NBe "SELECT version FROM schema_migrations WHERE version='000_schema_migrations';").Trim()
+          if ($LASTEXITCODE -ne 0 -or $version -ne '000_schema_migrations') { throw 'Database migration ledger verification failed.' }
+
+      # 👇 将单元与集成测试移至此处：此时 MySQL 已经启动且数据库表结构已经初始化完毕
+      - name: Run Unit and Integration Tests
+        run: mvn -B test
+
+      - name: Container smoke test
+        shell: pwsh
+        run: ./scripts/container-smoke.ps1 -BaseUrl http://localhost:3000 -BackendUrl http://localhost:8081
+
+      - name: Business integration regression
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ci-artifacts | Out-Null
+          try {
+            ./scripts/container-business-regression.ps1 -BaseUrl http://localhost:3000 *>&1 | Tee-Object ci-artifacts/business-regression.log
+          } catch {
+            $_ | Out-String | Tee-Object -Append ci-artifacts/business-regression.log
+            throw
+          }
+
+      - name: Qwen AI integration smoke test
+        if: env.AI_API_KEY != ''
+        shell: pwsh
+        run: ./scripts/container-ai-smoke.ps1 -BaseUrl http://localhost:3000
+
+      - name: Collect integration logs
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p ci-artifacts
+          docker compose -f docker-compose.yml -f docker-compose.app.yml ps > ci-artifacts/compose-ps.txt || true
+          docker compose -f docker-compose.yml -f docker-compose.app.yml logs --no-color > ci-artifacts/compose.log || true
+
+      - name: Upload test and runtime records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-records-${{ github.run_id }}
+          path: |
+            ci-artifacts/
+            target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Stop integration environment
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.app.yml down -v --remove-orphans
+
+  publish:
+    name: Publish versioned images
+    needs: ci
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev_dockerfile' || github.ref == 'refs/heads/codex/dev-dockerfile-work' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Select image version
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then tag="${GITHUB_REF#refs/tags/}"; else tag="sha-${GITHUB_SHA::12}"; fi
+          echo "image_tag=$tag" >> "$GITHUB_OUTPUT"
+          mkdir -p publish-records
+          printf 'commit=%s\nref=%s\nimage_tag=%s\n' "$GITHUB_SHA" "$GITHUB_REF" "$tag" > publish-records/metadata.txt
+
+      - name: Log in to Huawei Cloud SWR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.SWR_REGISTRY }}
+          username: ${{ secrets.SWR_USERNAME }}
+          password: ${{ secrets.SWR_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/backend/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          build-args: |
+            MAVEN_IMAGE=${{ vars.MAVEN_IMAGE || 'maven:3.8.8-eclipse-temurin-8' }}
+            JAVA_IMAGE=${{ vars.JAVA_IMAGE || 'eclipse-temurin:8-jdk-jammy' }}
+          tags: |
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-backend:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-backend:sha-${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker/frontend
+          file: docker/frontend/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          build-args: |
+            NGINX_IMAGE=${{ vars.NGINX_IMAGE || 'nginx:1.27-alpine' }}
+          tags: |
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-frontend:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-frontend:sha-${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Upload publish records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-records-${{ github.run_id }}
+          path: publish-records/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  deploy:
+    name: Deploy to ephemeral kind Kubernetes
+    needs: publish
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev_dockerfile' || github.ref == 'refs/heads/codex/dev-dockerfile-work' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Create ephemeral Kubernetes cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: teaching-platform-demo
+          config: k8s/kind-config.yaml
+          wait: 120s
+
+      - name: Install deployment tooling
+        run: sudo apt-get update && sudo apt-get install -y gettext-base
+
+      - name: Load MySQL image into kind
+        run: |
+          docker pull mysql:8.0.43
+          kind load docker-image mysql:8.0.43 --name teaching-platform-demo
+
+      - name: Deploy immutable image version
+        shell: bash
+        env:
+          DEPLOY_TARGET: kind
+          KIND_CLUSTER_NAME: teaching-platform-demo
+          IMAGE_TAG: ${{ needs.publish.outputs.image_tag }}
+          SWR_REGISTRY: ${{ secrets.SWR_REGISTRY }}
+          SWR_ORG: ${{ secrets.SWR_ORG }}
+          SWR_USERNAME: ${{ secrets.SWR_USERNAME }}
+          SWR_PASSWORD: ${{ secrets.SWR_PASSWORD }}
+          DB_PASSWORD: kind-demo-password
+          DB_ROOT_PASSWORD: kind-demo-root-password
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        run: bash scripts/k8s-deploy.sh
+
+      - name: Write Kubernetes demonstration summary
+        if: success()
+        shell: bash
+        env:
+          IMAGE_TAG: ${{ needs.publish.outputs.image_tag }}
+        run: |
+          {
+            echo "## Ephemeral Kubernetes deployment passed"
+            echo
+            echo "- Cluster: kind / teaching-platform-demo"
+            echo "- Namespace: teaching-platform"
+            echo "- Image version: \`$IMAGE_TAG\`"
+            echo "- Health endpoint: \`/healthz = ok\`"
+            echo "- Login and session smoke test: passed"
+            echo "- Lifetime: this workflow job only"
+            echo
+            echo '```text'
+            kubectl -n teaching-platform get deployments,pods,services,pvc -o wide
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload deployment records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-records-${{ github.run_id }}
+          path: deploy-artifacts/
+          if-no-files-found: ignore
+          retention-days: 30
