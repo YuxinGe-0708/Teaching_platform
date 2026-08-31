@@ -40,6 +40,8 @@ info:
     version: 1.0.0
 
 app:
+  internal-api-key: ${INTERNAL_API_KEY:dev-internal-key}
+  learning-service-url: ${LEARNING_SERVICE_URL:http://localhost:8083}
   jwt:
     # 至少 32 字节以上，用于 HMAC-SHA256；生产用环境变量覆盖
     secret: ${JWT_SECRET:ChangeMe_ThisIs_A_32BytePlus_SecretKey_ForHS256_XYZ}

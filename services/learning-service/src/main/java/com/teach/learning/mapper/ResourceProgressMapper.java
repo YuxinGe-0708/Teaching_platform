@@ -1,4 +1,4 @@
-﻿package com.teach.learning.mapper;
+package com.teach.learning.mapper;
 import com.teach.learning.entity.ResourceProgress;
 import org.apache.ibatis.annotations.*;
 @Mapper

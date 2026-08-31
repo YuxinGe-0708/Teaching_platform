@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.List;
 
@@ -51,5 +52,10 @@ public class InternalNotificationController {
     public ApiResponse<String> markAllRead(@RequestParam Long userId) {
         notificationService.markAllAsRead(userId);
         return ApiResponse.ok("ok", null);
+    }
+
+    @GetMapping("/user/{userId}")
+    public ApiResponse<List<Notification>> byUser(@PathVariable Long userId) {
+        return ApiResponse.ok(notificationService.findByUserId(userId));
     }
 }

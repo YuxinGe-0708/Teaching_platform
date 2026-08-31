@@ -19,6 +19,7 @@ secret_file="${RUNNER_TEMP:-/tmp}/teaching-platform-secret.yaml"
 port_forward_pid=""
 export AI_API_KEY="${AI_API_KEY:-}"
 export JUDGE0_API_KEY="${JUDGE0_API_KEY:-}"
+export INTERNAL_API_KEY="${INTERNAL_API_KEY:-dev-internal-key}"
 
 collect_artifacts() {
   status=$?
@@ -31,6 +32,9 @@ collect_artifacts() {
   kubectl -n "$namespace" logs deployment/mysql --all-containers --tail=300 > "$artifact_dir/mysql.log" 2>&1 || true
   kubectl -n "$namespace" logs deployment/backend --all-containers --tail=300 > "$artifact_dir/backend.log" 2>&1 || true
   kubectl -n "$namespace" logs deployment/frontend --all-containers --tail=100 > "$artifact_dir/frontend.log" 2>&1 || true
+  kubectl -n "$namespace" logs deployment/user-service --all-containers --tail=200 > "$artifact_dir/user-service.log" 2>&1 || true
+  kubectl -n "$namespace" logs deployment/learning-service --all-containers --tail=200 > "$artifact_dir/learning-service.log" 2>&1 || true
+  kubectl -n "$namespace" logs deployment/assessment-service --all-containers --tail=200 > "$artifact_dir/assessment-service.log" 2>&1 || true
   rm -f "$secret_file"
   exit "$status"
 }
@@ -45,6 +49,9 @@ kubectl -n "$namespace" create secret docker-registry swr-registry \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$namespace" create configmap teaching-platform-db-init --from-file=01_schema.sql=db/init/01_schema.sql --dry-run=client -o yaml | kubectl apply -f -
 kubectl -n "$namespace" create configmap teaching-platform-db-migrations --from-file=db/migrations --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap user-service-schema --from-file=schema-user.sql=services/user-service/src/main/resources/db/schema-user.sql --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap learning-service-schema --from-file=schema-learning.sql=services/learning-service/src/main/resources/db/schema-learning.sql --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap assessment-service-schema --from-file=schema-assessment.sql=services/assessment-service/src/main/resources/db/schema-assessment.sql --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f k8s/mysql.yaml
 kubectl -n "$namespace" rollout status deployment/mysql --timeout=5m
 
@@ -66,6 +73,12 @@ sed -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" -e "s|__SWR_ORG__|$SWR_ORG|g" -e "s|
 sed -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" -e "s|__SWR_ORG__|$SWR_ORG|g" -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" k8s/frontend.yaml > "$frontend_file"
 kubectl apply -f "$backend_file"
 kubectl apply -f "$frontend_file"
+service_files=(services/user-service/k8s/user-service/deployment.yaml services/learning-service/k8s/learning-service/deployment.yaml services/assessment-service/k8s/assessment-service/deployment.yaml)
+for service_file in "${service_files[@]}"; do
+  rendered_file="${RUNNER_TEMP:-/tmp}/$(basename "$(dirname "$service_file")").yaml"
+  sed -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" -e "s|__SWR_ORG__|$SWR_ORG|g" -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" "$service_file" > "$rendered_file"
+  kubectl apply -f "$rendered_file"
+done
 if [[ "$deploy_target" == "kind" ]]; then
   kubectl -n "$namespace" set env deployment/backend APP_SEED_TEST_DATA=true
   kubectl -n "$namespace" patch service frontend --type=merge \
@@ -73,6 +86,9 @@ if [[ "$deploy_target" == "kind" ]]; then
 fi
 kubectl -n "$namespace" rollout status deployment/backend --timeout=8m
 kubectl -n "$namespace" rollout status deployment/frontend --timeout=5m
+kubectl -n "$namespace" rollout status deployment/user-service --timeout=5m
+kubectl -n "$namespace" rollout status deployment/learning-service --timeout=5m
+kubectl -n "$namespace" rollout status deployment/assessment-service --timeout=5m
 kubectl -n "$namespace" get all,pvc -o wide | tee "$artifact_dir/kubernetes-resources.txt"
 
 if [[ "$deploy_target" == "kind" ]]; then

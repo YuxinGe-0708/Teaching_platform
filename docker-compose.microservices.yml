@@ -1,0 +1,66 @@
+services:
+  microservices-mysql:
+    image: ${MICROSERVICES_MYSQL_IMAGE:-mysql:8.0.40}
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-root123456}
+    ports: ["${MICROSERVICES_MYSQL_PORT:-3307}:3306"]
+    volumes:
+      - microservices-mysql-data:/var/lib/mysql
+      - ./services/user-service/src/main/resources/db/schema-user.sql:/docker-entrypoint-initdb.d/01-user.sql:ro
+      - ./services/learning-service/src/main/resources/db/schema-learning.sql:/docker-entrypoint-initdb.d/02-learning.sql:ro
+      - ./services/assessment-service/src/main/resources/db/schema-assessment.sql:/docker-entrypoint-initdb.d/03-assessment.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.8.8-eclipse-temurin-8}
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:8-jre-jammy}
+    environment:
+      SERVER_PORT: 8082
+      DB_URL: jdbc:mysql://microservices-mysql:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      DB_USERNAME: root
+      DB_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-root123456}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+    ports: ["8082:8082"]
+    depends_on: { microservices-mysql: { condition: service_healthy } }
+  learning-service:
+    build:
+      context: ./services/learning-service
+      dockerfile: Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.8.8-eclipse-temurin-8}
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:8-jre-jammy}
+    environment:
+      SERVER_PORT: 8083
+      DB_URL: jdbc:mysql://microservices-mysql:3306/learning_service_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      DB_USERNAME: root
+      DB_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-root123456}
+      USER_SERVICE_URL: http://user-service:8082
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+    ports: ["8083:8083"]
+    depends_on: { microservices-mysql: { condition: service_healthy }, user-service: { condition: service_started } }
+  assessment-service:
+    build:
+      context: ./services/assessment-service
+      dockerfile: Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.8.8-eclipse-temurin-8}
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:8-jre-jammy}
+    environment:
+      SERVER_PORT: 8084
+      DB_URL: jdbc:mysql://microservices-mysql:3306/assessment_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      DB_USERNAME: root
+      DB_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-root123456}
+      LEARNING_SERVICE_URL: http://learning-service:8083
+      USER_SERVICE_URL: http://user-service:8082
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+    ports: ["8084:8084"]
+    depends_on: { microservices-mysql: { condition: service_healthy }, learning-service: { condition: service_started } }
+volumes:
+  microservices-mysql-data:

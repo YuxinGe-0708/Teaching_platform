@@ -1,5 +1,6 @@
-﻿package com.teach.learning.service;
+package com.teach.learning.service;
 import com.teach.learning.entity.Course;
+import com.teach.learning.entity.CourseClass;
 import com.teach.learning.entity.CourseEnrollment;
 import com.teach.learning.mapper.CourseEnrollmentMapper;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,13 @@ public class EnrollmentService {
         if (enrollment == null) return false;
         if (enrollment.getClassId() != null) classService.decrementCount(enrollment.getClassId());
         return enrollmentMapper.deleteByStudentAndCourse(studentId, courseId) > 0;
+    }
+
+    public boolean removeFromClass(Long classId, Long studentId) {
+        CourseEnrollment enrollment = enrollmentMapper.findByClassAndStudent(classId, studentId);
+        if (enrollment == null) return false;
+        if (enrollment.getClassId() != null) classService.decrementCount(enrollment.getClassId());
+        return enrollmentMapper.deleteByStudentAndCourse(studentId, enrollment.getCourseId()) > 0;
     }
 
     public List<CourseEnrollment> getStudentEnrollments(Long studentId) { return enrollmentMapper.findByStudentId(studentId); }

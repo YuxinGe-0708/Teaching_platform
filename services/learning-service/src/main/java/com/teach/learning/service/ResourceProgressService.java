@@ -1,4 +1,4 @@
-﻿package com.teach.learning.service;
+package com.teach.learning.service;
 import com.teach.learning.entity.ResourceProgress;
 import com.teach.learning.mapper.ResourceProgressMapper;
 import org.springframework.stereotype.Service;

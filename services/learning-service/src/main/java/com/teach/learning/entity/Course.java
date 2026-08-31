@@ -1,4 +1,4 @@
-﻿package com.teach.learning.entity;
+package com.teach.learning.entity;
 import java.sql.Timestamp;
 public class Course {
     private Long id; private String name; private String code; private String description;

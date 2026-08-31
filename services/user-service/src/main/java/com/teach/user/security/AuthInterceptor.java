@@ -2,6 +2,7 @@ package com.teach.user.security;
 
 import io.jsonwebtoken.Claims;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
@@ -18,6 +19,7 @@ import javax.servlet.http.HttpServletResponse;
 public class AuthInterceptor implements HandlerInterceptor {
 
     private final JwtUtil jwtUtil;
+    @Value("${app.internal-api-key:dev-internal-key}") private String internalApiKey;
 
     public AuthInterceptor(JwtUtil jwtUtil) {
         this.jwtUtil = jwtUtil;
@@ -27,6 +29,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String path = request.getRequestURI();
         if (isPublic(path)) return true;
+        if (path.startsWith("/internal/") && internalApiKey.equals(request.getHeader("X-Internal-Api-Key"))) return true;
 
         UserIdentity identity = resolve(request);
         if (identity == null) {

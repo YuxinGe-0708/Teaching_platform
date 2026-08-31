@@ -1,4 +1,4 @@
-﻿package com.teach.learning.entity;
+package com.teach.learning.entity;
 import java.sql.Timestamp;
 public class Resource {
     private Long id; private Long courseId; private String title; private String filePath;

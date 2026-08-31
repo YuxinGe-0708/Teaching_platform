@@ -1,4 +1,4 @@
-﻿package com.teach.learning.mapper;
+package com.teach.learning.mapper;
 import com.teach.learning.entity.Course;
 import org.apache.ibatis.annotations.*;
 import java.util.List;
@@ -12,6 +12,8 @@ public interface CourseMapper {
     List<Course> findByStudentId(Long studentId);
     @Select("SELECT * FROM course WHERE teacher_id = #{teacherId} AND status = #{status} ORDER BY created_at DESC")
     List<Course> findByTeacherIdAndStatus(@Param("teacherId") Long teacherId, @Param("status") String status);
+    @Select("SELECT * FROM course WHERE status = 'active' ORDER BY created_at DESC")
+    List<Course> findActive();
     @Select("SELECT * FROM course WHERE invite_code = #{inviteCode}")
     Course findByInviteCode(String inviteCode);
     @Insert("INSERT INTO course (name, code, description, credits, subject_category, hours, teacher_id, invite_code, allow_join, status) VALUES (#{name}, #{code}, #{description}, #{credits}, #{subjectCategory}, #{hours}, #{teacherId}, #{inviteCode}, #{allowJoin}, #{status})")

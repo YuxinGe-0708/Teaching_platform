@@ -31,10 +31,15 @@ spec:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: teaching-platform-secret
-                  key: db-password
+                  name: teaching-platform-secrets
+                  key: MYSQL_ROOT_PASSWORD
             - name: USER_SERVICE_URL
               value: "http://user-service:8082"
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: teaching-platform-secrets
+                  key: INTERNAL_API_KEY
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness

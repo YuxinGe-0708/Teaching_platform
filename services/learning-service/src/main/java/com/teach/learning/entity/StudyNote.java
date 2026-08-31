@@ -1,4 +1,4 @@
-﻿package com.teach.learning.entity;
+package com.teach.learning.entity;
 import java.sql.Timestamp;
 public class StudyNote {
     private Long id; private Long studentId; private Long courseId; private Long resourceId;

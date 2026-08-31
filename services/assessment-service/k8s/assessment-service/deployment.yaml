@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assessment-service
+  namespace: teaching-platform
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: assessment-service } }
+  template:
+    metadata: { labels: { app: assessment-service } }
+    spec:
+      containers:
+        - name: assessment-service
+          image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-assessment-service:__IMAGE_TAG__
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8084 }]
+          env:
+            - { name: SERVER_PORT, value: "8084" }
+            - name: DB_URL
+              value: "jdbc:mysql://mysql:3306/assessment_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8"
+            - { name: DB_USERNAME, value: "root" }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: MYSQL_ROOT_PASSWORD } }
+            - { name: LEARNING_SERVICE_URL, value: "http://learning-service:8083" }
+            - { name: USER_SERVICE_URL, value: "http://user-service:8082" }
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: teaching-platform-secrets
+                  key: INTERNAL_API_KEY
+          readinessProbe: { httpGet: { path: /actuator/health/readiness, port: 8084 }, initialDelaySeconds: 20, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /actuator/health/liveness, port: 8084 }, initialDelaySeconds: 30, periodSeconds: 10 }
+      imagePullSecrets: [{ name: swr-registry }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: assessment-service
+  namespace: teaching-platform
+spec:
+  selector: { app: assessment-service }
+  ports: [{ port: 8084, targetPort: 8084 }]
+  type: ClusterIP

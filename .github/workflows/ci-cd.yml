@@ -42,6 +42,15 @@ jobs:
           cache: maven
       - name: Unit tests
         run: mvn -B test
+      - name: Build and test user-service
+        working-directory: services/user-service
+        run: mvn -B test package
+      - name: Build and test learning-service
+        working-directory: services/learning-service
+        run: mvn -B test package
+      - name: Build and test assessment-service
+        working-directory: services/assessment-service
+        run: mvn -B test package
       - name: Build application containers
         run: docker compose -f docker-compose.yml -f docker-compose.app.yml build
       - name: Prepare integration upload storage
@@ -165,6 +174,39 @@ jobs:
             ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-frontend:sha-${{ github.sha }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+      - name: Build and push user-service image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/user-service
+          file: services/user-service/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-user-service:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-user-service:sha-${{ github.sha }}
+      - name: Build and push learning-service image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/learning-service
+          file: services/learning-service/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-learning-service:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-learning-service:sha-${{ github.sha }}
+      - name: Build and push assessment-service image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/assessment-service
+          file: services/assessment-service/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-assessment-service:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-assessment-service:sha-${{ github.sha }}
       - name: Upload publish records
         if: always()
         uses: actions/upload-artifact@v4

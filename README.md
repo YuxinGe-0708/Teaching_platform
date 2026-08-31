@@ -16,13 +16,13 @@ Spring Boot + Thymeleaf + Vue 3 + MyBatis + MySQL 教学平台。
 
 ## 微服务架构
 
-系统已拆分为 3 个业务微服务 + 1 个 API 网关（规划中），每个服务独立构建、测试和部署。
+系统已拆分为 3 个业务微服务（API 网关仍可按需接入），每个服务有独立数据库边界、构建文件和服务间接口。
 
 | 服务 | 端口 | 数据库 | 职责 |
 |---|---|---|---|
 | `user-service` | 8082 | `user_db` | 注册、登录、角色权限、用户管理、通知 |
 | `learning-service` | 8083 | `learning_service_db` | 课程、班级、选退课、资源、进度、笔记、讨论 |
-| `assessment-service` | 8084 (规划中) | `assessment_db` | 作业、考试、提交、批改、成绩、编程判题 |
+| `assessment-service` | 8084 | `assessment_db` | 作业、考试、提交、批改、成绩、编程判题 |
 
 ### 数据表归属
 
@@ -48,12 +48,25 @@ services/
 │   ├── Dockerfile
 │   ├── k8s/learning-service/deployment.yaml
 │   └── src/main/java/com/teach/learning/...
-└── assessment-service/    # 评测与成绩域（规划中）
+└── assessment-service/    # 评测与成绩域
 ```
 
 ### 单体与微服务并行
 
-当前单体应用（根目录）仍可完整运行，微服务逐步替代。CI/CD 流水线同时支持两种模式。
+当前单体应用（根目录）仍可完整运行，微服务以独立服务方式提供相同领域能力；两种模式互不覆盖数据库。
+
+如需同时启动三个微服务和三个独立数据库 Schema，使用可选编排文件：
+
+```powershell
+docker compose -f docker-compose.microservices.yml up --build -d
+```
+
+如果本机已有单体 MySQL 占用 3307，可在 `.env` 中设置
+`MICROSERVICES_MYSQL_PORT=3308`（容器内部服务仍连接 3306）；无法访问
+Docker Hub 时同时设置 `MICROSERVICES_MYSQL_IMAGE`、`MAVEN_IMAGE` 和
+`JAVA_IMAGE` 为可访问的镜像源。
+
+服务地址分别为 `http://localhost:8082`、`http://localhost:8083`、`http://localhost:8084`。
 
 ### 跨服务接口契约
 

@@ -1,4 +1,4 @@
-﻿package com.teach.learning.service;
+package com.teach.learning.service;
 import com.teach.learning.entity.CourseClass;
 import com.teach.learning.mapper.CourseClassMapper;
 import org.springframework.stereotype.Service;

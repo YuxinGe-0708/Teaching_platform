@@ -1,4 +1,4 @@
-﻿package com.teach.learning.entity;
+package com.teach.learning.entity;
 import java.sql.Timestamp;
 public class ResourceProgress {
     private Long id; private Long studentId; private Long resourceId;

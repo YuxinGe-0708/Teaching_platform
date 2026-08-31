@@ -1,4 +1,4 @@
-﻿package com.teach.learning.dto;
+package com.teach.learning.dto;
 import com.teach.learning.entity.DiscussionPost;
 import java.sql.Timestamp;
 public class DiscussionPostView {
