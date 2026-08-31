@@ -76,6 +76,10 @@ jobs:
 
       # 👇 将单元与集成测试移至此处：此时 MySQL 已经启动且数据库表结构已经初始化完毕
       - name: Run Unit and Integration Tests
+        env:
+          DB_URL: jdbc:mysql://127.0.0.1:3306/${{ env.MYSQL_DATABASE }}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+          DB_USERNAME: ${{ env.MYSQL_USER }}
+          DB_PASSWORD: ${{ env.MYSQL_PASSWORD }}
         run: mvn -B test
 
       - name: Container smoke test
