@@ -2,9 +2,9 @@ name: Teaching Platform CI/CD
 
 on:
   pull_request:
-    branches: [dev_dockerfile, dev, main, master]
+    branches: [dev-dockerfile, dev_dockerfile, dev, main, master]
   push:
-    branches: [dev_dockerfile, codex/dev-dockerfile-work]
+    branches: [dev-dockerfile, dev_dockerfile, codex/dev-dockerfile-work]
     tags: ['v*.*.*']
   workflow_dispatch:
 
