@@ -26,16 +26,24 @@ $tempFiles = New-Object System.Collections.Generic.List[string]
 $checks = 0
 $runStartedAt = [DateTime]::UtcNow
 
-function Get-DotEnvValue([string]$Name, [string]$DefaultValue) {
-    if (-not (Test-Path -LiteralPath ".env")) { return $DefaultValue }
-    $line = Get-Content -LiteralPath ".env" | Where-Object { $_ -match ('^' + [Regex]::Escape($Name) + '=') } | Select-Object -Last 1
-    if (-not $line) { return $DefaultValue }
-    return ($line -split '=', 2)[1]
+function Get-ConfigValue([string]$Name, [string]$DefaultValue) {
+    # 1. 优先读取 CI/CD 环境变量
+    $envVal = [Environment]::GetEnvironmentVariable($Name)
+    if (-not [string]::IsNullOrWhiteSpace($envVal)) { return $envVal }
+
+    # 2. 其次读取本地 .env 文件
+    if (Test-Path -LiteralPath ".env") {
+        $line = Get-Content -LiteralPath ".env" | Where-Object { $_ -match ('^' + [Regex]::Escape($Name) + '=') } | Select-Object -Last 1
+        if ($line) { return ($line -split '=', 2)[1].Trim() }
+    }
+
+    # 3. 兜底默认值
+    return $DefaultValue
 }
 
-$dbName = Get-DotEnvValue "MYSQL_DATABASE" "teaching_platform"
-$dbUsername = Get-DotEnvValue "MYSQL_USER" "tp_dev"
-$dbPassword = Get-DotEnvValue "MYSQL_PASSWORD" "123456"
+$dbName = Get-ConfigValue "MYSQL_DATABASE" "teaching_platform"
+$dbUsername = Get-ConfigValue "MYSQL_USER" "tp_dev"
+$dbPassword = Get-ConfigValue "MYSQL_PASSWORD" "123456"
 
 function Invoke-Db([string]$Sql) {
     $result = & docker compose @composeFiles exec -T mysql mysql `
