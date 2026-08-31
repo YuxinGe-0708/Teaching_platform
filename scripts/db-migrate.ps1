@@ -31,9 +31,21 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "==> schema_migrations ledger table verified."
 
-# 2. 扫描并执行 db 目录下的所有 SQL 迁移文件
+# 2. 将 db/init 中的初始 SQL 标记为已应用（避免重复执行冲突）
+$initPath = Join-Path $MigrationsPath "init"
+if (Test-Path $initPath) {
+    $initFiles = Get-ChildItem -Path $initPath -Filter "*.sql"
+    foreach ($file in $initFiles) {
+        $initVersion = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $recordSql = "INSERT IGNORE INTO schema_migrations (version) VALUES ('$initVersion');"
+        & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -e "$recordSql"
+    }
+}
+
+# 3. 扫描并执行除 init 目录外的所有增量迁移脚本
 if (Test-Path $MigrationsPath) {
-    $sqlFiles = Get-ChildItem -Path $MigrationsPath -Filter "*.sql" -Recurse | Sort-Object Name
+    # 排除 init 目录，仅获取需要增量迁移的文件
+    $sqlFiles = Get-ChildItem -Path $MigrationsPath -Filter "*.sql" -Recurse | Where-Object { $_.DirectoryName -notmatch '[\\/]init$' } | Sort-Object Name
     foreach ($file in $sqlFiles) {
         $versionName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
 
@@ -41,11 +53,10 @@ if (Test-Path $MigrationsPath) {
         $checkSql = "SELECT version FROM schema_migrations WHERE version='$versionName';"
         $appliedResult = & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -NBe "$checkSql"
 
-        # 安全处理空值判定
         $applied = if ($null -ne $appliedResult) { "$appliedResult".Trim() } else { "" }
 
         if ([string]::IsNullOrWhiteSpace($applied)) {
-            Write-Host "==> Applying migration: $($file.Name)..."
+            Write-Host "==> Applying incremental migration: $($file.Name)..."
             Get-Content -Raw -Encoding UTF8 $file.FullName | & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database
             if ($LASTEXITCODE -ne 0) {
                 throw "Migration failed for file: $($file.FullName)"
