@@ -5,7 +5,7 @@ FROM ${MAVEN_IMAGE} AS build
 
 WORKDIR /workspace
 COPY pom.xml ./
-COPY docker/backend/settings.xml /root/.m2/settings.xml
+#COPY docker/backend/settings.xml /root/.m2/settings.xml
 RUN mvn -B -ntp dependency:go-offline
 
 COPY src ./src
