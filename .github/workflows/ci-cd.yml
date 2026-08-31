@@ -18,6 +18,10 @@ env:
   MYSQL_DATABASE: teaching_platform
   MYSQL_USER: tp_ci
   MYSQL_PASSWORD: ci-password
+  MYSQL_PORT: '3307'
+  DB_URL: jdbc:mysql://127.0.0.1:3307/teaching_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+  DB_USERNAME: tp_ci
+  DB_PASSWORD: ci-password
   APP_SEED_TEST_DATA: 'true'
   FRONTEND_PORT: '3000'
   BACKEND_PORT: '8081'
@@ -40,8 +44,6 @@ jobs:
           distribution: temurin
           java-version: '8'
           cache: maven
-      - name: Unit tests
-        run: mvn -B test
       - name: Build application containers
         run: docker compose -f docker-compose.yml -f docker-compose.app.yml build
       - name: Prepare integration upload storage
@@ -68,9 +70,27 @@ jobs:
         run: |
           $version = (& docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$env:MYSQL_USER" "-p$env:MYSQL_PASSWORD" $env:MYSQL_DATABASE -NBe "SELECT version FROM schema_migrations WHERE version='000_schema_migrations';").Trim()
           if ($LASTEXITCODE -ne 0 -or $version -ne '000_schema_migrations') { throw 'Database migration ledger verification failed.' }
+      - name: Maven tests
+        run: mvn -B test
       - name: Container smoke test
         shell: pwsh
         run: ./scripts/container-smoke.ps1 -BaseUrl http://localhost:3000 -BackendUrl http://localhost:8081
+      - name: JUnit e2e scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mvn -B -Dtest=EnvironmentPreparationE2EScript,StudentMainlineE2EScript,TeacherMainlineE2EScript,AdminMainlineE2EScript,FaultToleranceMainlineE2EScript test
+      - name: Publish e2e matrix summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f target/e2e-reports/e2e-mainline-matrix.md ]]; then
+            {
+              echo "## JUnit e2e matrix"
+              echo
+              cat target/e2e-reports/e2e-mainline-matrix.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Business integration regression
         shell: pwsh
         run: |
@@ -100,6 +120,7 @@ jobs:
           path: |
             ci-artifacts/
             target/surefire-reports/
+            target/e2e-reports/
           if-no-files-found: ignore
           retention-days: 14
       - name: Stop integration environment
