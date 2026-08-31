@@ -39,9 +39,12 @@ if (Test-Path $MigrationsPath) {
 
         # 检查该脚本是否已执行过
         $checkSql = "SELECT version FROM schema_migrations WHERE version='$versionName';"
-        $applied = (& docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -NBe "$checkSql").Trim()
+        $appliedResult = & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -NBe "$checkSql"
 
-        if (-not $applied) {
+        # 安全处理空值判定
+        $applied = if ($null -ne $appliedResult) { "$appliedResult".Trim() } else { "" }
+
+        if ([string]::IsNullOrWhiteSpace($applied)) {
             Write-Host "==> Applying migration: $($file.Name)..."
             Get-Content -Raw -Encoding UTF8 $file.FullName | & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database
             if ($LASTEXITCODE -ne 0) {
@@ -49,7 +52,7 @@ if (Test-Path $MigrationsPath) {
             }
 
             # 记录迁移版本
-            $recordSql = "INSERT INTO schema_migrations (version) VALUES ('$versionName');"
+            $recordSql = "INSERT IGNORE INTO schema_migrations (version) VALUES ('$versionName');"
             & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -e "$recordSql"
             Write-Host "==> Migration $($file.Name) applied successfully."
         } else {
