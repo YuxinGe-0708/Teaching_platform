@@ -9,7 +9,9 @@ COPY docker/backend/settings.xml /root/.m2/settings.xml
 RUN mvn -B -ntp dependency:go-offline
 
 COPY src ./src
-RUN mvn -B -ntp clean package
+# Tests run in CI before image publication. Skip them in the image build so
+# packaging does not require a developer-local MySQL instance.
+RUN mvn -B -ntp -DskipTests clean package
 
 FROM ${JAVA_IMAGE}
 

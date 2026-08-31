@@ -68,6 +68,20 @@ Docker Hub 时同时设置 `MICROSERVICES_MYSQL_IMAGE`、`MAVEN_IMAGE` 和
 
 服务地址分别为 `http://localhost:8082`、`http://localhost:8083`、`http://localhost:8084`。
 
+如需通过一个网址同时访问原有页面和微服务 API，使用统一网关编排（启动前先停止
+占用 3000/3307 的旧 compose）：
+
+```powershell
+docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up --build -d
+```
+
+统一入口为 `http://localhost:3000`。网关将 `/api/auth`、`/api/profile`、
+`/api/notifications` 转发到 user-service，将课程、选课、资源、讨论和笔记 API
+转发到 learning-service，将 `/api/v2/judge` 转发到 assessment-service；其余
+页面路由转发到保留的单体后端，以确保现有 Thymeleaf 页面和跳转不发生变化。
+若旧单体 MySQL 仍占用 3307，可设置 `LEGACY_MYSQL_PORT=3309`；微服务数据库
+端口通过 `MICROSERVICES_MYSQL_PORT` 单独设置（容器间始终使用 3306）。
+
 ### 跨服务接口契约
 
 learning-service 依赖 user-service 的接口：
