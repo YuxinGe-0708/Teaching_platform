@@ -59,9 +59,28 @@ prepare_kind_runtime() {
   fi
   retry 3 10 kind load docker-image mysql:8.0.43 --name "$kind_cluster_name"
 
-  echo "$SWR_PASSWORD" | docker login "$SWR_REGISTRY" \
-    --username "$SWR_USERNAME" \
-    --password-stdin
+  local local_images=(
+    "teaching-platform-web-bff:$IMAGE_TAG"
+    "teaching-platform-gateway:$IMAGE_TAG"
+    "teaching-platform-user-service:$IMAGE_TAG"
+    "teaching-platform-learning-service:$IMAGE_TAG"
+    "teaching-platform-assessment-service:$IMAGE_TAG"
+  )
+  local image repository remote_image
+  for image in "${local_images[@]}"; do
+    repository="${image%%:*}"
+    remote_image="$SWR_REGISTRY/$SWR_ORG/$repository:$IMAGE_TAG"
+    if ! docker image inspect "$image" >/dev/null 2>&1; then
+      echo "Local image $image is missing; pulling published image $remote_image"
+      echo "$SWR_PASSWORD" | docker login "$SWR_REGISTRY" \
+        --username "$SWR_USERNAME" \
+        --password-stdin
+      retry 3 20 docker pull "$remote_image"
+      docker tag "$remote_image" "$image"
+    fi
+    docker tag "$image" "$remote_image"
+    retry 3 10 kind load docker-image "$remote_image" --name "$kind_cluster_name"
+  done
 }
 
 collect_artifacts() {

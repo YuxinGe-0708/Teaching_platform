@@ -241,6 +241,10 @@ jobs:
           wait: 120s
       - name: Install deployment tooling
         run: sudo apt-get update && sudo apt-get install -y gettext-base
+      - name: Build kind-local deployment images
+        env:
+          IMAGE_TAG: ${{ needs.publish.outputs.image_tag }}
+        run: docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml build
       - name: Deploy immutable image version
         shell: bash
         env:
