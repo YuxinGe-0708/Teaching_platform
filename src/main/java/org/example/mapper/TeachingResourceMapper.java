@@ -4,8 +4,10 @@ import org.apache.ibatis.annotations.*;
 import org.example.entity.TeachingResource;
 
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface TeachingResourceMapper {
 
     @Select("SELECT r.*, c.name AS course_name FROM resource r LEFT JOIN course c ON r.course_id = c.id WHERE r.id = #{id}")

@@ -3,8 +3,10 @@ package org.example.mapper;
 import org.apache.ibatis.annotations.*;
 import org.example.entity.ExamRecord;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface ExamRecordMapper {
 
     @Select("SELECT e.*, u.name AS student_name, t.title AS task_title FROM exam_record e LEFT JOIN user u ON e.student_id = u.id LEFT JOIN task t ON e.task_id = t.id WHERE e.id = #{id}")

@@ -3,8 +3,10 @@ package org.example.mapper;
 import org.apache.ibatis.annotations.*;
 import org.example.entity.CourseClass;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface CourseClassMapper {
 
     @Select("SELECT * FROM course_class WHERE course_id = #{courseId} ORDER BY created_at")

@@ -2,8 +2,10 @@ package org.example.mapper;
 
 import org.apache.ibatis.annotations.*;
 import org.example.entity.CourseEnrollment;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface CourseEnrollmentMapper {
 
     @Select("SELECT * FROM course_enrollment WHERE student_id = #{studentId} AND course_id = #{courseId}")

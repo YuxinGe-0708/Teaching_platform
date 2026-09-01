@@ -3,8 +3,10 @@ package org.example.mapper;
 import org.apache.ibatis.annotations.*;
 import org.example.entity.Submission;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface SubmissionMapper {
 
     @Select("SELECT s.*, u.name AS student_name, t.title AS task_title FROM submission s LEFT JOIN user u ON s.student_id = u.id LEFT JOIN task t ON s.task_id = t.id WHERE s.id = #{id}")

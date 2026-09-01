@@ -1,22 +1,4 @@
 services:
-  legacy-mysql:
-    image: ${MYSQL_IMAGE:-mysql:8.0.40}
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123456}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-teaching_platform}
-      MYSQL_USER: ${MYSQL_USER:-tp_dev}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
-      TZ: ${TZ:-Asia/Shanghai}
-    ports: ["${LEGACY_MYSQL_PORT:-3307}:3306"]
-    volumes:
-      - legacy-mysql-data:/var/lib/mysql
-      - ./db/init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-
   legacy-backend:
     build:
       context: .
@@ -26,9 +8,12 @@ services:
         JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:8-jdk-jammy}
     environment:
       SERVER_PORT: 8080
-      DB_URL: jdbc:mysql://legacy-mysql:3306/${MYSQL_DATABASE:-teaching_platform}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
-      DB_USERNAME: ${MYSQL_USER:-tp_dev}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      BFF_ENABLED: "true"
+      SPRING_AUTOCONFIGURE_EXCLUDE: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration,org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration
+      USER_SERVICE_URL: http://user-service:8082
+      LEARNING_SERVICE_URL: http://learning-service:8083
+      ASSESSMENT_SERVICE_URL: http://assessment-service:8084
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
       APP_UPLOAD_PATH: /app/uploads
       APP_SEED_TEST_DATA: ${APP_SEED_TEST_DATA:-false}
       AI_API_URL: ${AI_API_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions}
@@ -41,8 +26,6 @@ services:
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./uploads:/app/uploads
-    depends_on:
-      legacy-mysql: { condition: service_healthy }
 
   gateway:
     build:
@@ -56,6 +39,3 @@ services:
       user-service: { condition: service_started }
       learning-service: { condition: service_started }
       assessment-service: { condition: service_started }
-
-volumes:
-  legacy-mysql-data:

@@ -4,8 +4,10 @@ import org.apache.ibatis.annotations.*;
 import org.example.entity.StudyNote;
 
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface StudyNoteMapper {
 
     @Select("SELECT n.*, c.name AS course_name, r.title AS resource_title FROM study_note n "

@@ -16,6 +16,8 @@ public interface CourseMapper {
     List<Course> findActive();
     @Select("SELECT * FROM course WHERE invite_code = #{inviteCode}")
     Course findByInviteCode(String inviteCode);
+    @Select("SELECT COUNT(*) FROM course")
+    int countAll();
     @Insert("INSERT INTO course (name, code, description, credits, subject_category, hours, teacher_id, invite_code, allow_join, status) VALUES (#{name}, #{code}, #{description}, #{credits}, #{subjectCategory}, #{hours}, #{teacherId}, #{inviteCode}, #{allowJoin}, #{status})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Course course);

@@ -7,8 +7,10 @@ import org.apache.ibatis.annotations.Select;
 import org.example.entity.OperationLog;
 
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface OperationLogMapper {
     @Insert("INSERT INTO operation_log (user_id, username, action, detail) VALUES (#{userId}, #{username}, #{action}, #{detail})")
     @Options(useGeneratedKeys = true, keyProperty = "id")

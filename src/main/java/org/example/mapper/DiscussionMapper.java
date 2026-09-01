@@ -5,8 +5,10 @@ import org.example.entity.DiscussionPost;
 import org.example.entity.DiscussionReply;
 
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface DiscussionMapper {
 
     @Select("SELECT p.*, u.name AS author_name, u.role AS author_role FROM discussion_post p LEFT JOIN user u ON p.user_id = u.id WHERE p.course_id = #{courseId} ORDER BY p.created_at DESC")

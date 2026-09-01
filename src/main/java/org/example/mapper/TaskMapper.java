@@ -3,8 +3,10 @@ package org.example.mapper;
 import org.apache.ibatis.annotations.*;
 import org.example.entity.Task;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface TaskMapper {
 
     @Select("SELECT t.*, c.name AS course_name FROM task t LEFT JOIN course c ON t.course_id = c.id WHERE t.id = #{id}")

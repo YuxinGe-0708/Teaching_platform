@@ -4,8 +4,10 @@ import org.apache.ibatis.annotations.*;
 import org.example.entity.User;
 
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Mapper
+@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface UserMapper {
 
     @Select("SELECT * FROM user WHERE id = #{id}")

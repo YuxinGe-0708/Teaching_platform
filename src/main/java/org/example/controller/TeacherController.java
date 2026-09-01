@@ -15,6 +15,8 @@ import org.example.mapper.UserMapper;
 import org.example.service.CourseService;
 import org.example.service.ScoreService;
 import org.example.service.TaskService;
+import org.example.bff.MicroserviceClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.example.util.DownloadUtils;
 import org.example.util.ExamContentUtils;
 import org.example.util.MarkdownUtils;
@@ -22,6 +24,8 @@ import org.example.util.TaskMetadataUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,6 +57,8 @@ public class TeacherController {
     private final UserMapper userMapper;
     private final ScoreService scoreService;
     private final ExamRecordMapper examRecordMapper;
+    private final MicroserviceClient microservices;
+    private final boolean bffEnabled;
 
     public TeacherController(CourseService courseService,
                              TaskService taskService,
@@ -61,7 +67,9 @@ public class TeacherController {
                              CourseEnrollmentMapper enrollmentMapper,
                              UserMapper userMapper,
                              ScoreService scoreService,
-                             ExamRecordMapper examRecordMapper) {
+                             ExamRecordMapper examRecordMapper,
+                             MicroserviceClient microservices,
+                             @Value("${app.bff.enabled:false}") boolean bffEnabled) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
@@ -70,6 +78,8 @@ public class TeacherController {
         this.userMapper = userMapper;
         this.scoreService = scoreService;
         this.examRecordMapper = examRecordMapper;
+        this.microservices = microservices;
+        this.bffEnabled = bffEnabled;
     }
 
     @GetMapping("/course/manage")
@@ -370,7 +380,13 @@ public class TeacherController {
 
     @GetMapping("/task/download")
     public ResponseEntity<Resource> downloadSubmission(@RequestParam String filePath) throws Exception {
-        return DownloadUtils.attachment(filePath);
+        if (!bffEnabled) return DownloadUtils.attachment(filePath);
+        ResponseEntity<byte[]> remote = microservices.file(microservices.uri(microservices.assessment("/internal/files")).queryParam("path", filePath).toUriString());
+        if (remote.getBody() == null || remote.getBody().length == 0) return ResponseEntity.status(remote.getStatusCode()).build();
+        ResponseEntity.BodyBuilder b = ResponseEntity.status(remote.getStatusCode());
+        if (remote.getHeaders().getContentType() != null) b.contentType(remote.getHeaders().getContentType());
+        String cd = remote.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION); if (cd != null) b.header(HttpHeaders.CONTENT_DISPOSITION, cd);
+        return b.body(new ByteArrayResource(remote.getBody()));
     }
 
     @GetMapping("/course/class/{courseId}")

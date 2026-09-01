@@ -43,6 +43,9 @@ services:
       DB_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-root123456}
       USER_SERVICE_URL: http://user-service:8082
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      APP_UPLOAD_PATH: /app/uploads
+    volumes:
+      - ./uploads:/app/uploads
     ports: ["8083:8083"]
     depends_on: { microservices-mysql: { condition: service_healthy }, user-service: { condition: service_started } }
   assessment-service:
@@ -60,6 +63,9 @@ services:
       LEARNING_SERVICE_URL: http://learning-service:8083
       USER_SERVICE_URL: http://user-service:8082
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      APP_UPLOAD_PATH: /app/uploads
+    volumes:
+      - ./uploads:/app/uploads
     ports: ["8084:8084"]
     depends_on: { microservices-mysql: { condition: service_healthy }, learning-service: { condition: service_started } }
 volumes:

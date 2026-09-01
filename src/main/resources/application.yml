@@ -26,6 +26,15 @@ mybatis:
     map-underscore-to-camel-case: true
 
 app:
+  # When true, page controllers use the HTTP adapters in org.example.bff.
+  # The unified compose profile sets this and disables local persistence init.
+  bff:
+    enabled: ${BFF_ENABLED:false}
+  internal-api-key: ${INTERNAL_API_KEY:dev-internal-key}
+  services:
+    user-url: ${USER_SERVICE_URL:http://localhost:8082}
+    learning-url: ${LEARNING_SERVICE_URL:http://localhost:8083}
+    assessment-url: ${ASSESSMENT_SERVICE_URL:http://localhost:8084}
   upload-path: ${APP_UPLOAD_PATH:./uploads}
   seed-test-data: ${APP_SEED_TEST_DATA:false}
   ai:
