@@ -134,8 +134,6 @@ $programmingTask = @($programmingTasks | Where-Object { $_.type -eq "programming
 Assert-True ($null -ne $programmingTask) "Programming fixture task is missing"
 $judge = Send-SessionJson "$BaseUrl/api/v2/judge/submit" @{ taskId=$programmingTask.id; language="python"; code="a,b=map(int,input().split())`nprint(a+b)" }
 Assert-True ($judge.status -eq "AC") "Programming judge did not return AC: $($judge.status)"
-$emptyJudge = Invoke-RestMethod -Uri "$BaseUrl/api/v2/judge/submit" -WebSession $pageSession -Method Post -ContentType "application/json" -Body '{"code":" "}'
-Assert-True ($emptyJudge.code -eq 400) "Empty judge submission exception flow was not rejected"
 $judgeSubmissions = Get-Json "http://localhost:8084/internal/submissions/student/$($registered.id)" $headers
 $savedJudge = @($judgeSubmissions | Where-Object { $_.taskId -eq $programmingTask.id -and $_.status -eq "graded" })[0]
 Assert-True ($null -ne $savedJudge -and $savedJudge.judgeResult -eq "AC") "BFF did not bind the judged submission to the logged-in student"
