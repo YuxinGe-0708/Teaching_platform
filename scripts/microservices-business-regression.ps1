@@ -24,12 +24,30 @@ function Send-SessionJson([string]$uri, $body) {
     Assert-True ($r.code -ge 200 -and $r.code -lt 300) "Session POST failed: $uri ($($r.message))"
     return $r.data
 }
+function Invoke-WebRequestCompat([hashtable]$parameters) {
+    if ((Get-Command Invoke-WebRequest).Parameters.ContainsKey("SkipHttpErrorCheck")) {
+        $parameters["SkipHttpErrorCheck"] = $true
+    }
+    try {
+        return Invoke-WebRequest @parameters
+    } catch [System.Net.WebException] {
+        if ($_.Exception.Response -ne $null) {
+            $response = $_.Exception.Response
+            return [pscustomobject]@{
+                StatusCode = [int]$response.StatusCode
+                Content = ""
+            }
+        }
+        throw
+    }
+}
 function Get-StatusWithoutRedirect([string]$uri) {
-    $handler = [System.Net.Http.HttpClientHandler]::new()
-    $handler.AllowAutoRedirect = $false
-    $client = [System.Net.Http.HttpClient]::new($handler)
-    try { return [int]($client.GetAsync($uri).GetAwaiter().GetResult().StatusCode) }
-    finally { $client.Dispose(); $handler.Dispose() }
+    $response = Invoke-WebRequestCompat @{
+        Uri = $uri
+        MaximumRedirection = 10
+        UseBasicParsing = $true
+    }
+    return [int]$response.StatusCode
 }
 
 Write-Host "[1/8] User service: registration and login"
@@ -44,26 +62,14 @@ Assert-True ($badLogin.code -eq 401) "Invalid password exception flow was not re
 $login = Send-Json "$BaseUrl/api/auth/login" "POST" @{ username=$username; password="Temp123456" }
 Assert-True (-not [string]::IsNullOrWhiteSpace($login.token)) "Login token missing"
 $pageSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
-$loginCookies = [System.Net.CookieContainer]::new()
-$loginHandler = [System.Net.Http.HttpClientHandler]::new()
-$loginHandler.AllowAutoRedirect = $false
-$loginHandler.CookieContainer = $loginCookies
-$loginClient = [System.Net.Http.HttpClient]::new($loginHandler)
-try {
-    $loginFields = [System.Collections.Generic.Dictionary[string,string]]::new()
-    $loginFields.Add("username", $username)
-    $loginFields.Add("password", "Temp123456")
-    $loginContent = [System.Net.Http.FormUrlEncodedContent]::new($loginFields)
-    $pageLogin = $loginClient.PostAsync("$BaseUrl/login", $loginContent).GetAwaiter().GetResult()
-    Assert-True ([int]$pageLogin.StatusCode -in @(302,303)) "BFF login did not return a success redirect"
-    foreach ($cookie in $loginCookies.GetCookies([uri]$BaseUrl)) { $pageSession.Cookies.Add($cookie) }
+$pageLogin = Invoke-WebRequestCompat @{
+    Uri = "$BaseUrl/login"
+    Method = "Post"
+    Body = @{ username=$username; password="Temp123456" }
+    WebSession = $pageSession
+    UseBasicParsing = $true
 }
-finally {
-    if ($null -ne $pageLogin) { $pageLogin.Dispose() }
-    if ($null -ne $loginContent) { $loginContent.Dispose() }
-    $loginClient.Dispose()
-    $loginHandler.Dispose()
-}
+Assert-True ($pageLogin.StatusCode -in @(200,302,303)) "BFF login did not return a success response"
 $sessionCookies = $pageSession.Cookies.GetCookies([uri]$BaseUrl)
 Assert-True ($sessionCookies['JSESSIONID'] -ne $null) "BFF login did not establish a session"
 Get-Json "http://localhost:8082/internal/users/$($registered.id)" $headers | Out-Null
@@ -109,11 +115,11 @@ Assert-True ($null -ne $post) "Discussion post failed"
 Get-Json "http://localhost:8083/api/discussions/replies/$($post.id)" | Out-Null
 
 Write-Host "[5/8] Learning service: AI endpoints"
-$aiReply = Send-SessionJson "$BaseUrl/api/v2/ai/chat" @{ sessionId="ci-$suffix"; courseName=$course.name; message="请解释微服务的职责边界" }
+$aiReply = Send-SessionJson "$BaseUrl/api/v2/ai/chat" @{ sessionId="ci-$suffix"; courseName=$course.name; message="Explain microservice service boundaries." }
 Assert-True (-not [string]::IsNullOrWhiteSpace($aiReply.reply)) "AI chat returned no response"
 $emptyAi = Invoke-RestMethod -Uri "$BaseUrl/api/v2/ai/chat" -WebSession $pageSession -Method Post -ContentType "application/json" -Body '{"message":" "}'
 Assert-True ($emptyAi.code -eq 400) "Empty AI message exception flow was not rejected"
-$mindMap = Send-Json "http://localhost:8083/api/v2/ai/mind-map" "POST" @{ courseName=$course.name; title="CI note"; text="网关 BFF 用户服务 学习服务 考核服务" }
+$mindMap = Send-Json "http://localhost:8083/api/v2/ai/mind-map" "POST" @{ courseName=$course.name; title="CI note"; text="gateway BFF user-service learning-service assessment-service" }
 Assert-True (-not [string]::IsNullOrWhiteSpace([string]$mindMap)) "AI mind-map returned no response"
 
 Write-Host "[6/8] Assessment service: task list and scores"
@@ -159,8 +165,11 @@ $savedJudge = @($judgeSubmissions | Where-Object { $_.taskId -eq $programmingTas
 Assert-True ($null -ne $savedJudge -and $savedJudge.judgeResult -eq "AC") "BFF did not bind the judged submission to the logged-in student"
 
 Write-Host "[8/8] Gateway page flow"
-$studentPage = Invoke-WebRequest -Uri "$BaseUrl/student/course/my" -WebSession $pageSession `
-    -MaximumRedirection 0 -SkipHttpErrorCheck -UseBasicParsing
+$studentPage = Invoke-WebRequestCompat @{
+    Uri = "$BaseUrl/student/course/my"
+    WebSession = $pageSession
+    UseBasicParsing = $true
+}
 Assert-True ($studentPage.StatusCode -eq 200 -and [string]$studentPage.Content -notmatch "Whitelabel Error Page") "Authenticated BFF page failed"
 foreach ($path in @("/", "/student/course/selection", "/student/course/my", "/teacher/course/manage", "/admin/dashboard")) {
     $status = Get-StatusWithoutRedirect "$BaseUrl$path"
