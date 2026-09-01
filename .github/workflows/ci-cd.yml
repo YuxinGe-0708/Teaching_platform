@@ -66,7 +66,19 @@ jobs:
           mkdir -p uploads
           chmod -R a+rwX uploads
       - name: Start integration environment
-        run: docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up -d
+        shell: bash
+        run: |
+          set +e
+          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up -d
+          UP_STATUS=$?
+          if [ $UP_STATUS -ne 0 ]; then
+            echo "========================================================"
+            echo "❌ 容器启动失败！打印所有容器日志以定位问题："
+            echo "========================================================"
+            docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml logs --no-color
+            echo "========================================================"
+            exit $UP_STATUS
+          fi
       - name: Wait for frontend health
         shell: bash
         run: |
