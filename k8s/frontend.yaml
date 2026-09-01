@@ -16,6 +16,7 @@ spec:
       containers:
         - name: gateway
           image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-gateway:__IMAGE_TAG__
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
           readinessProbe:

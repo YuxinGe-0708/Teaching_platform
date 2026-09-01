@@ -64,4 +64,19 @@ class JudgeControllerApiTest {
         verify(tasks).submit(2L, 9L, "print(3)");
         verify(submissions).grade(submission);
     }
+
+    @Test
+    void rejectsEmptyCodeMissingTaskAndDisallowedLanguage() throws Exception {
+        mvc.perform(post("/api/v2/judge/submit").contentType(MediaType.APPLICATION_JSON).content("{\"code\":\" \"}"))
+                .andExpect(jsonPath("$.code").value(400));
+        mvc.perform(post("/api/v2/judge/submit").contentType(MediaType.APPLICATION_JSON).content("{\"taskId\":99,\"code\":\"print(1)\"}"))
+                .andExpect(jsonPath("$.code").value(404));
+
+        Task task = new Task(); task.setId(2L); task.setType("programming");
+        task.setDescription(TaskMetadataUtils.buildDescription("sum", null, "---CASE---\n1\n---OUTPUT---\n1", "java", null));
+        when(tasks.findById(2L)).thenReturn(task);
+        mvc.perform(post("/api/v2/judge/submit").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"taskId\":2,\"language\":\"python\",\"code\":\"print(1)\"}"))
+                .andExpect(jsonPath("$.code").value(400));
+    }
 }
