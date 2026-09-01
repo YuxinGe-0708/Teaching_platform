@@ -44,9 +44,26 @@ Assert-True ($badLogin.code -eq 401) "Invalid password exception flow was not re
 $login = Send-Json "$BaseUrl/api/auth/login" "POST" @{ username=$username; password="Temp123456" }
 Assert-True (-not [string]::IsNullOrWhiteSpace($login.token)) "Login token missing"
 $pageSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
-$pageLogin = Invoke-WebRequest -Uri "$BaseUrl/login" -Method Post -Body @{ username=$username; password="Temp123456" } `
-    -WebSession $pageSession -MaximumRedirection 0 -SkipHttpErrorCheck -UseBasicParsing
-Assert-True ($pageLogin.StatusCode -in @(302,303)) "BFF login did not return a success redirect"
+$loginCookies = [System.Net.CookieContainer]::new()
+$loginHandler = [System.Net.Http.HttpClientHandler]::new()
+$loginHandler.AllowAutoRedirect = $false
+$loginHandler.CookieContainer = $loginCookies
+$loginClient = [System.Net.Http.HttpClient]::new($loginHandler)
+try {
+    $loginFields = [System.Collections.Generic.Dictionary[string,string]]::new()
+    $loginFields.Add("username", $username)
+    $loginFields.Add("password", "Temp123456")
+    $loginContent = [System.Net.Http.FormUrlEncodedContent]::new($loginFields)
+    $pageLogin = $loginClient.PostAsync("$BaseUrl/login", $loginContent).GetAwaiter().GetResult()
+    Assert-True ([int]$pageLogin.StatusCode -in @(302,303)) "BFF login did not return a success redirect"
+    foreach ($cookie in $loginCookies.GetCookies([uri]$BaseUrl)) { $pageSession.Cookies.Add($cookie) }
+}
+finally {
+    if ($null -ne $pageLogin) { $pageLogin.Dispose() }
+    if ($null -ne $loginContent) { $loginContent.Dispose() }
+    $loginClient.Dispose()
+    $loginHandler.Dispose()
+}
 $sessionCookies = $pageSession.Cookies.GetCookies([uri]$BaseUrl)
 Assert-True ($sessionCookies['JSESSIONID'] -ne $null) "BFF login did not establish a session"
 Get-Json "http://localhost:8082/internal/users/$($registered.id)" $headers | Out-Null
