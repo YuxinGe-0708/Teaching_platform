@@ -18,7 +18,7 @@ spec:
       containers:
         - name: learning-service
           image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-learning-service:__IMAGE_TAG__
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8083
           env:

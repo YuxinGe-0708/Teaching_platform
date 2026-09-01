@@ -20,7 +20,7 @@ spec:
       containers:
         - name: user-service
           image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-user-service:__IMAGE_TAG__
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8082
           env:

@@ -42,7 +42,7 @@ retry() {
   done
 }
 
-load_kind_images() {
+prepare_kind_runtime() {
   if ! command -v kind >/dev/null 2>&1; then
     echo "kind command is required when DEPLOY_TARGET=kind" >&2
     exit 1
@@ -52,7 +52,7 @@ load_kind_images() {
     exit 1
   fi
 
-  echo "Preloading Kubernetes images into kind cluster: $kind_cluster_name"
+  echo "Preloading MySQL image into kind cluster: $kind_cluster_name"
   retry 3 10 docker pull "$mysql_image"
   if [[ "$mysql_image" != "mysql:8.0.43" ]]; then
     docker tag "$mysql_image" mysql:8.0.43
@@ -62,22 +62,6 @@ load_kind_images() {
   echo "$SWR_PASSWORD" | docker login "$SWR_REGISTRY" \
     --username "$SWR_USERNAME" \
     --password-stdin
-
-  local repositories=(
-    teaching-platform-web-bff
-    teaching-platform-gateway
-    teaching-platform-user-service
-    teaching-platform-learning-service
-    teaching-platform-assessment-service
-  )
-  local repository image
-  for repository in "${repositories[@]}"; do
-    image="$SWR_REGISTRY/$SWR_ORG/$repository:$IMAGE_TAG"
-    retry 5 15 docker pull "$image"
-    if ! docker exec "${kind_cluster_name}-control-plane" crictl images | grep -Fq "$image"; then
-      retry 3 10 kind load docker-image "$image" --name "$kind_cluster_name"
-    fi
-  done
 }
 
 collect_artifacts() {
@@ -100,7 +84,7 @@ collect_artifacts() {
 trap collect_artifacts EXIT
 
 if [[ "$deploy_target" == "kind" ]]; then
-  load_kind_images
+  prepare_kind_runtime
 fi
 
 envsubst < k8s/secret.template.yaml > "$secret_file"
