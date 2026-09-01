@@ -1,39 +1,8 @@
 package org.example.mapper;
-
-import org.apache.ibatis.annotations.*;
 import org.example.entity.CourseClass;
 import java.util.List;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-
-@Mapper
-@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
 public interface CourseClassMapper {
-
-    @Select("SELECT * FROM course_class WHERE course_id = #{courseId} ORDER BY created_at")
-    List<CourseClass> findByCourseId(Long courseId);
-
-    @Select("SELECT * FROM course_class WHERE invite_code = #{inviteCode}")
-    CourseClass findByInviteCode(String inviteCode);
-
-    @Select("SELECT * FROM course_class WHERE id = #{id}")
-    CourseClass findById(Long id);
-
-    @Insert("INSERT INTO course_class (course_id, name, invite_code, max_count, current_count) VALUES (#{courseId}, #{name}, #{inviteCode}, #{maxCount}, #{currentCount})")
-    @Options(useGeneratedKeys = true, keyProperty = "id")
-    int insert(CourseClass cc);
-
-    @Delete("DELETE FROM course_class WHERE id = #{id}")
-    int delete(Long id);
-
-    @Delete("DELETE FROM course_class WHERE id = #{classId} AND course_id = #{courseId}")
-    int deleteByCourse(@Param("courseId") Long courseId, @Param("classId") Long classId);
-
-    @Update("UPDATE course_class SET name=#{name}, max_count=#{maxCount} WHERE id=#{id} AND course_id=#{courseId}")
-    int update(CourseClass cc);
-
-    @Update("UPDATE course_class SET current_count = current_count + 1 WHERE id = #{id} AND current_count < max_count")
-    int incrementCount(Long id);
-
-    @Update("UPDATE course_class SET current_count = GREATEST(current_count - 1, 0) WHERE id = #{id}")
-    int decrementCount(Long id);
+    List<CourseClass> findByCourseId(Long courseId); CourseClass findByInviteCode(String inviteCode); CourseClass findById(Long id);
+    int insert(CourseClass value); int delete(Long id); int deleteByCourse(Long courseId,Long classId);
+    int update(CourseClass value); int incrementCount(Long id); int decrementCount(Long id);
 }

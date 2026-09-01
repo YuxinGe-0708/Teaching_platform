@@ -9,12 +9,17 @@ services:
       - ./services/user-service/src/main/resources/db/schema-user.sql:/docker-entrypoint-initdb.d/01-user.sql:ro
       - ./services/learning-service/src/main/resources/db/schema-learning.sql:/docker-entrypoint-initdb.d/02-learning.sql:ro
       - ./services/assessment-service/src/main/resources/db/schema-assessment.sql:/docker-entrypoint-initdb.d/03-assessment.sql:ro
+      - ./services/user-service/src/main/resources/db/seed-user.sql:/docker-entrypoint-initdb.d/11-seed-user.sql:ro
+      - ./services/learning-service/src/main/resources/db/seed-learning.sql:/docker-entrypoint-initdb.d/12-seed-learning.sql:ro
+      - ./services/assessment-service/src/main/resources/db/seed-assessment.sql:/docker-entrypoint-initdb.d/13-seed-assessment.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
       interval: 5s
       timeout: 5s
       retries: 20
+      start_period: 20s
   user-service:
+    image: teaching-platform-user-service:${IMAGE_TAG:-dev}
     build:
       context: ./services/user-service
       dockerfile: Dockerfile
@@ -29,7 +34,14 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
     ports: ["8082:8082"]
     depends_on: { microservices-mysql: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8082'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 25s
   learning-service:
+    image: teaching-platform-learning-service:${IMAGE_TAG:-dev}
     build:
       context: ./services/learning-service
       dockerfile: Dockerfile
@@ -44,11 +56,22 @@ services:
       USER_SERVICE_URL: http://user-service:8082
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
       APP_UPLOAD_PATH: /app/uploads
+      AI_API_URL: ${AI_API_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-qwen-plus}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen3-vl-plus}
     volumes:
       - ./uploads:/app/uploads
     ports: ["8083:8083"]
-    depends_on: { microservices-mysql: { condition: service_healthy }, user-service: { condition: service_started } }
+    depends_on: { microservices-mysql: { condition: service_healthy }, user-service: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8083'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 25s
   assessment-service:
+    image: teaching-platform-assessment-service:${IMAGE_TAG:-dev}
     build:
       context: ./services/assessment-service
       dockerfile: Dockerfile
@@ -64,9 +87,20 @@ services:
       USER_SERVICE_URL: http://user-service:8082
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
       APP_UPLOAD_PATH: /app/uploads
+      JUDGE0_API_URL: ${JUDGE0_API_URL:-https://ce.judge0.com}
+      JUDGE0_API_KEY: ${JUDGE0_API_KEY:-}
+      JUDGE0_API_HOST: ${JUDGE0_API_HOST:-}
+      JUDGE0_TIMEOUT_MS: ${JUDGE0_TIMEOUT_MS:-15000}
+      JUDGE0_LOCAL_FALLBACK: ${JUDGE0_LOCAL_FALLBACK:-true}
     volumes:
       - ./uploads:/app/uploads
     ports: ["8084:8084"]
-    depends_on: { microservices-mysql: { condition: service_healthy }, learning-service: { condition: service_started } }
+    depends_on: { microservices-mysql: { condition: service_healthy }, learning-service: { condition: service_healthy }, user-service: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8084'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 25s
 volumes:
   microservices-mysql-data:

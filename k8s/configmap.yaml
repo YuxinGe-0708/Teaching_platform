@@ -4,8 +4,6 @@ metadata:
   name: teaching-platform-config
   namespace: teaching-platform
 data:
-  MYSQL_DATABASE: teaching_platform
-  MYSQL_USER: tp_prod
   AI_API_URL: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
   AI_MODEL: qwen-plus
   AI_VISION_MODEL: qwen3-vl-plus

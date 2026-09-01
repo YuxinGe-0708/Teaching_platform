@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
+  name: gateway
   namespace: teaching-platform
 spec:
   replicas: 1
   selector:
-    matchLabels: { app: frontend }
+    matchLabels: { app: gateway }
   template:
     metadata:
-      labels: { app: frontend }
+      labels: { app: gateway }
     spec:
       imagePullSecrets:
         - name: swr-registry
       containers:
-        - name: frontend
-          image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-frontend:__IMAGE_TAG__
+        - name: gateway
+          image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-gateway:__IMAGE_TAG__
           ports:
             - containerPort: 80
           readinessProbe:
@@ -37,7 +37,7 @@ metadata:
   namespace: teaching-platform
 spec:
   type: LoadBalancer
-  selector: { app: frontend }
+  selector: { app: gateway }
   ports:
     - port: 80
       targetPort: 80

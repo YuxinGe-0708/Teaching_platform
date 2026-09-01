@@ -15,6 +15,8 @@ spec:
       labels:
         app: user-service
     spec:
+      imagePullSecrets:
+        - name: swr-registry
       containers:
         - name: user-service
           image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-user-service:__IMAGE_TAG__
@@ -38,6 +40,8 @@ spec:
                 secretKeyRef:
                   name: teaching-platform-secrets
                   key: INTERNAL_API_KEY
+            - name: LEARNING_SERVICE_URL
+              value: "http://learning-service:8083"
           resources:
             requests:
               cpu: 100m

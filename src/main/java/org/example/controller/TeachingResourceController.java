@@ -10,7 +10,6 @@ import org.example.mapper.ResourceProgressMapper;
 import org.example.mapper.TeachingResourceMapper;
 import org.example.dto.ApiResponse;
 import org.example.entity.ResourceProgress;
-import org.example.service.AiService;
 import org.example.bff.MicroserviceClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.example.service.CourseService;
@@ -42,7 +41,6 @@ public class TeachingResourceController {
     private final CourseService courseService;
     private final TeachingResourceMapper resourceMapper;
     private final CourseEnrollmentMapper enrollmentMapper;
-    private final AiService aiService;
     private final ResourceProgressMapper progressMapper;
     private final MicroserviceClient microservices;
     private final boolean bffEnabled;
@@ -50,14 +48,12 @@ public class TeachingResourceController {
     public TeachingResourceController(CourseService courseService,
                                       TeachingResourceMapper resourceMapper,
                                       CourseEnrollmentMapper enrollmentMapper,
-                                      AiService aiService,
                                       ResourceProgressMapper progressMapper,
                                       MicroserviceClient microservices,
                                       @Value("${app.bff.enabled:false}") boolean bffEnabled) {
         this.courseService = courseService;
         this.resourceMapper = resourceMapper;
         this.enrollmentMapper = enrollmentMapper;
-        this.aiService = aiService;
         this.progressMapper = progressMapper;
         this.microservices = microservices;
         this.bffEnabled = bffEnabled;
@@ -320,7 +316,11 @@ public class TeachingResourceController {
                 ? PDDocument.load(microservices.file(microservices.uri(microservices.learning("/internal/files")).queryParam("path", resource.getFilePath()).toUriString()).getBody())
                 : PDDocument.load(DownloadUtils.resolvePath(resource.getFilePath()).toFile())) {
             String text = new PDFTextStripper().getText(document);
-            return aiService.summarizePdfText(resource.getCourseName(), resource.getTitle(), text);
+            java.util.Map<String, String> request = new java.util.LinkedHashMap<>();
+            request.put("courseName", resource.getCourseName());
+            request.put("resourceTitle", resource.getTitle());
+            request.put("text", text);
+            return microservices.post(microservices.learning("/api/v2/ai/summarize"), request, String.class);
         } catch (Exception e) {
             return "PDF 读取或 AI 笔记生成失败：" + e.getMessage();
         }

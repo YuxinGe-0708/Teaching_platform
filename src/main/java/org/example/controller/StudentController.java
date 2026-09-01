@@ -18,7 +18,6 @@ import org.example.mapper.TeachingResourceMapper;
 import org.example.mapper.DiscussionMapper;
 import org.example.mapper.StudyNoteMapper;
 import org.example.mapper.UserMapper;
-import org.example.service.AiService;
 import org.example.service.CourseService;
 import org.example.service.ExamService;
 import org.example.service.ScoreService;
@@ -67,7 +66,6 @@ public class StudentController {
     private final CourseClassMapper courseClassMapper;
     private final UserMapper userMapper;
     private final StudyNoteMapper studyNoteMapper;
-    private final AiService aiService;
     private final ExamService examService;
     private final ExamRecordMapper examRecordMapper;
     private final MicroserviceClient microservices;
@@ -84,7 +82,6 @@ public class StudentController {
                              CourseClassMapper courseClassMapper,
                              UserMapper userMapper,
                              StudyNoteMapper studyNoteMapper,
-                             AiService aiService,
                              ExamService examService,
                              ExamRecordMapper examRecordMapper,
                              MicroserviceClient microservices,
@@ -100,7 +97,6 @@ public class StudentController {
         this.courseClassMapper = courseClassMapper;
         this.userMapper = userMapper;
         this.studyNoteMapper = studyNoteMapper;
-        this.aiService = aiService;
         this.examService = examService;
         this.examRecordMapper = examRecordMapper;
         this.microservices = microservices;
@@ -252,11 +248,9 @@ public class StudentController {
         StudyNote note = studyNoteMapper.findById(noteId);
         if (note == null || !user.getId().equals(note.getStudentId())) return "redirect:/student/notes";
         if (note.getMindMap() == null || note.getMindMap().trim().isEmpty()) {
-            if (bffEnabled) {
-                Map<String,String> req = new LinkedHashMap<>();
-                req.put("courseName", note.getCourseName()); req.put("title", note.getTitle()); req.put("text", note.getContent());
-                note.setMindMap(microservices.post(microservices.learning("/api/v2/ai/mind-map"), req, String.class));
-            } else note.setMindMap(aiService.generateMindMap(note.getCourseName(), note.getTitle(), note.getContent()));
+            Map<String,String> req = new LinkedHashMap<>();
+            req.put("courseName", note.getCourseName()); req.put("title", note.getTitle()); req.put("text", note.getContent());
+            note.setMindMap(microservices.post(microservices.learning("/api/v2/ai/mind-map"), req, String.class));
             studyNoteMapper.updateMindMap(note);
         }
         model.addAttribute("user", user);

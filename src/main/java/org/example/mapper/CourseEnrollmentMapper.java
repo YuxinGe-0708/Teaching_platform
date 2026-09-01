@@ -1,28 +1,8 @@
 package org.example.mapper;
-
-import org.apache.ibatis.annotations.*;
 import org.example.entity.CourseEnrollment;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-
-@Mapper
-@ConditionalOnProperty(name="app.bff.enabled", havingValue="false", matchIfMissing=true)
+import java.util.List;
 public interface CourseEnrollmentMapper {
-
-    @Select("SELECT * FROM course_enrollment WHERE student_id = #{studentId} AND course_id = #{courseId}")
-    CourseEnrollment findByStudentAndCourse(@Param("studentId") Long studentId, @Param("courseId") Long courseId);
-
-    @Insert("INSERT INTO course_enrollment (student_id, course_id, class_id) VALUES (#{studentId}, #{courseId}, #{classId})")
-    int insert(CourseEnrollment enrollment);
-
-    @Select("SELECT ce.* FROM course_enrollment ce WHERE ce.student_id = #{studentId} ORDER BY ce.enrolled_at DESC")
-    java.util.List<CourseEnrollment> findByStudentId(Long studentId);
-
-    @Select("SELECT ce.* FROM course_enrollment ce WHERE ce.course_id = #{courseId} ORDER BY ce.enrolled_at DESC")
-    java.util.List<CourseEnrollment> findByCourseId(Long courseId);
-
-    @Delete("DELETE FROM course_enrollment WHERE student_id = #{studentId} AND course_id = #{courseId}")
-    int delete(@Param("studentId") Long studentId, @Param("courseId") Long courseId);
-
-    @Select("SELECT COUNT(*) FROM course_enrollment WHERE course_id = #{courseId}")
-    int countByCourseId(Long courseId);
+    CourseEnrollment findByStudentAndCourse(Long studentId,Long courseId); int insert(CourseEnrollment enrollment);
+    List<CourseEnrollment> findByStudentId(Long studentId); List<CourseEnrollment> findByCourseId(Long courseId);
+    int delete(Long studentId,Long courseId); int countByCourseId(Long courseId);
 }

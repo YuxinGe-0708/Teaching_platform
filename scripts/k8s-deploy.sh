@@ -7,7 +7,7 @@ artifact_dir="deploy-artifacts"
 mkdir -p "$artifact_dir"
 exec > >(tee "$artifact_dir/deploy.log") 2>&1
 
-required=(IMAGE_TAG SWR_REGISTRY SWR_ORG SWR_USERNAME SWR_PASSWORD DB_PASSWORD DB_ROOT_PASSWORD)
+required=(IMAGE_TAG SWR_REGISTRY SWR_ORG SWR_USERNAME SWR_PASSWORD DB_ROOT_PASSWORD)
 for name in "${required[@]}"; do
   if [[ -z "${!name:-}" ]]; then
     echo "Missing required deployment variable: $name" >&2
@@ -16,7 +16,9 @@ for name in "${required[@]}"; do
 done
 
 secret_file="${RUNNER_TEMP:-/tmp}/teaching-platform-secret.yaml"
-port_forward_pid=""
+backend_file="${RUNNER_TEMP:-/tmp}/web-bff.yaml"
+frontend_file="${RUNNER_TEMP:-/tmp}/gateway.yaml"
+port_forward_pids=()
 export AI_API_KEY="${AI_API_KEY:-}"
 export JUDGE0_API_KEY="${JUDGE0_API_KEY:-}"
 export INTERNAL_API_KEY="${INTERNAL_API_KEY:-dev-internal-key}"
@@ -25,17 +27,17 @@ collect_artifacts() {
   status=$?
   trap - EXIT
   set +e
-  if [[ -n "$port_forward_pid" ]]; then kill "$port_forward_pid" 2>/dev/null || true; fi
+  for pid in "${port_forward_pids[@]}"; do
+    kill "$pid" 2>/dev/null || true
+  done
   kubectl -n "$namespace" get all,pvc -o wide > "$artifact_dir/kubernetes-resources.txt" 2>&1 || true
   kubectl -n "$namespace" get events --sort-by=.lastTimestamp > "$artifact_dir/events.txt" 2>&1 || true
   kubectl -n "$namespace" describe pods > "$artifact_dir/pod-descriptions.txt" 2>&1 || true
-  kubectl -n "$namespace" logs deployment/mysql --all-containers --tail=300 > "$artifact_dir/mysql.log" 2>&1 || true
-  kubectl -n "$namespace" logs deployment/backend --all-containers --tail=300 > "$artifact_dir/backend.log" 2>&1 || true
-  kubectl -n "$namespace" logs deployment/frontend --all-containers --tail=100 > "$artifact_dir/frontend.log" 2>&1 || true
-  kubectl -n "$namespace" logs deployment/user-service --all-containers --tail=200 > "$artifact_dir/user-service.log" 2>&1 || true
-  kubectl -n "$namespace" logs deployment/learning-service --all-containers --tail=200 > "$artifact_dir/learning-service.log" 2>&1 || true
-  kubectl -n "$namespace" logs deployment/assessment-service --all-containers --tail=200 > "$artifact_dir/assessment-service.log" 2>&1 || true
-  rm -f "$secret_file"
+  for deployment in mysql user-service learning-service assessment-service web-bff gateway; do
+    kubectl -n "$namespace" logs "deployment/$deployment" --all-containers --tail=300 \
+      > "$artifact_dir/$deployment.log" 2>&1 || true
+  done
+  rm -f "$secret_file" "$backend_file" "$frontend_file"
   exit "$status"
 }
 trap collect_artifacts EXIT
@@ -45,88 +47,134 @@ kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
 kubectl apply -f "$secret_file"
 kubectl -n "$namespace" create secret docker-registry swr-registry \
-  --docker-server="$SWR_REGISTRY" --docker-username="$SWR_USERNAME" --docker-password="$SWR_PASSWORD" \
+  --docker-server="$SWR_REGISTRY" \
+  --docker-username="$SWR_USERNAME" \
+  --docker-password="$SWR_PASSWORD" \
   --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n "$namespace" create configmap teaching-platform-db-init --from-file=01_schema.sql=db/init/01_schema.sql --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n "$namespace" create configmap teaching-platform-db-migrations --from-file=db/migrations --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n "$namespace" create configmap user-service-schema --from-file=schema-user.sql=services/user-service/src/main/resources/db/schema-user.sql --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n "$namespace" create configmap learning-service-schema --from-file=schema-learning.sql=services/learning-service/src/main/resources/db/schema-learning.sql --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n "$namespace" create configmap assessment-service-schema --from-file=schema-assessment.sql=services/assessment-service/src/main/resources/db/schema-assessment.sql --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n "$namespace" create configmap user-service-schema \
+  --from-file=schema-user.sql=services/user-service/src/main/resources/db/schema-user.sql \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap learning-service-schema \
+  --from-file=schema-learning.sql=services/learning-service/src/main/resources/db/schema-learning.sql \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap assessment-service-schema \
+  --from-file=schema-assessment.sql=services/assessment-service/src/main/resources/db/schema-assessment.sql \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap user-service-seed \
+  --from-file=seed-user.sql=services/user-service/src/main/resources/db/seed-user.sql \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap learning-service-seed \
+  --from-file=seed-learning.sql=services/learning-service/src/main/resources/db/seed-learning.sql \
+  --dry-run=client -o yaml | kubectl apply -f -
+kubectl -n "$namespace" create configmap assessment-service-seed \
+  --from-file=seed-assessment.sql=services/assessment-service/src/main/resources/db/seed-assessment.sql \
+  --dry-run=client -o yaml | kubectl apply -f -
+
 kubectl apply -f k8s/mysql.yaml
-kubectl -n "$namespace" rollout status deployment/mysql --timeout=5m
+kubectl -n "$namespace" rollout status deployment/mysql --timeout=8m
 
-for migration_file in db/migrations/*.sql; do
-  migration_version="$(basename "$migration_file" .sql)"
-  migration_applied="$(kubectl -n "$namespace" exec deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot teaching_platform -NBe "SELECT COUNT(*) FROM schema_migrations WHERE version='$migration_version';" 2>/dev/null || true)"
-  if [[ "$migration_applied" == "1" ]]; then
-    echo "Skipping already applied migration $migration_version"
-    continue
-  fi
-  echo "Applying migration $migration_version"
-  kubectl -n "$namespace" exec -i deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot teaching_platform < "$migration_file"
-  kubectl -n "$namespace" exec deployment/mysql -- env "MYSQL_PWD=$DB_ROOT_PASSWORD" mysql -uroot -e "INSERT INTO teaching_platform.schema_migrations (version) VALUES ('$migration_version');"
-done
-
-backend_file="${RUNNER_TEMP:-/tmp}/backend.yaml"
-frontend_file="${RUNNER_TEMP:-/tmp}/frontend.yaml"
-sed -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" -e "s|__SWR_ORG__|$SWR_ORG|g" -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" k8s/backend.yaml > "$backend_file"
-sed -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" -e "s|__SWR_ORG__|$SWR_ORG|g" -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" k8s/frontend.yaml > "$frontend_file"
-kubectl apply -f "$backend_file"
-kubectl apply -f "$frontend_file"
-service_files=(services/user-service/k8s/user-service/deployment.yaml services/learning-service/k8s/learning-service/deployment.yaml services/assessment-service/k8s/assessment-service/deployment.yaml)
+service_files=(
+  services/user-service/k8s/user-service/deployment.yaml
+  services/learning-service/k8s/learning-service/deployment.yaml
+  services/assessment-service/k8s/assessment-service/deployment.yaml
+)
 for service_file in "${service_files[@]}"; do
-  rendered_file="${RUNNER_TEMP:-/tmp}/$(basename "$(dirname "$service_file")").yaml"
-  sed -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" -e "s|__SWR_ORG__|$SWR_ORG|g" -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" "$service_file" > "$rendered_file"
+  service_name="$(basename "$(dirname "$service_file")")"
+  rendered_file="${RUNNER_TEMP:-/tmp}/$service_name.yaml"
+  sed \
+    -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" \
+    -e "s|__SWR_ORG__|$SWR_ORG|g" \
+    -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" \
+    "$service_file" > "$rendered_file"
   kubectl apply -f "$rendered_file"
 done
+
+sed \
+  -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" \
+  -e "s|__SWR_ORG__|$SWR_ORG|g" \
+  -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" \
+  k8s/backend.yaml > "$backend_file"
+sed \
+  -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" \
+  -e "s|__SWR_ORG__|$SWR_ORG|g" \
+  -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" \
+  k8s/frontend.yaml > "$frontend_file"
+kubectl apply -f "$backend_file"
+kubectl apply -f "$frontend_file"
+
 if [[ "$deploy_target" == "kind" ]]; then
-  kubectl -n "$namespace" set env deployment/backend APP_SEED_TEST_DATA=true
+  kubectl -n "$namespace" set env deployment/assessment-service \
+    JUDGE0_API_URL=http://127.0.0.1:9 \
+    JUDGE0_TIMEOUT_MS=1000 \
+    JUDGE0_LOCAL_FALLBACK=true
   kubectl -n "$namespace" patch service frontend --type=merge \
     -p '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":80,"nodePort":30080}]}}'
 fi
-kubectl -n "$namespace" rollout status deployment/backend --timeout=8m
-kubectl -n "$namespace" rollout status deployment/frontend --timeout=5m
-kubectl -n "$namespace" rollout status deployment/user-service --timeout=5m
-kubectl -n "$namespace" rollout status deployment/learning-service --timeout=5m
-kubectl -n "$namespace" rollout status deployment/assessment-service --timeout=5m
+
+for deployment in user-service learning-service assessment-service web-bff gateway; do
+  kubectl -n "$namespace" rollout status "deployment/$deployment" --timeout=8m
+done
 kubectl -n "$namespace" get all,pvc -o wide | tee "$artifact_dir/kubernetes-resources.txt"
 
 if [[ "$deploy_target" == "kind" ]]; then
   frontend_url="http://127.0.0.1:3000"
-  for attempt in {1..30}; do
-    if curl --fail --silent --show-error "$frontend_url/healthz" | tee "$artifact_dir/health-response.txt" | grep -qx 'ok'; then
+  for attempt in {1..60}; do
+    if curl --fail --silent --show-error "$frontend_url/healthz" \
+      | tee "$artifact_dir/health-response.txt" | grep -qx 'ok'; then
       curl --fail --silent --show-error --dump-header "$artifact_dir/login-headers.txt" \
         --output "$artifact_dir/login-page.html" "$frontend_url/login"
-      kubectl -n "$namespace" port-forward service/backend 8081:8080 > "$artifact_dir/backend-port-forward.log" 2>&1 &
-      port_forward_pid=$!
-      for backend_attempt in {1..20}; do
-        curl --fail --silent http://127.0.0.1:8081/login > /dev/null && break
-        sleep 1
+
+      kubectl -n "$namespace" port-forward service/user-service 8082:8082 \
+        > "$artifact_dir/user-service-port-forward.log" 2>&1 &
+      port_forward_pids+=("$!")
+      kubectl -n "$namespace" port-forward service/learning-service 8083:8083 \
+        > "$artifact_dir/learning-service-port-forward.log" 2>&1 &
+      port_forward_pids+=("$!")
+      kubectl -n "$namespace" port-forward service/assessment-service 8084:8084 \
+        > "$artifact_dir/assessment-service-port-forward.log" 2>&1 &
+      port_forward_pids+=("$!")
+
+      services_ready=false
+      for service_attempt in {1..30}; do
+        if curl --fail --silent http://127.0.0.1:8082/actuator/health/readiness > /dev/null \
+          && curl --fail --silent http://127.0.0.1:8083/actuator/health/readiness > /dev/null \
+          && curl --fail --silent http://127.0.0.1:8084/actuator/health/readiness > /dev/null; then
+          services_ready=true
+          break
+        fi
+        sleep 2
       done
-      pwsh -File scripts/container-smoke.ps1 -BaseUrl "$frontend_url" -BackendUrl http://127.0.0.1:8081
-      echo "Ephemeral kind deployment, health check, and login smoke test passed."
+      if [[ "$services_ready" != "true" ]]; then
+        echo "Microservice port-forward health checks failed" >&2
+        exit 1
+      fi
+
+      pwsh -File scripts/microservices-smoke.ps1 -BaseUrl "$frontend_url"
+      pwsh -File scripts/microservices-business-regression.ps1 -BaseUrl "$frontend_url"
+      echo "Ephemeral kind deployment and complete microservice regression passed."
       exit 0
     fi
-    sleep 5
+    sleep 2
   done
   echo "kind frontend health check failed: $frontend_url/healthz" >&2
   exit 1
 fi
 
 frontend_address=""
-for attempt in {1..30}; do
-  frontend_address="$(kubectl -n "$namespace" get service frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+for attempt in {1..60}; do
+  frontend_address="$(kubectl -n "$namespace" get service frontend -o jsonpath='{.status.loadBalancer.ingress[].ip}' 2>/dev/null || true)"
   if [[ -z "$frontend_address" ]]; then
-    frontend_address="$(kubectl -n "$namespace" get service frontend -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)"
+    frontend_address="$(kubectl -n "$namespace" get service frontend -o jsonpath='{.status.loadBalancer.ingress[].hostname}' 2>/dev/null || true)"
   fi
   [[ -n "$frontend_address" ]] && break
-  sleep 10
+  sleep 5
 done
 if [[ -z "$frontend_address" ]]; then
   echo "Frontend LoadBalancer has no external address yet" >&2
   exit 1
 fi
-for attempt in {1..30}; do
+for attempt in {1..60}; do
   if curl --fail --silent --show-error "http://$frontend_address/healthz" | grep -qx 'ok'; then
     echo "Kubernetes deployment and health check passed: $frontend_address"
     exit 0

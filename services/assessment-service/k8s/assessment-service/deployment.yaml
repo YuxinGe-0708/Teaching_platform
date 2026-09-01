@@ -28,9 +28,34 @@ spec:
                 secretKeyRef:
                   name: teaching-platform-secrets
                   key: INTERNAL_API_KEY
+            - { name: APP_UPLOAD_PATH, value: "/app/uploads" }
+            - name: JUDGE0_API_URL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: JUDGE0_API_URL } }
+            - name: JUDGE0_API_KEY
+              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: JUDGE0_API_KEY, optional: true } }
+            - name: JUDGE0_TIMEOUT_MS
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: JUDGE0_TIMEOUT_MS } }
+            - name: JUDGE0_LOCAL_FALLBACK
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: JUDGE0_LOCAL_FALLBACK } }
+          volumeMounts:
+            - { name: assessment-uploads, mountPath: /app/uploads }
           readinessProbe: { httpGet: { path: /actuator/health/readiness, port: 8084 }, initialDelaySeconds: 20, periodSeconds: 5 }
           livenessProbe: { httpGet: { path: /actuator/health/liveness, port: 8084 }, initialDelaySeconds: 30, periodSeconds: 10 }
       imagePullSecrets: [{ name: swr-registry }]
+      volumes:
+        - name: assessment-uploads
+          persistentVolumeClaim: { claimName: assessment-uploads-data }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: assessment-uploads-data
+  namespace: teaching-platform
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: v1
 kind: Service

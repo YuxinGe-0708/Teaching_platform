@@ -1,5 +1,6 @@
 services:
-  legacy-backend:
+  web-bff:
+    image: teaching-platform-web-bff:${IMAGE_TAG:-dev}
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
@@ -9,25 +10,27 @@ services:
     environment:
       SERVER_PORT: 8080
       BFF_ENABLED: "true"
-      SPRING_AUTOCONFIGURE_EXCLUDE: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration,org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration
       USER_SERVICE_URL: http://user-service:8082
       LEARNING_SERVICE_URL: http://learning-service:8083
       ASSESSMENT_SERVICE_URL: http://assessment-service:8084
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
       APP_UPLOAD_PATH: /app/uploads
-      APP_SEED_TEST_DATA: ${APP_SEED_TEST_DATA:-false}
-      AI_API_URL: ${AI_API_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions}
-      AI_API_KEY: ${AI_API_KEY:-}
-      AI_MODEL: ${AI_MODEL:-qwen-plus}
-      AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen3-vl-plus}
-      JUDGE0_API_URL: ${JUDGE0_API_URL:-https://ce.judge0.com}
-      JUDGE0_API_KEY: ${JUDGE0_API_KEY:-}
-      JUDGE0_LOCAL_FALLBACK: ${JUDGE0_LOCAL_FALLBACK:-true}
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./uploads:/app/uploads
+    depends_on:
+      user-service: { condition: service_healthy }
+      learning-service: { condition: service_healthy }
+      assessment-service: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 35s
 
   gateway:
+    image: teaching-platform-gateway:${IMAGE_TAG:-dev}
     build:
       context: ./docker/gateway
       dockerfile: Dockerfile
@@ -35,7 +38,7 @@ services:
         NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.27-alpine}
     ports: ["${UNIFIED_PORT:-3000}:80"]
     depends_on:
-      legacy-backend: { condition: service_started }
-      user-service: { condition: service_started }
-      learning-service: { condition: service_started }
-      assessment-service: { condition: service_started }
+      web-bff: { condition: service_healthy }
+      user-service: { condition: service_healthy }
+      learning-service: { condition: service_healthy }
+      assessment-service: { condition: service_healthy }

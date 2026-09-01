@@ -51,36 +51,41 @@ services/
 └── assessment-service/    # 评测与成绩域
 ```
 
-### 单体与微服务并行
+### 微服务统一运行
 
-当前单体应用（根目录）仍可完整运行，微服务以独立服务方式提供相同领域能力；两种模式互不覆盖数据库。
+根目录应用已经固定为无数据库的 Thymeleaf `web-bff`，只负责页面渲染、Session 和 HTTP 编排。所有业务数据由 `user-service`、`learning-service`、`assessment-service` 管理，BFF 不包含 JDBC/MyBatis，也不能直接访问业务表。
 
-如需同时启动三个微服务和三个独立数据库 Schema，使用可选编排文件：
+仅启动三个微服务和三个独立数据库 Schema：
 
 ```powershell
 docker compose -f docker-compose.microservices.yml up --build -d
 ```
 
-如果本机已有单体 MySQL 占用 3307，可在 `.env` 中设置
+如果本机已有程序占用 3307，可在 `.env` 中设置
 `MICROSERVICES_MYSQL_PORT=3308`（容器内部服务仍连接 3306）；无法访问
 Docker Hub 时同时设置 `MICROSERVICES_MYSQL_IMAGE`、`MAVEN_IMAGE` 和
 `JAVA_IMAGE` 为可访问的镜像源。
 
 服务地址分别为 `http://localhost:8082`、`http://localhost:8083`、`http://localhost:8084`。
 
-如需通过一个网址同时访问原有页面和微服务 API，使用统一网关编排（启动前先停止
-占用 3000/3307 的旧 compose）：
+通过一个网址访问完整页面和微服务 API：
 
 ```powershell
 docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up --build -d
 ```
 
-统一入口为 `http://localhost:3000`。网关将 `/api/auth`、`/api/profile`、
-`/api/notifications` 转发到 user-service，将课程、选课、资源、讨论和笔记 API
-转发到 learning-service，将 `/api/v2/judge` 转发到 assessment-service；其余
-页面路由转发到保留的单体后端，以确保现有 Thymeleaf 页面和跳转不发生变化。
-若旧单体 MySQL 仍占用 3307，可设置 `LEGACY_MYSQL_PORT=3309`；微服务数据库
-端口通过 `MICROSERVICES_MYSQL_PORT` 单独设置（容器间始终使用 3306）。
+统一入口为 `http://localhost:3000`。网关将公开领域 API 转发到所属微服务；
+需要登录 Session 的 `/api/v2/ai` 和 `/api/v2/judge` 先进入无数据库
+`web-bff`，由 BFF 校验登录身份并通过 HTTP 委托给 learning-service 或
+assessment-service。数据库容器只创建 `user_db`、`learning_service_db`、
+`assessment_db`，不会创建或使用旧单体数据库。
+
+验证完整链路：
+
+```powershell
+.\scripts\microservices-smoke.ps1
+.\scripts\microservices-business-regression.ps1
+```
 
 ### 跨服务接口契约
 
@@ -108,90 +113,66 @@ ci ──→ publish ──→ deploy
 
 详见 [docs/ci-cd.md](docs/ci-cd.md)。
 
-## 用 Docker 启动数据库
+## 用 Docker 启动微服务数据库
 
-只需要安装 Docker，数据库容器会自动建库、建表并导入测试数据。MySQL 健康后再执行迁移：
+MySQL 容器自动创建三个服务独占的 Schema、表和演示数据：
 
 ```powershell
-docker compose up -d --wait mysql
-./scripts/db-migrate.ps1
+docker compose -f docker-compose.microservices.yml up -d microservices-mysql
 ```
 
 - 镜像：`mysql:8.0.40`（官方镜像，无需自写 Dockerfile）
-- 首次启动自动执行 `db/init/01_schema.sql` 和 `db/init/02_test_data.sql`
-- 数据持久化在 Docker 卷 `mysql-data` 中
-- 启动后执行 `scripts/db-migrate.ps1`，按顺序应用 `db/migrations/*.sql`；已执行版本会记录并跳过
+- 首次启动分别执行三个服务目录内的 `schema-*.sql` 和 `seed-*.sql`
+- 数据持久化在 Docker 卷 `microservices-mysql-data` 中
+- 三个服务共享一个 MySQL 服务器，但使用不同 Schema，不存在跨库外键或跨服务 JOIN
 - 参数可在 `.env` 中覆盖，默认见 `.env.example`
 
 默认连接信息：
 
-- 数据库：`teaching_platform`
-- 用户：`tp_dev`
-- 密码：`123456`
-- 端口：`3306`
+- 数据库：`user_db`、`learning_service_db`、`assessment_db`
+- 用户：`root`
+- 密码：`root123456`（用环境变量覆盖）
+- 主机端口：`3307`
 
 常用命令：
 
 ```powershell
-docker compose ps
-docker compose logs -f mysql
-docker compose exec mysql mysql -u tp_dev -p123456 teaching_platform -e "SHOW TABLES;"
-docker compose down          # 停止但保留数据
-docker compose down -v       # 停止并清空数据，重新初始化
+docker compose -f docker-compose.microservices.yml ps
+docker compose -f docker-compose.microservices.yml logs -f microservices-mysql
+docker compose -f docker-compose.microservices.yml exec microservices-mysql mysql -uroot -proot123456 -e "SHOW DATABASES;"
 ```
 
-数据库就绪后，再按下面的“共享数据库配置”或“运行”部分启动后端，后端连接 `localhost:3306` 即可。
+业务服务分别连接自己拥有的 Schema；BFF 和 gateway 不连接数据库。
 
-## 共享数据库配置
+## 共享数据库服务器配置
 
-团队共用一台 MySQL 时，只需要在主机电脑创建数据库和用户一次，然后所有人连接同一个地址。
-
-PowerShell 不能使用 `< docs/schema.sql` 这种输入重定向。请用下面任意一种方式导入表结构：
-
-```powershell
-cmd /c "mysql -u root -p < docs\schema.sql"
-```
-
-或：
-
-```powershell
-Get-Content docs\schema.sql | mysql -u root -p
-```
+团队共用一台 MySQL 时仍需为三个服务保留独立 Schema 和账号权限，不能让服务读取其他服务的表。
 
 启动项目前设置环境变量：
 
 ```powershell
-$env:DB_URL="jdbc:mysql://<你的MySQL主机IP>:3306/teaching_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8"
-$env:DB_USERNAME="tp_dev"
-$env:DB_PASSWORD="123456"
-$env:AI_API_KEY="<你的 AI Key>"
-mvn spring-boot:run
+$env:MICROSERVICES_DB_ROOT_PASSWORD="你的MySQL密码"
+$env:AI_API_KEY="你的 Qwen Key"
+docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up --build -d
 ```
 
 `serverTimezone=Asia/Shanghai` 是 MySQL/JDBC 的中国标准时区名，北京、上海都使用 UTC+8，所以北京电脑也这样写。
 
 ## 运行
 
-推荐直接使用一键启动脚本：
+推荐使用统一微服务编排：
 
 ```powershell
-.\run-dev.ps1 -SeedTestData
+docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up --build -d
 ```
 
-脚本会提示输入 MySQL 密码，自动确保 `teaching_platform` 数据库存在，设置运行所需环境变量，并启动项目。`-SeedTestData` 会导入测试账号、课程、班级、资源、作业、成绩、讨论等数据；重复运行不会反复插入同名测试数据。
-
-常用参数：
-
-```powershell
-.\run-dev.ps1 -DbUsername root -DbPassword "你的MySQL密码" -Port 8080 -SeedTestData
-.\run-dev.ps1 -DbUsername root -DbPassword "你的MySQL密码" -SkipDbCreate
-```
+打开 `http://localhost:3000/login`。首次创建数据卷时会自动导入三个服务的演示数据。
 
 启用 Qwen/百炼 AI、AI 识图点读笔和 Judge0 云端判题：
 
 ```powershell
-$env:QWEN_API_KEY="你的阿里云百炼APIKey"
-.\run-dev.ps1 -DbUsername root -DbPassword "你的MySQL密码" -SeedTestData -UseQwen
+$env:AI_API_KEY="你的阿里云百炼APIKey"
+docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up --build -d
 ```
 
 脚本会自动设置：
@@ -203,50 +184,32 @@ $env:QWEN_API_KEY="你的阿里云百炼APIKey"
 
 测试账号密码统一为 `123456`：
 
-- 教师：`teacher_demo`、`teacher_algo`
-- 学生：`student_001`、`student_002`、`student_003`、`student_004`、`student_005`、`student_006`
-- 管理员：`admin`
-
-也可以手动运行：
-
-```powershell
-mvn clean compile
-mvn spring-boot:run
-```
+- 教师：`ms_teacher`、`ms_teacher2`
+- 学生：`ms_student`、`ms_student2`、`ms_student3`
+- 管理员：`ms_admin`
 
 打开：
 
-- `http://localhost:8080/login`
-- `http://localhost:8080/register`
-- `http://localhost:8080/home`
-- 学生 AI：`http://localhost:8080/student/ai`
-- 教师 AI：`http://localhost:8080/teacher/ai`
+- `http://localhost:3000/login`
+- `http://localhost:3000/register`
+- `http://localhost:3000/home`
+- 学生 AI：`http://localhost:3000/student/ai`
+- 教师 AI：`http://localhost:3000/teacher/ai`
 
-## 前后端容器化
+## 前后端与数据库容器化
 
-在保留原 Thymeleaf 页面和业务接口的前提下，前后端可以分别运行在独立容器中：Nginx frontend 作为统一入口，Spring Boot backend 处理原有页面、接口和文件，MySQL 使用现有数据库容器。原来的数据库命令不变：
+Nginx gateway、无数据库 web-bff、三个业务微服务和 MySQL 分别运行在独立容器中。完整启动命令：
 
 ```powershell
-docker compose up -d mysql
-./scripts/db-migrate.ps1
+docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up --build -d
+docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml ps
 ```
 
-完整启动应用容器：
+打开 `http://localhost:3000/login`。启动后可重复执行微服务健康检查和业务回归：
 
 ```powershell
-Copy-Item .env.example .env
-notepad .env
-docker compose -f docker-compose.yml -f docker-compose.app.yml up --build -d
-docker compose -f docker-compose.yml -f docker-compose.app.yml ps
-```
-
-打开 `http://localhost:3000/login`。详细结构、版本镜像和回归检查见 [docs/frontend-backend-containerization.md](docs/frontend-backend-containerization.md)。
-
-启动后可重复执行完整回归检查。业务脚本会创建唯一命名的临时数据，验证完成后自动清理：
-
-```powershell
-.\scripts\container-smoke.ps1
-.\scripts\container-business-regression.ps1
+.\scripts\microservices-smoke.ps1
+.\scripts\microservices-business-regression.ps1
 .\scripts\container-ai-smoke.ps1
 ```
 

@@ -11,7 +11,7 @@ RUN mvn -B -ntp dependency:go-offline
 COPY src ./src
 # Tests run in CI before image publication. Skip them in the image build so
 # packaging does not require a developer-local MySQL instance.
-RUN mvn -B -ntp -DskipTests clean package
+RUN mvn -B -ntp -Dmaven.test.skip=true clean package
 
 FROM ${JAVA_IMAGE}
 

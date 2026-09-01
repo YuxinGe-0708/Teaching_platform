@@ -45,3 +45,4 @@ src/main/resources/application-local.yml
 
 ### CI/CD generated records ###
 deploy-artifacts/
+/tmp/

@@ -32,22 +32,17 @@ spec:
           env:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: MYSQL_ROOT_PASSWORD } }
-            - name: MYSQL_DATABASE
-              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: MYSQL_DATABASE } }
-            - name: MYSQL_USER
-              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: MYSQL_USER } }
-            - name: MYSQL_PASSWORD
-              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: MYSQL_PASSWORD } }
             - name: TZ
               value: Asia/Shanghai
           args: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
           volumeMounts:
             - { name: data, mountPath: /var/lib/mysql }
-            - { name: init-sql, mountPath: /docker-entrypoint-initdb.d, readOnly: true }
-            - { name: migrations, mountPath: /opt/db-migrations, readOnly: true }
             - { name: user-schema, mountPath: /docker-entrypoint-initdb.d/10-user-service.sql, subPath: schema-user.sql, readOnly: true }
             - { name: learning-schema, mountPath: /docker-entrypoint-initdb.d/11-learning-service.sql, subPath: schema-learning.sql, readOnly: true }
             - { name: assessment-schema, mountPath: /docker-entrypoint-initdb.d/12-assessment-service.sql, subPath: schema-assessment.sql, readOnly: true }
+            - { name: user-seed, mountPath: /docker-entrypoint-initdb.d/20-user-seed.sql, subPath: seed-user.sql, readOnly: true }
+            - { name: learning-seed, mountPath: /docker-entrypoint-initdb.d/21-learning-seed.sql, subPath: seed-learning.sql, readOnly: true }
+            - { name: assessment-seed, mountPath: /docker-entrypoint-initdb.d/22-assessment-seed.sql, subPath: seed-assessment.sql, readOnly: true }
           readinessProbe:
             exec:
               command: ["sh", "-c", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$MYSQL_ROOT_PASSWORD\" --silent"]
@@ -58,16 +53,18 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim: { claimName: mysql-data }
-        - name: init-sql
-          configMap: { name: teaching-platform-db-init }
-        - name: migrations
-          configMap: { name: teaching-platform-db-migrations }
         - name: user-schema
           configMap: { name: user-service-schema }
         - name: learning-schema
           configMap: { name: learning-service-schema }
         - name: assessment-schema
           configMap: { name: assessment-service-schema }
+        - name: user-seed
+          configMap: { name: user-service-seed }
+        - name: learning-seed
+          configMap: { name: learning-service-seed }
+        - name: assessment-seed
+          configMap: { name: assessment-service-seed }
 ---
 apiVersion: v1
 kind: Service
