@@ -188,51 +188,52 @@ done
 kubectl -n "$namespace" get all,pvc -o wide | tee "$artifact_dir/kubernetes-resources.txt"
 
 if [[ "$deploy_target" == "kind" ]]; then
-  kubectl -n "$namespace" port-forward service/frontend 13000:80 \
+  # 优先使用 Kind 原生端口映射 hostPort: 3000 -> nodePort: 30080
+  frontend_url="http://127.0.0.1:3000"
+
+  # 后台同时开启 0.0.0.0 端口转发作为备用
+  kubectl -n "$namespace" port-forward --address 0.0.0.0,127.0.0.1 service/frontend 13000:80 \
     > "$artifact_dir/frontend-port-forward.log" 2>&1 &
   port_forward_pids+=("$!")
 
-  frontend_url="http://127.0.0.1:13000"
+  # 开启微服务直接访问端口转发
+  kubectl -n "$namespace" port-forward --address 0.0.0.0,127.0.0.1 service/user-service 8082:8082 \
+    > "$artifact_dir/user-service-port-forward.log" 2>&1 &
+  port_forward_pids+=("$!")
+  kubectl -n "$namespace" port-forward --address 0.0.0.0,127.0.0.1 service/learning-service 8083:8083 \
+    > "$artifact_dir/learning-service-port-forward.log" 2>&1 &
+  port_forward_pids+=("$!")
+  kubectl -n "$namespace" port-forward --address 0.0.0.0,127.0.0.1 service/assessment-service 8084:8084 \
+    > "$artifact_dir/assessment-service-port-forward.log" 2>&1 &
+  port_forward_pids+=("$!")
+
+  # 等待健康检查通过（自动探测 3000 或 13000）
+  target_url=""
   for attempt in {1..60}; do
-    if curl --fail --silent --show-error "$frontend_url/healthz" \
-      | tee "$artifact_dir/health-response.txt" | grep -qx 'ok'; then
-      curl --fail --silent --show-error --dump-header "$artifact_dir/login-headers.txt" \
-        --output "$artifact_dir/login-page.html" "$frontend_url/login"
-
-      kubectl -n "$namespace" port-forward service/user-service 8082:8082 \
-        > "$artifact_dir/user-service-port-forward.log" 2>&1 &
-      port_forward_pids+=("$!")
-      kubectl -n "$namespace" port-forward service/learning-service 8083:8083 \
-        > "$artifact_dir/learning-service-port-forward.log" 2>&1 &
-      port_forward_pids+=("$!")
-      kubectl -n "$namespace" port-forward service/assessment-service 8084:8084 \
-        > "$artifact_dir/assessment-service-port-forward.log" 2>&1 &
-      port_forward_pids+=("$!")
-
-      services_ready=false
-      for service_attempt in {1..30}; do
-        if curl --fail --silent http://127.0.0.1:8082/actuator/health/readiness > /dev/null \
-          && curl --fail --silent http://127.0.0.1:8083/actuator/health/readiness > /dev/null \
-          && curl --fail --silent http://127.0.0.1:8084/actuator/health/readiness > /dev/null; then
-          services_ready=true
-          break
-        fi
-        sleep 2
-      done
-      if [[ "$services_ready" != "true" ]]; then
-        echo "Microservice port-forward health checks failed" >&2
-        exit 1
-      fi
-
-      pwsh -File scripts/microservices-smoke.ps1 -BaseUrl "$frontend_url"
-      pwsh -File scripts/microservices-business-regression.ps1 -BaseUrl "$frontend_url"
-      echo "Ephemeral kind deployment and complete microservice regression passed."
-      exit 0
+    if curl --fail --silent "$frontend_url/healthz" | grep -qx 'ok'; then
+      target_url="$frontend_url"
+      break
+    elif curl --fail --silent "http://127.0.0.1:13000/healthz" | grep -qx 'ok'; then
+      target_url="http://127.0.0.1:13000"
+      break
     fi
     sleep 2
   done
-  echo "kind frontend health check failed: $frontend_url/healthz" >&2
-  exit 1
+
+  if [[ -z "$target_url" ]]; then
+    echo "kind frontend health check failed on both 3000 and 13000" >&2
+    exit 1
+  fi
+
+  echo "Frontend gateway is ready at $target_url"
+  curl --fail --silent --dump-header "$artifact_dir/login-headers.txt" \
+    --output "$artifact_dir/login-page.html" "$target_url/login"
+
+  # 执行回归测试
+  pwsh -File scripts/microservices-smoke.ps1 -BaseUrl "$target_url"
+  pwsh -File scripts/microservices-business-regression.ps1 -BaseUrl "$target_url"
+  echo "Ephemeral kind deployment and complete microservice regression passed."
+  exit 0
 fi
 
 frontend_address=""
