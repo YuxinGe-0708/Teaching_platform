@@ -17,7 +17,7 @@ services:
       APP_UPLOAD_PATH: /app/uploads
       TZ: ${TZ:-Asia/Shanghai}
       # 数据库连接配置
-      DB_URL: jdbc:mysql://microservices-mysql:3306/teaching_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+      DB_URL: jdbc:mysql://microservices-mysql:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
       DB_USERNAME: root
       DB_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-ci-root-password}
       # AI 配置
