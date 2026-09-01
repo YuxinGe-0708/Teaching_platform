@@ -25,6 +25,23 @@ export AI_API_KEY="${AI_API_KEY:-}"
 export JUDGE0_API_KEY="${JUDGE0_API_KEY:-}"
 export INTERNAL_API_KEY="${INTERNAL_API_KEY:-dev-internal-key}"
 
+retry() {
+  local attempts="$1"
+  local delay="$2"
+  shift 2
+  local attempt
+  for attempt in $(seq 1 "$attempts"); do
+    if "$@"; then
+      return 0
+    fi
+    echo "Command failed on attempt $attempt/$attempts: $*" >&2
+    if [[ "$attempt" == "$attempts" ]]; then
+      return 1
+    fi
+    sleep "$delay"
+  done
+}
+
 load_kind_images() {
   if ! command -v kind >/dev/null 2>&1; then
     echo "kind command is required when DEPLOY_TARGET=kind" >&2
@@ -36,11 +53,11 @@ load_kind_images() {
   fi
 
   echo "Preloading Kubernetes images into kind cluster: $kind_cluster_name"
-  docker pull "$mysql_image"
+  retry 3 10 docker pull "$mysql_image"
   if [[ "$mysql_image" != "mysql:8.0.43" ]]; then
     docker tag "$mysql_image" mysql:8.0.43
   fi
-  kind load docker-image mysql:8.0.43 --name "$kind_cluster_name"
+  retry 3 10 kind load docker-image mysql:8.0.43 --name "$kind_cluster_name"
 
   echo "$SWR_PASSWORD" | docker login "$SWR_REGISTRY" \
     --username "$SWR_USERNAME" \
@@ -56,8 +73,10 @@ load_kind_images() {
   local repository image
   for repository in "${repositories[@]}"; do
     image="$SWR_REGISTRY/$SWR_ORG/$repository:$IMAGE_TAG"
-    docker pull "$image"
-    kind load docker-image "$image" --name "$kind_cluster_name"
+    retry 5 15 docker pull "$image"
+    if ! docker exec "${kind_cluster_name}-control-plane" crictl images | grep -Fq "$image"; then
+      retry 3 10 kind load docker-image "$image" --name "$kind_cluster_name"
+    fi
   done
 }
 
@@ -155,7 +174,13 @@ if [[ "$deploy_target" == "kind" ]]; then
 fi
 
 for deployment in user-service learning-service assessment-service web-bff gateway; do
-  kubectl -n "$namespace" rollout status "deployment/$deployment" --timeout=8m
+  if ! kubectl -n "$namespace" rollout status "deployment/$deployment" --timeout=8m; then
+    echo "Rollout failed for deployment/$deployment" >&2
+    kubectl -n "$namespace" get pods -o wide >&2 || true
+    kubectl -n "$namespace" describe "deployment/$deployment" >&2 || true
+    kubectl -n "$namespace" describe pods -l "app=$deployment" >&2 || true
+    exit 1
+  fi
 done
 kubectl -n "$namespace" get all,pvc -o wide | tee "$artifact_dir/kubernetes-resources.txt"
 
