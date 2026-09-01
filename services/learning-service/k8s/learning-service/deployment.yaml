@@ -1,0 +1,95 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: learning-service
+  namespace: teaching-platform
+  labels:
+    app: learning-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: learning-service
+  template:
+    metadata:
+      labels:
+        app: learning-service
+    spec:
+      containers:
+        - name: learning-service
+          image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-learning-service:__IMAGE_TAG__
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+          env:
+            - name: SERVER_PORT
+              value: "8083"
+            - name: DB_URL
+              value: "jdbc:mysql://mysql:3306/learning_service_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8"
+            - name: DB_USERNAME
+              value: "root"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: teaching-platform-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: USER_SERVICE_URL
+              value: "http://user-service:8082"
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: teaching-platform-secrets
+                  key: INTERNAL_API_KEY
+            - name: APP_UPLOAD_PATH
+              value: "/app/uploads"
+            - name: AI_API_URL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_API_URL } }
+            - name: AI_API_KEY
+              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: AI_API_KEY, optional: true } }
+            - name: AI_MODEL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_MODEL } }
+            - name: AI_VISION_MODEL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_VISION_MODEL } }
+          volumeMounts:
+            - { name: learning-uploads, mountPath: /app/uploads }
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8083
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: swr-registry
+      volumes:
+        - name: learning-uploads
+          persistentVolumeClaim: { claimName: learning-uploads-data }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: learning-uploads-data
+  namespace: teaching-platform
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: learning-service
+  namespace: teaching-platform
+spec:
+  selector:
+    app: learning-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+  type: ClusterIP

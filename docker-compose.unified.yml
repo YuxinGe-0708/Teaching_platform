@@ -1,0 +1,44 @@
+services:
+  web-bff:
+    image: teaching-platform-web-bff:${IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.8.8-eclipse-temurin-8}
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:8-jdk-jammy}
+    environment:
+      SERVER_PORT: 8080
+      BFF_ENABLED: "true"
+      USER_SERVICE_URL: http://user-service:8082
+      LEARNING_SERVICE_URL: http://learning-service:8083
+      ASSESSMENT_SERVICE_URL: http://assessment-service:8084
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      APP_UPLOAD_PATH: /app/uploads
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      user-service: { condition: service_healthy }
+      learning-service: { condition: service_healthy }
+      assessment-service: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 35s
+
+  gateway:
+    image: teaching-platform-gateway:${IMAGE_TAG:-dev}
+    build:
+      context: ./docker/gateway
+      dockerfile: Dockerfile
+      args:
+        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.27-alpine}
+    ports: ["${UNIFIED_PORT:-3000}:80"]
+    depends_on:
+      web-bff: { condition: service_healthy }
+      user-service: { condition: service_healthy }
+      learning-service: { condition: service_healthy }
+      assessment-service: { condition: service_healthy }

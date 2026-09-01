@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: teaching-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: gateway }
+  template:
+    metadata:
+      labels: { app: gateway }
+    spec:
+      imagePullSecrets:
+        - name: swr-registry
+      containers:
+        - name: gateway
+          image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-gateway:__IMAGE_TAG__
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: teaching-platform
+spec:
+  type: LoadBalancer
+  selector: { app: gateway }
+  ports:
+    - port: 80
+      targetPort: 80

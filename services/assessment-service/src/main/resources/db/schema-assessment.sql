@@ -1,0 +1,24 @@
+CREATE DATABASE IF NOT EXISTS assessment_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE assessment_db;
+CREATE TABLE IF NOT EXISTS task (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(200) NOT NULL, description TEXT,
+ course_id BIGINT NOT NULL, type VARCHAR(20) NOT NULL, max_score INT DEFAULT 100,
+ time_limit_ms INT DEFAULT 15000, memory_limit_mb INT DEFAULT 128, code_template MEDIUMTEXT,
+ end_time TIMESTAMP NULL, status VARCHAR(20) DEFAULT 'published', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ INDEX idx_task_course(course_id), INDEX idx_task_end_time(end_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS submission (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, task_id BIGINT NOT NULL, student_id BIGINT NOT NULL,
+ content TEXT, file_path VARCHAR(500) DEFAULT '', score DECIMAL(5,1), status VARCHAR(20) DEFAULT 'submitted',
+ judge_result VARCHAR(50) DEFAULT '', feedback TEXT, submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_submission_task(task_id), INDEX idx_submission_student(student_id),
+ CONSTRAINT fk_submission_task FOREIGN KEY(task_id) REFERENCES task(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS exam_record (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, task_id BIGINT NOT NULL, student_id BIGINT NOT NULL,
+ start_time TIMESTAMP NULL, submit_time TIMESTAMP NULL, content TEXT, score DECIMAL(5,1),
+ status VARCHAR(20) NOT NULL DEFAULT 'NOT_STARTED', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY uk_exam_student_task(student_id,task_id), CONSTRAINT fk_exam_task FOREIGN KEY(task_id) REFERENCES task(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teaching-platform-config
+  namespace: teaching-platform
+data:
+  AI_API_URL: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+  AI_MODEL: qwen-plus
+  AI_VISION_MODEL: qwen3-vl-plus
+  JUDGE0_API_URL: https://ce.judge0.com
+  JUDGE0_TIMEOUT_MS: "15000"
+  JUDGE0_LOCAL_FALLBACK: "true"

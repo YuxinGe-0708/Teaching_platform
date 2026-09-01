@@ -18,17 +18,20 @@ import org.example.mapper.TeachingResourceMapper;
 import org.example.mapper.DiscussionMapper;
 import org.example.mapper.StudyNoteMapper;
 import org.example.mapper.UserMapper;
-import org.example.service.AiService;
 import org.example.service.CourseService;
 import org.example.service.ExamService;
 import org.example.service.ScoreService;
 import org.example.service.TaskService;
+import org.example.bff.MicroserviceClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.example.util.DownloadUtils;
 import org.example.util.ExamContentUtils;
 import org.example.util.MarkdownUtils;
 import org.example.util.TaskMetadataUtils;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -63,9 +66,10 @@ public class StudentController {
     private final CourseClassMapper courseClassMapper;
     private final UserMapper userMapper;
     private final StudyNoteMapper studyNoteMapper;
-    private final AiService aiService;
     private final ExamService examService;
     private final ExamRecordMapper examRecordMapper;
+    private final MicroserviceClient microservices;
+    private final boolean bffEnabled;
 
     public StudentController(CourseService courseService,
                              TaskService taskService,
@@ -78,9 +82,10 @@ public class StudentController {
                              CourseClassMapper courseClassMapper,
                              UserMapper userMapper,
                              StudyNoteMapper studyNoteMapper,
-                             AiService aiService,
                              ExamService examService,
-                             ExamRecordMapper examRecordMapper) {
+                             ExamRecordMapper examRecordMapper,
+                             MicroserviceClient microservices,
+                             @Value("${app.bff.enabled:false}") boolean bffEnabled) {
         this.courseService = courseService;
         this.taskService = taskService;
         this.submissionMapper = submissionMapper;
@@ -92,9 +97,10 @@ public class StudentController {
         this.courseClassMapper = courseClassMapper;
         this.userMapper = userMapper;
         this.studyNoteMapper = studyNoteMapper;
-        this.aiService = aiService;
         this.examService = examService;
         this.examRecordMapper = examRecordMapper;
+        this.microservices = microservices;
+        this.bffEnabled = bffEnabled;
     }
 
     @GetMapping("/course/selection")
@@ -242,7 +248,9 @@ public class StudentController {
         StudyNote note = studyNoteMapper.findById(noteId);
         if (note == null || !user.getId().equals(note.getStudentId())) return "redirect:/student/notes";
         if (note.getMindMap() == null || note.getMindMap().trim().isEmpty()) {
-            note.setMindMap(aiService.generateMindMap(note.getCourseName(), note.getTitle(), note.getContent()));
+            Map<String,String> req = new LinkedHashMap<>();
+            req.put("courseName", note.getCourseName()); req.put("title", note.getTitle()); req.put("text", note.getContent());
+            note.setMindMap(microservices.post(microservices.learning("/api/v2/ai/mind-map"), req, String.class));
             studyNoteMapper.updateMindMap(note);
         }
         model.addAttribute("user", user);
@@ -371,7 +379,14 @@ public class StudentController {
 
     @GetMapping("/task/download")
     public ResponseEntity<Resource> downloadTaskFile(@RequestParam String filePath) throws Exception {
-        return DownloadUtils.attachment(filePath);
+        if (!bffEnabled) return DownloadUtils.attachment(filePath);
+        ResponseEntity<byte[]> remote = microservices.file(microservices.uri(microservices.assessment("/internal/files")).queryParam("path", filePath).toUriString());
+        byte[] bytes = remote.getBody();
+        if (bytes == null || bytes.length == 0) return ResponseEntity.status(remote.getStatusCode()).build();
+        ResponseEntity.BodyBuilder b = ResponseEntity.status(remote.getStatusCode());
+        if (remote.getHeaders().getContentType() != null) b.contentType(remote.getHeaders().getContentType());
+        String cd = remote.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION); if (cd != null) b.header(HttpHeaders.CONTENT_DISPOSITION, cd);
+        return b.body(new ByteArrayResource(bytes));
     }
 
     private void autoGradeExam(Task task, Submission submission, String content) {
@@ -671,6 +686,7 @@ public class StudentController {
             String filename = originalName(file);
             if (filename == null || filename.trim().isEmpty()) return null;
             filename = Paths.get(filename).getFileName().toString();
+            if (bffEnabled) return microservices.upload(microservices.assessment("/internal/files/submissions"), file, "file", null);
             return DownloadUtils.store(file);
         } catch (Exception e) {
             return null;

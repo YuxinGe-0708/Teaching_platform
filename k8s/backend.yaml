@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-bff
+  namespace: teaching-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: web-bff }
+  template:
+    metadata:
+      labels: { app: web-bff }
+    spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      imagePullSecrets:
+        - name: swr-registry
+      containers:
+        - name: web-bff
+          image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-web-bff:__IMAGE_TAG__
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: BFF_ENABLED
+              value: "true"
+            - name: USER_SERVICE_URL
+              value: http://user-service:8082
+            - name: LEARNING_SERVICE_URL
+              value: http://learning-service:8083
+            - name: ASSESSMENT_SERVICE_URL
+              value: http://assessment-service:8084
+            - name: INTERNAL_API_KEY
+              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: INTERNAL_API_KEY } }
+            - name: TZ
+              value: Asia/Shanghai
+          readinessProbe:
+            httpGet: { path: /login, port: 8080 }
+            initialDelaySeconds: 35
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet: { path: /login, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-bff
+  namespace: teaching-platform
+spec:
+  selector: { app: web-bff }
+  ports:
+    - port: 8080
+      targetPort: 8080
