@@ -11,6 +11,29 @@ The pipeline is defined in `.github/workflows/ci-cd.yml`.
 
 Configure GitHub repository secrets `SWR_REGISTRY`, `SWR_ORG`, `SWR_USERNAME`, and `SWR_PASSWORD`. Add `AI_API_KEY` when enabled. The temporary deployment uses disposable database passwords and does not require `KUBE_CONFIG_B64`, CCE, EIP, ELB, or cloud disks.
 
-`k8s-deploy.sh` applies the namespace, secrets, three service schemas/seeds, MySQL, three business services, stateless web-bff and gateway. It never creates the former `teaching_platform` schema. In kind mode it maps the gateway to port 3000, waits for every rollout, forwards the three internal service ports, and runs the same API/page business regression used by Compose CI. Any failure exits non-zero.
+`k8s-deploy.sh` applies the namespace, secrets, three service schemas/seeds, MySQL, three business services, stateless web-bff and gateway. It never creates the former `teaching_platform` schema. In kind mode it preloads the published immutable images into the temporary cluster, waits for every rollout, forwards the gateway to local port 13000 plus the three internal service ports, and runs the same API/page business regression used by Compose CI. Any failure exits non-zero.
 
 The deployment artifacts retain Kubernetes resources, PVCs, events, pod descriptions, container logs, the health response, HTTP headers, and rendered login HTML for 30 days. A future persistent production deployment still needs CCE (or another cluster), a production StorageClass, RDS/managed MySQL, durable upload storage, and protected environments.
+
+## Jenkins deployment
+
+`Jenkinsfile` provides the same gated flow for Jenkins: checkout, build/test, Compose integration regression, versioned image publishing, Kubernetes deployment, and health/regression verification. Jenkins stops at the first failed stage, while the `post` blocks still archive Compose/Kubernetes logs and test reports.
+
+Required Jenkins agent tools:
+
+- Docker with Compose plugin
+- Maven and Java 8
+- PowerShell Core (`pwsh`)
+- `kubectl`
+- `kind` when `DEPLOY_TARGET=kind`
+
+Required Jenkins credentials:
+
+| Credential ID | Type | Purpose |
+|---|---|---|
+| `swr-registry` | Secret text | Container registry host |
+| `swr-org` | Secret text | Registry organization/namespace |
+| `swr-account` | Username with password | Registry login |
+| `db-root-password` | Secret text | Kubernetes MySQL root password |
+
+For a classroom/demo deployment, set `DEPLOY_TARGET=kind`. The Jenkins pipeline creates or reuses the named kind cluster, pushes immutable `sha-<commit>` images, deploys those exact tags through `scripts/k8s-deploy.sh`, checks `/healthz`, then runs the microservice smoke and business regression scripts.

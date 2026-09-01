@@ -241,10 +241,6 @@ jobs:
           wait: 120s
       - name: Install deployment tooling
         run: sudo apt-get update && sudo apt-get install -y gettext-base
-      - name: Load MySQL image into kind
-        run: |
-          docker pull mysql:8.0.43
-          kind load docker-image mysql:8.0.43 --name teaching-platform-demo
       - name: Deploy immutable image version
         shell: bash
         env:

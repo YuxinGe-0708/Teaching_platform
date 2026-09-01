@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 namespace="${K8S_NAMESPACE:-teaching-platform}"
 deploy_target="${DEPLOY_TARGET:-cloud}"
+kind_cluster_name="${KIND_CLUSTER_NAME:-teaching-platform-demo}"
+mysql_image="${MYSQL_IMAGE:-mysql:8.0.43}"
 artifact_dir="deploy-artifacts"
 mkdir -p "$artifact_dir"
 exec > >(tee "$artifact_dir/deploy.log") 2>&1
@@ -23,6 +25,42 @@ export AI_API_KEY="${AI_API_KEY:-}"
 export JUDGE0_API_KEY="${JUDGE0_API_KEY:-}"
 export INTERNAL_API_KEY="${INTERNAL_API_KEY:-dev-internal-key}"
 
+load_kind_images() {
+  if ! command -v kind >/dev/null 2>&1; then
+    echo "kind command is required when DEPLOY_TARGET=kind" >&2
+    exit 1
+  fi
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker command is required when DEPLOY_TARGET=kind" >&2
+    exit 1
+  fi
+
+  echo "Preloading Kubernetes images into kind cluster: $kind_cluster_name"
+  docker pull "$mysql_image"
+  if [[ "$mysql_image" != "mysql:8.0.43" ]]; then
+    docker tag "$mysql_image" mysql:8.0.43
+  fi
+  kind load docker-image mysql:8.0.43 --name "$kind_cluster_name"
+
+  echo "$SWR_PASSWORD" | docker login "$SWR_REGISTRY" \
+    --username "$SWR_USERNAME" \
+    --password-stdin
+
+  local repositories=(
+    teaching-platform-web-bff
+    teaching-platform-gateway
+    teaching-platform-user-service
+    teaching-platform-learning-service
+    teaching-platform-assessment-service
+  )
+  local repository image
+  for repository in "${repositories[@]}"; do
+    image="$SWR_REGISTRY/$SWR_ORG/$repository:$IMAGE_TAG"
+    docker pull "$image"
+    kind load docker-image "$image" --name "$kind_cluster_name"
+  done
+}
+
 collect_artifacts() {
   status=$?
   trap - EXIT
@@ -41,6 +79,10 @@ collect_artifacts() {
   exit "$status"
 }
 trap collect_artifacts EXIT
+
+if [[ "$deploy_target" == "kind" ]]; then
+  load_kind_images
+fi
 
 envsubst < k8s/secret.template.yaml > "$secret_file"
 kubectl apply -f k8s/namespace.yaml
@@ -118,7 +160,11 @@ done
 kubectl -n "$namespace" get all,pvc -o wide | tee "$artifact_dir/kubernetes-resources.txt"
 
 if [[ "$deploy_target" == "kind" ]]; then
-  frontend_url="http://127.0.0.1:3000"
+  kubectl -n "$namespace" port-forward service/frontend 13000:80 \
+    > "$artifact_dir/frontend-port-forward.log" 2>&1 &
+  port_forward_pids+=("$!")
+
+  frontend_url="http://127.0.0.1:13000"
   for attempt in {1..60}; do
     if curl --fail --silent --show-error "$frontend_url/healthz" \
       | tee "$artifact_dir/health-response.txt" | grep -qx 'ok'; then
