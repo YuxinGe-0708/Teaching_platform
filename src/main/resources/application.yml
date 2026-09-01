@@ -9,33 +9,14 @@ spring:
     multipart:
       max-file-size: ${MAX_FILE_SIZE:1024MB}
       max-request-size: ${MAX_REQUEST_SIZE:1024MB}
-  datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/teaching_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      idle-timeout: 30000
-
-mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: org.example.entity
-  configuration:
-    map-underscore-to-camel-case: true
 
 app:
+  # This application is permanently a stateless page/BFF process.
+  bff:
+    enabled: ${BFF_ENABLED:true}
+  internal-api-key: ${INTERNAL_API_KEY:dev-internal-key}
+  services:
+    user-url: ${USER_SERVICE_URL:http://localhost:8082}
+    learning-url: ${LEARNING_SERVICE_URL:http://localhost:8083}
+    assessment-url: ${ASSESSMENT_SERVICE_URL:http://localhost:8084}
   upload-path: ${APP_UPLOAD_PATH:./uploads}
-  seed-test-data: ${APP_SEED_TEST_DATA:false}
-  ai:
-    api-url: ${AI_API_URL:https://api.deepseek.com/v1/chat/completions}
-    api-key: ${AI_API_KEY:}
-    model: ${AI_MODEL:deepseek-chat}
-    vision-model: ${AI_VISION_MODEL:${AI_MODEL:deepseek-chat}}
-  judge0:
-    api-url: ${JUDGE0_API_URL:https://ce.judge0.com}
-    api-key: ${JUDGE0_API_KEY:}
-    api-host: ${JUDGE0_API_HOST:}
-    timeout-ms: ${JUDGE0_TIMEOUT_MS:15000}
-    local-fallback: ${JUDGE0_LOCAL_FALLBACK:true}
