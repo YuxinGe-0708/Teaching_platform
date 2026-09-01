@@ -46,3 +46,9 @@ src/main/resources/application-local.yml
 ### CI/CD generated records ###
 deploy-artifacts/
 /tmp/
+ci-artifacts/
+
+### Python ###
+__pycache__/
+*.py[cod]
+.pytest_cache/

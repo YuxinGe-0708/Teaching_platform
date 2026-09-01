@@ -113,6 +113,36 @@ ci ──→ publish ──→ deploy
 
 详见 [docs/ci-cd.md](docs/ci-cd.md)。
 
+### 端到端回归测试
+
+微服务端到端测试放在 `tests/e2e/`，当前先提供 A 同学负责的基础框架：
+
+- 统一 HTTP 客户端
+- 服务健康检查
+- 测试报告输出
+- CI 接入
+
+运行前先确认 Docker Desktop 已启动，并且命令窗口位于仓库根目录：
+
+```powershell
+Set-Location D:\teachplatform\Teaching_platform
+docker info
+```
+
+然后启动微服务环境并执行 E2E：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-e2e-microservices.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\e2e-microservices.ps1
+```
+
+注意：
+
+- 不要在 `tests/e2e/` 目录下执行 `.\scripts\e2e-microservices.ps1`，`scripts` 目录位于仓库根目录。
+- 如果 PowerShell 提示禁止运行脚本，使用上面的 `powershell -ExecutionPolicy Bypass -File ...` 方式。
+- 如果提示 `failed to connect to the docker API`，说明 Docker Desktop 还没有启动。
+- 报告默认输出到 `ci-artifacts/e2e-report.json`。
+
 ## 用 Docker 启动微服务数据库
 
 MySQL 容器自动创建三个服务独占的 Schema、表和演示数据：
