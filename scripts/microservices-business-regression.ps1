@@ -44,8 +44,11 @@ Assert-True ($badLogin.code -eq 401) "Invalid password exception flow was not re
 $login = Send-Json "$BaseUrl/api/auth/login" "POST" @{ username=$username; password="Temp123456" }
 Assert-True (-not [string]::IsNullOrWhiteSpace($login.token)) "Login token missing"
 $pageSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
-$pageLogin = Invoke-WebRequest -Uri "$BaseUrl/login" -Method Post -Body @{ username=$username; password="Temp123456" } -WebSession $pageSession -UseBasicParsing
-Assert-True ($pageLogin.StatusCode -eq 200) "BFF login flow failed"
+$pageLogin = Invoke-WebRequest -Uri "$BaseUrl/login" -Method Post -Body @{ username=$username; password="Temp123456" } `
+    -WebSession $pageSession -MaximumRedirection 0 -SkipHttpErrorCheck -UseBasicParsing
+Assert-True ($pageLogin.StatusCode -in @(302,303)) "BFF login did not return a success redirect"
+$sessionCookies = $pageSession.Cookies.GetCookies([uri]$BaseUrl)
+Assert-True ($sessionCookies['JSESSIONID'] -ne $null) "BFF login did not establish a session"
 Get-Json "http://localhost:8082/internal/users/$($registered.id)" $headers | Out-Null
 Get-Json "http://localhost:8082/internal/users?role=student" $headers | Out-Null
 Get-Json "http://localhost:8082/internal/notifications/user/$($registered.id)" $headers | Out-Null
@@ -139,7 +142,8 @@ $savedJudge = @($judgeSubmissions | Where-Object { $_.taskId -eq $programmingTas
 Assert-True ($null -ne $savedJudge -and $savedJudge.judgeResult -eq "AC") "BFF did not bind the judged submission to the logged-in student"
 
 Write-Host "[8/8] Gateway page flow"
-$studentPage = Invoke-WebRequest -Uri "$BaseUrl/student/course/my" -WebSession $pageSession -UseBasicParsing
+$studentPage = Invoke-WebRequest -Uri "$BaseUrl/student/course/my" -WebSession $pageSession `
+    -MaximumRedirection 0 -SkipHttpErrorCheck -UseBasicParsing
 Assert-True ($studentPage.StatusCode -eq 200 -and [string]$studentPage.Content -notmatch "Whitelabel Error Page") "Authenticated BFF page failed"
 foreach ($path in @("/", "/student/course/selection", "/student/course/my", "/teacher/course/manage", "/admin/dashboard")) {
     $status = Get-StatusWithoutRedirect "$BaseUrl$path"
