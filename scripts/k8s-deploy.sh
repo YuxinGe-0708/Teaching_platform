@@ -135,6 +135,20 @@ kubectl apply -f k8s/configmap.yaml
 # Remove resources from the former monolithic deployment. The public gateway
 # and web-bff below are the only page-serving path in the microservice stack.
 kubectl -n "$namespace" delete deployment/backend deployment/frontend service/backend pvc/uploads-data --ignore-not-found
+# Do not disable integrations when a deployment job intentionally omits an
+# optional key. Reuse the existing secret value across rolling deployments.
+if [[ -z "$AI_API_KEY" ]]; then
+  existing_ai_key="$(kubectl -n "$namespace" get secret teaching-platform-secrets -o jsonpath='{.data.AI_API_KEY}' 2>/dev/null || true)"
+  if [[ -n "$existing_ai_key" ]]; then
+    AI_API_KEY="$(printf '%s' "$existing_ai_key" | base64 --decode)"
+  fi
+fi
+if [[ -z "$JUDGE0_API_KEY" ]]; then
+  existing_judge_key="$(kubectl -n "$namespace" get secret teaching-platform-secrets -o jsonpath='{.data.JUDGE0_API_KEY}' 2>/dev/null || true)"
+  if [[ -n "$existing_judge_key" ]]; then
+    JUDGE0_API_KEY="$(printf '%s' "$existing_judge_key" | base64 --decode)"
+  fi
+fi
 kubectl -n "$namespace" create secret generic teaching-platform-secrets \
   --from-literal=MYSQL_ROOT_PASSWORD="$DB_ROOT_PASSWORD" \
   --from-literal=AI_API_KEY="$AI_API_KEY" \
