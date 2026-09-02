@@ -1,6 +1,6 @@
 target/*
 !target/
-!target/user-service.jar
+!target/assessment-service.jar
 *.iml
 .idea/
 .git/

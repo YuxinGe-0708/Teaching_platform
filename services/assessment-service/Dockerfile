@@ -1,4 +1,5 @@
-FROM eclipse-temurin:8-jre-jammy
+ARG JAVA_IMAGE=eclipse-temurin:8-jre-jammy
+FROM ${JAVA_IMAGE}
 RUN sed -i \
       -e 's|http://archive.ubuntu.com/ubuntu|https://mirrors.aliyun.com/ubuntu|g' \
       -e 's|http://security.ubuntu.com/ubuntu|https://mirrors.aliyun.com/ubuntu|g' \

@@ -1,1 +1,7 @@
-﻿target/
+target/*
+!target/
+!target/learning-service.jar
+*.iml
+.idea/
+.git/
+.env
