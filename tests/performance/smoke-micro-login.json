@@ -1,0 +1,494 @@
+{
+  "target": "microservices",
+  "scenario": "login",
+  "run_number": 0,
+  "base_url": "http://localhost:3000",
+  "concurrency": 2,
+  "warmup_seconds": 1,
+  "duration_seconds": 2,
+  "data": {
+    "username": "ms_student",
+    "course_id": "1001",
+    "judge_task_id": "",
+    "judge_payload": {
+      "language": "python",
+      "code": "print('Hello World')"
+    }
+  },
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.13",
+    "cpu_count": 32
+  },
+  "started_at_utc": "2026-09-02T06:17:52.583564+00:00",
+  "finished_at_utc": "2026-09-02T06:17:54.745406+00:00",
+  "actual_duration_seconds": 2.017,
+  "metrics": {
+    "requests": 64,
+    "successful_requests": 64,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "throughput_rps": 31.7316,
+    "average_response_ms": 62.741,
+    "p95_response_ms": 71.179,
+    "p99_response_ms": 104.36,
+    "min_response_ms": 55.798,
+    "max_response_ms": 104.762
+  },
+  "status_counts": {
+    "302": 64
+  },
+  "error_counts": {
+    "none": 64
+  },
+  "requests_raw": [
+    {
+      "started_at": "2026-09-02T06:17:52.583564+00:00",
+      "elapsed_ms": 104.12400000132038,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.583952+00:00",
+      "elapsed_ms": 104.76199999902747,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.688735+00:00",
+      "elapsed_ms": 60.18059999769321,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.687716+00:00",
+      "elapsed_ms": 61.62580000091111,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.749368+00:00",
+      "elapsed_ms": 55.79790000047069,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.748942+00:00",
+      "elapsed_ms": 58.06709999887971,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.805188+00:00",
+      "elapsed_ms": 61.70679999922868,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.807030+00:00",
+      "elapsed_ms": 70.9562999982154,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.866924+00:00",
+      "elapsed_ms": 70.6465000002936,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.878017+00:00",
+      "elapsed_ms": 76.51500000065425,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.937603+00:00",
+      "elapsed_ms": 63.270599999668775,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:52.954570+00:00",
+      "elapsed_ms": 59.49019999752636,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.000900+00:00",
+      "elapsed_ms": 61.20250000094529,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.014086+00:00",
+      "elapsed_ms": 59.77569999959087,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.062125+00:00",
+      "elapsed_ms": 58.0234000008204,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.073892+00:00",
+      "elapsed_ms": 61.86919999890961,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.120172+00:00",
+      "elapsed_ms": 62.288200002512895,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.135785+00:00",
+      "elapsed_ms": 58.54660000113654,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.182484+00:00",
+      "elapsed_ms": 61.20259999806876,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.194356+00:00",
+      "elapsed_ms": 63.40519999866956,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.243711+00:00",
+      "elapsed_ms": 59.91920000087703,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.257785+00:00",
+      "elapsed_ms": 59.69159999949625,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.303657+00:00",
+      "elapsed_ms": 58.6263000004692,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.317507+00:00",
+      "elapsed_ms": 61.24429999908898,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.362313+00:00",
+      "elapsed_ms": 62.54419999822858,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.378776+00:00",
+      "elapsed_ms": 62.40329999855021,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.424884+00:00",
+      "elapsed_ms": 56.18699999831733,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.441224+00:00",
+      "elapsed_ms": 56.73980000210577,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.481095+00:00",
+      "elapsed_ms": 62.097099998936756,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.497992+00:00",
+      "elapsed_ms": 60.85449999955017,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.543217+00:00",
+      "elapsed_ms": 60.1678000020911,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.558872+00:00",
+      "elapsed_ms": 59.868700001970865,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.603422+00:00",
+      "elapsed_ms": 60.453599999164,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.618769+00:00",
+      "elapsed_ms": 64.93260000206647,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.663905+00:00",
+      "elapsed_ms": 60.62240000028396,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.683730+00:00",
+      "elapsed_ms": 61.240300001372816,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.724551+00:00",
+      "elapsed_ms": 61.356400001386646,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.745000+00:00",
+      "elapsed_ms": 61.20280000322964,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.785946+00:00",
+      "elapsed_ms": 65.37570000000414,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.806239+00:00",
+      "elapsed_ms": 67.92900000073132,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.851352+00:00",
+      "elapsed_ms": 68.12129999889294,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.874193+00:00",
+      "elapsed_ms": 57.06000000282074,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.919500+00:00",
+      "elapsed_ms": 62.941899999714224,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.931301+00:00",
+      "elapsed_ms": 59.63289999999688,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.982466+00:00",
+      "elapsed_ms": 64.97680000029504,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:53.990961+00:00",
+      "elapsed_ms": 71.21860000188462,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.047466+00:00",
+      "elapsed_ms": 59.28490000223974,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.062203+00:00",
+      "elapsed_ms": 60.108699999545934,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.106774+00:00",
+      "elapsed_ms": 57.507400000758935,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.122335+00:00",
+      "elapsed_ms": 56.90369999865652,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.164304+00:00",
+      "elapsed_ms": 58.27259999932721,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.179263+00:00",
+      "elapsed_ms": 57.65949999840814,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.222602+00:00",
+      "elapsed_ms": 59.561699999903794,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.236946+00:00",
+      "elapsed_ms": 58.276600000681356,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.282194+00:00",
+      "elapsed_ms": 61.41860000207089,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.295246+00:00",
+      "elapsed_ms": 59.75469999975758,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.343652+00:00",
+      "elapsed_ms": 58.57620000097086,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.355057+00:00",
+      "elapsed_ms": 61.814199998480035,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.402255+00:00",
+      "elapsed_ms": 61.9775999984995,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.416896+00:00",
+      "elapsed_ms": 59.88230000002659,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.464258+00:00",
+      "elapsed_ms": 59.81230000179494,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.476806+00:00",
+      "elapsed_ms": 61.68289999914123,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.524096+00:00",
+      "elapsed_ms": 60.934900000575,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    },
+    {
+      "started_at": "2026-09-02T06:17:54.538519+00:00",
+      "elapsed_ms": 61.127299999498064,
+      "status_code": 302,
+      "success": true,
+      "error": ""
+    }
+  ]
+}

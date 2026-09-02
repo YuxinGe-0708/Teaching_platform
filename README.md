@@ -143,6 +143,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\e2e-microservices.ps1
 - 如果提示 `failed to connect to the docker API`，说明 Docker Desktop 还没有启动。
 - 报告默认输出到 `ci-artifacts/e2e-report.json`。
 
+### 性能对比实验结果
+
+已完成单体版与微服务版的性能对比实验：3 个主要接口、每个版本各运行 3 次，测试参数为并发 `10`、预热 `10` 秒、正式采样 `20` 秒。
+
+- **结果与差异分析**：`docs/12-性能对比实验报告.md`
+- **实验交付与复现参数**：`tests/performance/RESULTS.md`
+- **汇总对比数据**：`results/performance/perf-20260902-03/comparison.csv`
+- **18 次测试明细**：`results/performance/perf-20260902-03/detailed-summary.csv`
+- **请求级原始记录与资源采样**：`results/performance/perf-20260902-03/<版本>/<接口>/run-xx/benchmark.json`、`resources.csv`
+- **测试脚本与性能夹具**：`tests/performance/`
+
+本次实测结果显示当前单体版整体更快，不能宣称微服务版本有性能提升。编程判题场景不携带 `taskId`，仅比较判题计算链路；原因和限制见性能报告第 9 节。
+
 ## 用 Docker 启动微服务数据库
 
 MySQL 容器自动创建三个服务独占的 Schema、表和演示数据：
