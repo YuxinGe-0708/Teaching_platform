@@ -29,7 +29,7 @@ pipeline {
     JUDGE0_LOCAL_FALLBACK = 'true'
     KUBECONFIG = 'C:\\Users\\Lenovo\\.kube\\config'
     JAVA_HOME = 'C:\\Program Files\\Java\\jdk1.8.0_351'
-    PATH = "C:\\Program Files\\Java\\jdk1.8.0_351\\bin;C:\\getMvn\\apache-maven-3.5.3\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;${env.PATH}"
+    PATH+TOOLS = 'C:\\Program Files\\Java\\jdk1.8.0_351\\bin;C:\\getMvn\\apache-maven-3.5.3\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin'
   }
 
   stages {
