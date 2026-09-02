@@ -29,6 +29,7 @@ pipeline {
     JUDGE0_LOCAL_FALLBACK = 'true'
     KUBECONFIG = 'C:\\Users\\Lenovo\\.kube\\config'
     JAVA_HOME = 'C:\\Program Files\\Java\\jdk1.8.0_351'
+    PYTHON_EXE = 'D:\\Programs\\Python\\Python312\\python.exe'
     MAVEN_IMAGE = 'docker.m.daocloud.io/library/maven:3.8.8-eclipse-temurin-8'
     JAVA_IMAGE = 'docker.m.daocloud.io/library/eclipse-temurin:8-jdk-jammy'
     NGINX_IMAGE = 'docker.m.daocloud.io/library/nginx:1.27-alpine'
