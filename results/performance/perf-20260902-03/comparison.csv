@@ -1,0 +1,7 @@
+target,scenario,runs,concurrency,throughput_rps_avg,average_response_ms_avg,p95_response_ms_avg,error_rate_pct_avg,host_cpu_max_pct_peak,host_memory_max_pct_peak,container_cpu_max_pct_peak,container_memory_max_mib_peak
+microservices,course_detail,3,10,460.876,21.904,29.336,0.0,90.9,68.4,2106.16,4124.844
+microservices,judge_submit,3,10,6.712,1434.208,2650.971,0.0,41.2,69.2,73.69,3956.902
+microservices,login,3,10,122.391,81.628,92.44,0.0,55.1,64.7,1344.08,2983.2
+monolith,course_detail,3,10,875.32,11.392,15.545,0.0,42.0,60.3,173.79,372.6
+monolith,judge_submit,3,10,184.395,54.137,59.022,0.0,26.4,59.9,3.68,372.7
+monolith,login,3,10,127.812,78.198,83.828,0.0,50.1,59.1,8.47,365.7

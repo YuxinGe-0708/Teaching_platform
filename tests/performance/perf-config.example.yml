@@ -1,0 +1,37 @@
+tool:
+  runner: tests/performance/scripts/run-performance-suite.ps1
+  dependencies: tests/performance/requirements.txt
+  raw_results: results/performance
+
+experiment:
+  runs: 3
+  warmup_seconds: 15
+  duration_seconds: 60
+  concurrency: 10
+  scenarios:
+    - login
+    - course_detail
+    - judge_submit
+
+targets:
+  monolith:
+    base_url: http://localhost:8081
+    username: student_001
+    course_id: auto
+  microservices:
+    base_url: http://localhost:3000
+    username: ms_student
+    course_id: auto
+
+metrics:
+  http:
+    - requests
+    - throughput_rps
+    - average_response_ms
+    - p95_response_ms
+    - error_rate_pct
+  resource:
+    - host_cpu_pct
+    - host_memory_pct
+    - container_cpu_pct
+    - container_memory_mib
