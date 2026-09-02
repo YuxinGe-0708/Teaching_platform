@@ -8,6 +8,6 @@ RUN sed -i \
     && ln -sf /usr/bin/python3 /usr/local/bin/python \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY assessment-service.jar app.jar
+COPY target/assessment-service.jar app.jar
 EXPOSE 8084
 ENTRYPOINT ["java", "-jar", "app.jar"]
