@@ -29,7 +29,6 @@ pipeline {
     JUDGE0_LOCAL_FALLBACK = 'true'
     KUBECONFIG = 'C:\\Users\\Lenovo\\.kube\\config'
     JAVA_HOME = 'C:\\Program Files\\Java\\jdk1.8.0_351'
-    PATH+TOOLS = 'C:\\Program Files\\Java\\jdk1.8.0_351\\bin;C:\\getMvn\\apache-maven-3.5.3\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin'
   }
 
   stages {
@@ -50,15 +49,15 @@ pipeline {
         bat '''
           @echo off
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\verify-public-api-coverage.ps1 || exit /b 1
-          call mvn.cmd -B test package || exit /b 1
+          call "C:\\getMvn\\apache-maven-3.5.3\\bin\\mvn.cmd" -B test package || exit /b 1
           pushd services\\user-service
-          call mvn.cmd -B test package || exit /b 1
+          call "C:\\getMvn\\apache-maven-3.5.3\\bin\\mvn.cmd" -B test package || exit /b 1
           popd
           pushd services\\learning-service
-          call mvn.cmd -B test package || exit /b 1
+          call "C:\\getMvn\\apache-maven-3.5.3\\bin\\mvn.cmd" -B test package || exit /b 1
           popd
           pushd services\\assessment-service
-          call mvn.cmd -B test package || exit /b 1
+          call "C:\\getMvn\\apache-maven-3.5.3\\bin\\mvn.cmd" -B test package || exit /b 1
           popd
         '''
       }
