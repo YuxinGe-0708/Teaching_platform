@@ -1,0 +1,38 @@
+{
+  "dataset": "seed-v1-logical-equivalent",
+  "description": "Both targets use the repository demo dataset. Account IDs may differ after migration.",
+  "monolith": {
+    "baseUrl": "http://localhost:8081",
+    "username": "perf_student",
+    "password": "123456",
+    "courseId": "900001",
+    "judgeTaskId": "900001"
+  },
+  "microservices": {
+    "baseUrl": "http://localhost:3000",
+    "username": "perf_student",
+    "password": "123456",
+    "courseId": "900001",
+    "judgeTaskId": "900001"
+  },
+  "requests": {
+    "login": {
+      "method": "POST",
+      "path": "/login",
+      "contentType": "application/x-www-form-urlencoded"
+    },
+    "courseDetail": {
+      "method": "GET",
+      "path": "/student/course/detail/{courseId}"
+    },
+    "judgeSubmit": {
+      "method": "POST",
+      "path": "/api/v2/judge/submit",
+      "contentType": "application/json",
+      "body": {
+        "language": "python",
+        "code": "print('Hello World')"
+      }
+    }
+  }
+}

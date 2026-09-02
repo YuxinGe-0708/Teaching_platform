@@ -1,4 +1,5 @@
-FROM eclipse-temurin:8-jre-jammy
+ARG JAVA_IMAGE=eclipse-temurin:8-jre-jammy
+FROM ${JAVA_IMAGE}
 RUN sed -i \
       -e 's|http://archive.ubuntu.com/ubuntu|https://mirrors.aliyun.com/ubuntu|g' \
       -e 's|http://security.ubuntu.com/ubuntu|https://mirrors.aliyun.com/ubuntu|g' \
@@ -8,6 +9,6 @@ RUN sed -i \
     && ln -sf /usr/bin/python3 /usr/local/bin/python \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY assessment-service.jar app.jar
+COPY target/assessment-service.jar app.jar
 EXPOSE 8084
 ENTRYPOINT ["java", "-jar", "app.jar"]

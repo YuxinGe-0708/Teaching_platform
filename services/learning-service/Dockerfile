@@ -1,5 +1,6 @@
-FROM eclipse-temurin:8-jre-jammy
+ARG JAVA_IMAGE=eclipse-temurin:8-jre-jammy
+FROM ${JAVA_IMAGE}
 WORKDIR /app
-COPY learning-service.jar app.jar
+COPY target/learning-service.jar app.jar
 EXPOSE 8083
 ENTRYPOINT ["java", "-jar", "app.jar"]
