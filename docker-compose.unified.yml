@@ -32,7 +32,7 @@ services:
       JUDGE0_TIMEOUT_MS: ${JUDGE0_TIMEOUT_MS:-15000}
       JUDGE0_LOCAL_FALLBACK: ${JUDGE0_LOCAL_FALLBACK:-true}
     volumes:
-      - ./uploads:/app/uploads
+      - microservices-uploads:/app/uploads
     depends_on:
       microservices-mysql:
         condition: service_healthy
@@ -69,3 +69,6 @@ services:
         condition: service_healthy
       assessment-service:
         condition: service_healthy
+
+volumes:
+  microservices-uploads:

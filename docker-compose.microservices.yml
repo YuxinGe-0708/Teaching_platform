@@ -1,17 +1,16 @@
 services:
   microservices-mysql:
-    image: ${MICROSERVICES_MYSQL_IMAGE:-mysql:8.0.40}
+    image: teaching-platform-microservices-mysql:${IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: docker/mysql-init/Dockerfile
+      args:
+        MYSQL_IMAGE: ${MICROSERVICES_MYSQL_IMAGE:-mysql:8.0.40}
     environment:
       MYSQL_ROOT_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-root123456}
     ports: ["${MICROSERVICES_MYSQL_PORT:-3307}:3306"]
     volumes:
       - microservices-mysql-data:/var/lib/mysql
-      - ./services/user-service/src/main/resources/db/schema-user.sql:/docker-entrypoint-initdb.d/01-user.sql:ro
-      - ./services/learning-service/src/main/resources/db/schema-learning.sql:/docker-entrypoint-initdb.d/02-learning.sql:ro
-      - ./services/assessment-service/src/main/resources/db/schema-assessment.sql:/docker-entrypoint-initdb.d/03-assessment.sql:ro
-      - ./services/user-service/src/main/resources/db/seed-user.sql:/docker-entrypoint-initdb.d/11-seed-user.sql:ro
-      - ./services/learning-service/src/main/resources/db/seed-learning.sql:/docker-entrypoint-initdb.d/12-seed-learning.sql:ro
-      - ./services/assessment-service/src/main/resources/db/seed-assessment.sql:/docker-entrypoint-initdb.d/13-seed-assessment.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
       interval: 5s
@@ -61,7 +60,7 @@ services:
       AI_MODEL: ${AI_MODEL:-qwen-plus}
       AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen3-vl-plus}
     volumes:
-      - ./uploads:/app/uploads
+      - microservices-uploads:/app/uploads
     ports: ["8083:8083"]
     depends_on: { microservices-mysql: { condition: service_healthy }, user-service: { condition: service_healthy } }
     healthcheck:
@@ -93,7 +92,7 @@ services:
       JUDGE0_TIMEOUT_MS: ${JUDGE0_TIMEOUT_MS:-15000}
       JUDGE0_LOCAL_FALLBACK: ${JUDGE0_LOCAL_FALLBACK:-true}
     volumes:
-      - ./uploads:/app/uploads
+      - microservices-uploads:/app/uploads
     ports: ["8084:8084"]
     depends_on: { microservices-mysql: { condition: service_healthy }, learning-service: { condition: service_healthy }, user-service: { condition: service_healthy } }
     healthcheck:
@@ -104,3 +103,4 @@ services:
       start_period: 25s
 volumes:
   microservices-mysql-data:
+  microservices-uploads:
