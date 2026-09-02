@@ -168,6 +168,24 @@ kubectl -n "$namespace" create configmap assessment-service-seed \
 kubectl apply -f k8s/mysql.yaml
 kubectl -n "$namespace" rollout status deployment/mysql --timeout=8m
 
+# The MySQL entrypoint only runs init scripts for a brand-new data directory.
+# Re-apply the idempotent schemas and seed data so an existing PVC also gets
+# newly introduced service databases and demo accounts.
+mysql_pod="$(kubectl -n "$namespace" get pod -l app=mysql -o jsonpath='{.items[0].metadata.name}')"
+mysql_scripts=(
+  /docker-entrypoint-initdb.d/10-user-service.sql
+  /docker-entrypoint-initdb.d/11-learning-service.sql
+  /docker-entrypoint-initdb.d/12-assessment-service.sql
+  /docker-entrypoint-initdb.d/20-user-seed.sql
+  /docker-entrypoint-initdb.d/21-learning-seed.sql
+  /docker-entrypoint-initdb.d/22-assessment-seed.sql
+)
+for mysql_script in "${mysql_scripts[@]}"; do
+  echo "Applying idempotent database migration: $mysql_script"
+  kubectl -n "$namespace" exec "$mysql_pod" -- mysql -uroot "-p$DB_ROOT_PASSWORD" \
+    -e "SOURCE $mysql_script"
+done
+
 service_files=(
   services/user-service/k8s/user-service/deployment.yaml
   services/learning-service/k8s/learning-service/deployment.yaml
