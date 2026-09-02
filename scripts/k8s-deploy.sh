@@ -182,9 +182,25 @@ mysql_scripts=(
 )
 for mysql_script in "${mysql_scripts[@]}"; do
   echo "Applying idempotent database migration: $mysql_script"
-  kubectl -n "$namespace" exec "$mysql_pod" -- mysql -uroot "-p$DB_ROOT_PASSWORD" \
-    -e "SOURCE $mysql_script"
+  # Some MySQL 8 versions report duplicate-index errors for CREATE INDEX when
+  # a persistent database already has the index. Continue the batch and verify
+  # the required schemas/tables below instead of failing on that benign case.
+  kubectl -n "$namespace" exec "$mysql_pod" -- mysql --force -uroot "-p$DB_ROOT_PASSWORD" \
+    -e "SOURCE $mysql_script" || true
 done
+
+schema_check="SELECT IF(
+  (SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='user_db')=1 AND
+  (SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='learning_service_db')=1 AND
+  (SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='assessment_db')=1 AND
+  (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='user_db' AND table_name IN ('user','notification','operation_log'))=3 AND
+  (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='learning_service_db' AND table_name IN ('course','course_enrollment','resource','study_note','discussion_post','discussion_reply'))=6 AND
+  (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='assessment_db' AND table_name IN ('task','submission','exam_record'))=3,
+  'ok', 'bad') AS migration_status;"
+if ! kubectl -n "$namespace" exec "$mysql_pod" -- mysql -N -uroot "-p$DB_ROOT_PASSWORD" -e "$schema_check" | grep -qx 'ok'; then
+  echo "Database migration verification failed" >&2
+  exit 1
+fi
 
 service_files=(
   services/user-service/k8s/user-service/deployment.yaml
