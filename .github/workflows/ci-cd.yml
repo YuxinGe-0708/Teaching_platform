@@ -235,9 +235,11 @@ jobs:
           retention-days: 30
 
   deploy:
-    name: Deploy to ephemeral kind Kubernetes
+    name: Deployment handled by Jenkins on the local Docker Desktop host
     needs: publish
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/dev_dockerfile' || github.ref == 'refs/heads/codex/dev-dockerfile-work' || startsWith(github.ref, 'refs/tags/v'))
+    # GitHub-hosted runners are intentionally not deployment targets. Jenkins
+    # performs the persistent deployment on the configured local host.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:

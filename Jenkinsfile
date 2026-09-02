@@ -1,27 +1,35 @@
 pipeline {
-  agent any
+  agent { label 'local-docker-desktop' }
 
   options {
     timestamps()
     buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '20'))
     skipDefaultCheckout(true)
+    disableConcurrentBuilds()
+  }
+
+  // Local Jenkins is not publicly reachable, so poll GitHub once per minute.
+  triggers {
+    pollSCM('* * * * *')
   }
 
   parameters {
     string(name: 'IMAGE_TAG_OVERRIDE', defaultValue: '', description: 'Optional immutable image tag, for example v1.2.3')
-    choice(name: 'DEPLOY_TARGET', choices: ['kind', 'cloud'], description: 'Deploy to local kind or the current Kubernetes context')
+    choice(name: 'DEPLOY_TARGET', choices: ['local', 'cloud'], description: 'Deploy to this Jenkins host Docker Desktop Kubernetes or the configured cloud context')
     booleanParam(name: 'SKIP_DEPLOY', defaultValue: false, description: 'Build and publish images without Kubernetes deployment')
   }
 
   environment {
     COMPOSE_PROJECT_NAME = 'teaching-platform-jenkins'
-    KIND_CLUSTER_NAME = 'teaching-platform-jenkins'
     MICROSERVICES_DB_ROOT_PASSWORD = 'ci-root-password'
     INTERNAL_API_KEY = 'ci-internal-api-key'
     UNIFIED_PORT = '3000'
     JUDGE0_API_URL = 'http://127.0.0.1:9'
     JUDGE0_TIMEOUT_MS = '1000'
     JUDGE0_LOCAL_FALLBACK = 'true'
+    KUBECONFIG = 'C:\\Users\\Lenovo\\.kube\\config'
+    JAVA_HOME = 'C:\\Program Files\\Java\\jdk1.8.0_351'
+    PATH = "C:\\Program Files\\Java\\jdk1.8.0_351\\bin;C:\\getMvn\\apache-maven-3.5.3\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;${env.PATH}"
   }
 
   stages {
@@ -39,42 +47,46 @@ pipeline {
 
     stage('Build And Test') {
       steps {
-        sh '''
-          set -e
-          pwsh -File scripts/verify-public-api-coverage.ps1
-          mvn -B test package
-          (cd services/user-service && mvn -B test package)
-          (cd services/learning-service && mvn -B test package)
-          (cd services/assessment-service && mvn -B test package)
+        bat '''
+          @echo off
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\verify-public-api-coverage.ps1 || exit /b 1
+          call mvn.cmd -B test package || exit /b 1
+          pushd services\\user-service
+          call mvn.cmd -B test package || exit /b 1
+          popd
+          pushd services\\learning-service
+          call mvn.cmd -B test package || exit /b 1
+          popd
+          pushd services\\assessment-service
+          call mvn.cmd -B test package || exit /b 1
+          popd
         '''
       }
     }
 
     stage('Integration Regression') {
       steps {
-        sh '''
-          set -e
-          mkdir -p uploads ci-artifacts
-          chmod -R a+rwX uploads
-          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml build
-          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up -d
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://localhost:3000/healthz | grep -qx ok; then break; fi
-            if [ "$attempt" = 60 ]; then docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml ps; exit 1; fi
-            sleep 2
-          done
-          pwsh -File scripts/microservices-smoke.ps1 -BaseUrl http://localhost:3000
-          pwsh -File scripts/e2e-microservices.ps1 -UserUrl http://localhost:8082 -LearningUrl http://localhost:8083 -AssessmentUrl http://localhost:8084
-          pwsh -File scripts/microservices-business-regression.ps1 -BaseUrl http://localhost:3000
+        bat '''
+          @echo off
+          if not exist uploads mkdir uploads
+          if not exist ci-artifacts mkdir ci-artifacts
+          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml build || exit /b 1
+          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up -d || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ready=$false; 1..60 | ForEach-Object { try { if ((Invoke-WebRequest 'http://localhost:3000/healthz' -UseBasicParsing -TimeoutSec 3).Content.Trim() -eq 'ok') { $ready=$true; return } } catch {}; Start-Sleep -Seconds 2 }; if (-not $ready) { exit 1 }" || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-smoke.ps1 -BaseUrl http://localhost:3000 || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\e2e-microservices.ps1 -UserUrl http://localhost:8082 -LearningUrl http://localhost:8083 -AssessmentUrl http://localhost:8084 || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-business-regression.ps1 -BaseUrl http://localhost:3000 || exit /b 1
         '''
       }
       post {
         always {
-          sh '''
-            mkdir -p ci-artifacts
-            docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml ps > ci-artifacts/compose-ps.txt || true
-            docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml logs --no-color > ci-artifacts/compose.log || true
-            docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml down -v --remove-orphans || true
+          bat '''
+            @echo off
+            if not exist ci-artifacts mkdir ci-artifacts
+            docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml ps > ci-artifacts\\compose-ps.txt 2>&1
+            docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml logs --no-color > ci-artifacts\\compose.log 2>&1
+            docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml down -v --remove-orphans
+            exit /b 0
           '''
         }
       }
@@ -87,21 +99,23 @@ pipeline {
           string(credentialsId: 'swr-org', variable: 'SWR_ORG'),
           usernamePassword(credentialsId: 'swr-account', usernameVariable: 'SWR_USERNAME', passwordVariable: 'SWR_PASSWORD')
         ]) {
-          sh '''
-            set -e
-            echo "$SWR_PASSWORD" | docker login "$SWR_REGISTRY" --username "$SWR_USERNAME" --password-stdin
-            docker build -f docker/backend/Dockerfile -t "$SWR_REGISTRY/$SWR_ORG/teaching-platform-web-bff:$IMAGE_TAG" .
-            docker build -f docker/gateway/Dockerfile -t "$SWR_REGISTRY/$SWR_ORG/teaching-platform-gateway:$IMAGE_TAG" docker/gateway
-            docker build -f services/user-service/Dockerfile -t "$SWR_REGISTRY/$SWR_ORG/teaching-platform-user-service:$IMAGE_TAG" services/user-service
-            docker build -f services/learning-service/Dockerfile -t "$SWR_REGISTRY/$SWR_ORG/teaching-platform-learning-service:$IMAGE_TAG" services/learning-service
-            docker build -f services/assessment-service/Dockerfile -t "$SWR_REGISTRY/$SWR_ORG/teaching-platform-assessment-service:$IMAGE_TAG" services/assessment-service
-            docker push "$SWR_REGISTRY/$SWR_ORG/teaching-platform-web-bff:$IMAGE_TAG"
-            docker push "$SWR_REGISTRY/$SWR_ORG/teaching-platform-gateway:$IMAGE_TAG"
-            docker push "$SWR_REGISTRY/$SWR_ORG/teaching-platform-user-service:$IMAGE_TAG"
-            docker push "$SWR_REGISTRY/$SWR_ORG/teaching-platform-learning-service:$IMAGE_TAG"
-            docker push "$SWR_REGISTRY/$SWR_ORG/teaching-platform-assessment-service:$IMAGE_TAG"
-            mkdir -p publish-records
-            printf 'commit=%s\\nbranch=%s\\nimage_tag=%s\\nregistry=%s\\n' "$GIT_COMMIT" "$BRANCH_NAME" "$IMAGE_TAG" "$SWR_REGISTRY/$SWR_ORG" > publish-records/metadata.txt
+          bat '''
+            @echo off
+            echo %SWR_PASSWORD%| docker login %SWR_REGISTRY% --username %SWR_USERNAME% --password-stdin || exit /b 1
+            docker build -f docker/backend/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-web-bff:%IMAGE_TAG% . || exit /b 1
+            docker build -f docker/gateway/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-gateway:%IMAGE_TAG% docker/gateway || exit /b 1
+            docker build -f services/user-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-user-service:%IMAGE_TAG% services/user-service || exit /b 1
+            docker build -f services/learning-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-learning-service:%IMAGE_TAG% services/learning-service || exit /b 1
+            docker build -f services/assessment-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-assessment-service:%IMAGE_TAG% services/assessment-service || exit /b 1
+            docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-web-bff:%IMAGE_TAG% || exit /b 1
+            docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-gateway:%IMAGE_TAG% || exit /b 1
+            docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-user-service:%IMAGE_TAG% || exit /b 1
+            docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-learning-service:%IMAGE_TAG% || exit /b 1
+            docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-assessment-service:%IMAGE_TAG% || exit /b 1
+            if not exist publish-records mkdir publish-records
+            > publish-records\\metadata.txt echo commit=%GIT_COMMIT%
+            >> publish-records\\metadata.txt echo branch=%BRANCH_NAME%
+            >> publish-records\\metadata.txt echo image_tag=%IMAGE_TAG%
           '''
         }
       }
@@ -118,13 +132,9 @@ pipeline {
           usernamePassword(credentialsId: 'swr-account', usernameVariable: 'SWR_USERNAME', passwordVariable: 'SWR_PASSWORD'),
           string(credentialsId: 'db-root-password', variable: 'DB_ROOT_PASSWORD')
         ]) {
-          sh '''
-            set -e
-            if [ "$DEPLOY_TARGET" = "kind" ]; then
-              kind get clusters | grep -qx "$KIND_CLUSTER_NAME" || kind create cluster --name "$KIND_CLUSTER_NAME" --config k8s/kind-config.yaml --wait 120s
-            fi
-            DEPLOY_TARGET="$DEPLOY_TARGET" KIND_CLUSTER_NAME="$KIND_CLUSTER_NAME" bash scripts/k8s-deploy.sh
-          '''
+          withEnv(["DEPLOY_TARGET=${params.DEPLOY_TARGET}"]) {
+            bat '"C:\\Program Files\\Git\\bin\\bash.exe" scripts/k8s-deploy.sh'
+          }
         }
       }
     }
@@ -132,10 +142,13 @@ pipeline {
 
   post {
     always {
-      sh '''
-        mkdir -p ci-artifacts deploy-artifacts
-        kubectl -n teaching-platform get all,pvc -o wide > deploy-artifacts/final-kubernetes-resources.txt 2>&1 || true
-        kubectl -n teaching-platform get events --sort-by=.lastTimestamp > deploy-artifacts/final-events.txt 2>&1 || true
+      bat '''
+        @echo off
+        if not exist ci-artifacts mkdir ci-artifacts
+        if not exist deploy-artifacts mkdir deploy-artifacts
+        kubectl -n teaching-platform get all,pvc -o wide > deploy-artifacts\\final-kubernetes-resources.txt 2>&1
+        kubectl -n teaching-platform get events --sort-by=.lastTimestamp > deploy-artifacts\\final-events.txt 2>&1
+        exit /b 0
       '''
       junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
       archiveArtifacts allowEmptyArchive: true, artifacts: 'ci-artifacts/**,publish-records/**,deploy-artifacts/**'

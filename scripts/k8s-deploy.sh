@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 namespace="${K8S_NAMESPACE:-teaching-platform}"
-deploy_target="${DEPLOY_TARGET:-cloud}"
+deploy_target="${DEPLOY_TARGET:-local}"
 kind_cluster_name="${KIND_CLUSTER_NAME:-teaching-platform-demo}"
 mysql_image="${MYSQL_IMAGE:-mysql:8.0.43}"
 artifact_dir="deploy-artifacts"
@@ -83,6 +83,26 @@ prepare_kind_runtime() {
   done
 }
 
+prepare_local_runtime() {
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "docker command is required when DEPLOY_TARGET=local" >&2
+    exit 1
+  fi
+  if ! command -v kubectl >/dev/null 2>&1; then
+    echo "kubectl command is required when DEPLOY_TARGET=local" >&2
+    exit 1
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker Desktop is not running on the Jenkins host" >&2
+    exit 1
+  fi
+  kubectl config use-context docker-desktop >/dev/null
+  if ! kubectl cluster-info >/dev/null 2>&1; then
+    echo "Docker Desktop Kubernetes is not available" >&2
+    exit 1
+  fi
+}
+
 collect_artifacts() {
   status=$?
   trap - EXIT
@@ -104,11 +124,21 @@ trap collect_artifacts EXIT
 
 if [[ "$deploy_target" == "kind" ]]; then
   prepare_kind_runtime
+elif [[ "$deploy_target" == "local" ]]; then
+  prepare_local_runtime
+elif [[ "$deploy_target" != "cloud" ]]; then
+  echo "Unsupported DEPLOY_TARGET: $deploy_target (expected local or cloud)" >&2
+  exit 1
 fi
 
-envsubst < k8s/secret.template.yaml > "$secret_file"
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
+kubectl -n "$namespace" create secret generic teaching-platform-secrets \
+  --from-literal=MYSQL_ROOT_PASSWORD="$DB_ROOT_PASSWORD" \
+  --from-literal=AI_API_KEY="$AI_API_KEY" \
+  --from-literal=JUDGE0_API_KEY="$JUDGE0_API_KEY" \
+  --from-literal=INTERNAL_API_KEY="$INTERNAL_API_KEY" \
+  --dry-run=client -o yaml > "$secret_file"
 kubectl apply -f "$secret_file"
 kubectl -n "$namespace" create secret docker-registry swr-registry \
   --docker-server="$SWR_REGISTRY" \
@@ -174,6 +204,10 @@ if [[ "$deploy_target" == "kind" ]]; then
     JUDGE0_LOCAL_FALLBACK=true
   kubectl -n "$namespace" patch service frontend --type=merge \
     -p '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":80,"nodePort":30080}]}}'
+elif [[ "$deploy_target" == "local" ]]; then
+  # Docker Desktop exposes the stable demo URL through this NodePort.
+  kubectl -n "$namespace" patch service frontend --type=merge \
+    -p '{"spec":{"type":"NodePort","ports":[{"port":80,"targetPort":80,"nodePort":30080}]}}'
 fi
 
 for deployment in user-service learning-service assessment-service web-bff gateway; do
@@ -198,7 +232,7 @@ if [[ "$deploy_target" == "kind" ]]; then
     if curl --fail --silent --show-error "$frontend_url/healthz" \
       | tee "$artifact_dir/health-response.txt" | grep -qx 'ok'; then
       frontend_forward_ready=true
-      exit 0
+      break
     fi
     sleep 2
   done
@@ -207,6 +241,22 @@ if [[ "$deploy_target" == "kind" ]]; then
     cat "$artifact_dir/frontend-port-forward.log" >&2 || true
     exit 1
   fi
+  echo "kind Kubernetes deployment and health check passed: $frontend_url"
+  exit 0
+fi
+
+if [[ "$deploy_target" == "local" ]]; then
+  frontend_url="http://127.0.0.1:30080"
+  for attempt in {1..60}; do
+    if curl --fail --silent --show-error "$frontend_url/healthz" \
+      | tee "$artifact_dir/health-response.txt" | grep -qx 'ok'; then
+      echo "Docker Desktop Kubernetes deployment and health check passed: $frontend_url"
+      exit 0
+    fi
+    sleep 2
+  done
+  echo "Docker Desktop Kubernetes health check failed: $frontend_url/healthz" >&2
+  exit 1
 fi
 
 frontend_address=""
