@@ -59,6 +59,27 @@ jobs:
       - name: Build and test assessment-service
         working-directory: services/assessment-service
         run: mvn -B test package
+      - name: Upload user-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: user-service-jar-${{ github.run_id }}
+          path: services/user-service/target/user-service.jar
+          if-no-files-found: error
+          retention-days: 2
+      - name: Upload learning-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: learning-service-jar-${{ github.run_id }}
+          path: services/learning-service/target/learning-service.jar
+          if-no-files-found: error
+          retention-days: 2
+      - name: Upload assessment-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: assessment-service-jar-${{ github.run_id }}
+          path: services/assessment-service/target/assessment-service.jar
+          if-no-files-found: error
+          retention-days: 2
       - name: Build microservice application containers
         run: docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml build
       - name: Prepare integration upload storage
@@ -161,6 +182,21 @@ jobs:
           password: ${{ secrets.SWR_PASSWORD }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      - name: Download user-service JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: user-service-jar-${{ github.run_id }}
+          path: services/user-service/target
+      - name: Download learning-service JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: learning-service-jar-${{ github.run_id }}
+          path: services/learning-service/target
+      - name: Download assessment-service JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: assessment-service-jar-${{ github.run_id }}
+          path: services/assessment-service/target
       - name: Build and push web BFF image
         uses: docker/build-push-action@v6
         with:

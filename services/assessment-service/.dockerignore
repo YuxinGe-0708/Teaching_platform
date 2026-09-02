@@ -1,7 +1,0 @@
-target/*
-!target/
-!target/assessment-service.jar
-*.iml
-.idea/
-.git/
-.env
