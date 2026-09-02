@@ -106,16 +106,18 @@ pipeline {
           bat '''
             @echo off
             echo %SWR_PASSWORD%| docker login %SWR_REGISTRY% --username %SWR_USERNAME% --password-stdin || exit /b 1
-            docker build -f docker/backend/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-web-bff:%IMAGE_TAG% . || exit /b 1
-            docker build -f docker/gateway/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-gateway:%IMAGE_TAG% docker/gateway || exit /b 1
-            docker build -f services/user-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-user-service:%IMAGE_TAG% services/user-service || exit /b 1
-            docker build -f services/learning-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-learning-service:%IMAGE_TAG% services/learning-service || exit /b 1
-            docker build -f services/assessment-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-assessment-service:%IMAGE_TAG% services/assessment-service || exit /b 1
+            docker build --build-arg MAVEN_IMAGE=%MAVEN_IMAGE% --build-arg JAVA_IMAGE=%JAVA_IMAGE% -f docker/backend/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-web-bff:%IMAGE_TAG% . || exit /b 1
+            docker build --build-arg NGINX_IMAGE=%NGINX_IMAGE% -f docker/gateway/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-gateway:%IMAGE_TAG% docker/gateway || exit /b 1
+            docker build --build-arg MAVEN_IMAGE=%MAVEN_IMAGE% --build-arg JAVA_IMAGE=%JAVA_IMAGE% -f services/user-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-user-service:%IMAGE_TAG% services/user-service || exit /b 1
+            docker build --build-arg MAVEN_IMAGE=%MAVEN_IMAGE% --build-arg JAVA_IMAGE=%JAVA_IMAGE% -f services/learning-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-learning-service:%IMAGE_TAG% services/learning-service || exit /b 1
+            docker build --build-arg MAVEN_IMAGE=%MAVEN_IMAGE% --build-arg JAVA_IMAGE=%JAVA_IMAGE% -f services/assessment-service/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-assessment-service:%IMAGE_TAG% services/assessment-service || exit /b 1
+            docker build --build-arg MYSQL_IMAGE=%MICROSERVICES_MYSQL_IMAGE% -f docker/mysql-init/Dockerfile -t %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-microservices-mysql:%IMAGE_TAG% . || exit /b 1
             docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-web-bff:%IMAGE_TAG% || exit /b 1
             docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-gateway:%IMAGE_TAG% || exit /b 1
             docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-user-service:%IMAGE_TAG% || exit /b 1
             docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-learning-service:%IMAGE_TAG% || exit /b 1
             docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-assessment-service:%IMAGE_TAG% || exit /b 1
+            docker push %SWR_REGISTRY%/%SWR_ORG%/teaching-platform-microservices-mysql:%IMAGE_TAG% || exit /b 1
             if not exist publish-records mkdir publish-records
             > publish-records\\metadata.txt echo commit=%GIT_COMMIT%
             >> publish-records\\metadata.txt echo branch=%BRANCH_NAME%
