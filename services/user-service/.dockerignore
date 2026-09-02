@@ -1,4 +1,7 @@
 target/
+!target/
+target/*
+!target/user-service.jar
 *.iml
 .idea/
 .git/
