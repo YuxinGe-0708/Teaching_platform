@@ -134,7 +134,7 @@ kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
 # Remove resources from the former monolithic deployment. The public gateway
 # and web-bff below are the only page-serving path in the microservice stack.
-kubectl -n "$namespace" delete deployment/backend service/backend pvc/uploads-data --ignore-not-found
+kubectl -n "$namespace" delete deployment/backend deployment/frontend service/backend pvc/uploads-data --ignore-not-found
 kubectl -n "$namespace" create secret generic teaching-platform-secrets \
   --from-literal=MYSQL_ROOT_PASSWORD="$DB_ROOT_PASSWORD" \
   --from-literal=AI_API_KEY="$AI_API_KEY" \
