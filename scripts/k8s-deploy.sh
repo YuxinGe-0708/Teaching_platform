@@ -18,7 +18,6 @@ for name in "${required[@]}"; do
 done
 
 secret_file="${RUNNER_TEMP:-/tmp}/teaching-platform-secret.yaml"
-backend_file="${RUNNER_TEMP:-/tmp}/web-bff.yaml"
 frontend_file="${RUNNER_TEMP:-/tmp}/gateway.yaml"
 port_forward_pids=()
 export AI_API_KEY="${AI_API_KEY:-}"
@@ -117,7 +116,7 @@ collect_artifacts() {
     kubectl -n "$namespace" logs "deployment/$deployment" --all-containers --tail=300 \
       > "$artifact_dir/$deployment.log" 2>&1 || true
   done
-  rm -f "$secret_file" "$backend_file" "$frontend_file"
+  rm -f "$secret_file" "$frontend_file"
   exit "$status"
 }
 trap collect_artifacts EXIT
@@ -133,6 +132,9 @@ fi
 
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/configmap.yaml
+# Remove resources from the former monolithic deployment. The public gateway
+# and web-bff below are the only page-serving path in the microservice stack.
+kubectl -n "$namespace" delete deployment/backend service/backend pvc/uploads-data --ignore-not-found
 kubectl -n "$namespace" create secret generic teaching-platform-secrets \
   --from-literal=MYSQL_ROOT_PASSWORD="$DB_ROOT_PASSWORD" \
   --from-literal=AI_API_KEY="$AI_API_KEY" \
@@ -222,13 +224,7 @@ sed \
   -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" \
   -e "s|__SWR_ORG__|$SWR_ORG|g" \
   -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" \
-  k8s/backend.yaml > "$backend_file"
-sed \
-  -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" \
-  -e "s|__SWR_ORG__|$SWR_ORG|g" \
-  -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" \
   k8s/frontend.yaml > "$frontend_file"
-kubectl apply -f "$backend_file"
 kubectl apply -f "$frontend_file"
 
 if [[ "$deploy_target" == "kind" ]]; then
