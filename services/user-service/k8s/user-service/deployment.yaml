@@ -7,6 +7,11 @@ metadata:
     app: user-service
 spec:
   replicas: 1
+  # Docker Desktop's single-node cluster cannot hold two Java replicas during
+  # a rolling update. Recreate prevents a transient second JVM from being
+  # OOM-killed while preserving the same steady-state service and HPA target.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: user-service
