@@ -178,7 +178,7 @@ docker compose -f docker-compose.microservices.yml up -d microservices-mysql
 - 数据库：`user_db`、`learning_service_db`、`assessment_db`
 - 用户：`root`
 - 密码：`root123456`（用环境变量覆盖）
-- 主机端口：`3307`
+- 主机端口：`3308`
 
 常用命令：
 

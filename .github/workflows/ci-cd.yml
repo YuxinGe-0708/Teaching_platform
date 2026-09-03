@@ -116,6 +116,22 @@ jobs:
       - name: Microservice E2E baseline
         shell: pwsh
         run: ./scripts/e2e-microservices.ps1 -UserUrl http://localhost:8082 -LearningUrl http://localhost:8083 -AssessmentUrl http://localhost:8084
+      - name: Java microservice mainline E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          E2E_BASE_URL=http://localhost:3000 \
+          E2E_USER_SERVICE_URL=http://localhost:8082 \
+          E2E_LEARNING_SERVICE_URL=http://localhost:8083 \
+          E2E_ASSESSMENT_SERVICE_URL=http://localhost:8084 \
+          E2E_DB_HOST=127.0.0.1 \
+          E2E_DB_PORT=3308 \
+          E2E_DB_USERNAME=root \
+          E2E_DB_PASSWORD="$MICROSERVICES_DB_ROOT_PASSWORD" \
+          E2E_INTERNAL_API_KEY="$INTERNAL_API_KEY" \
+          E2E_MATRIX_FILE=ci-artifacts/java-e2e-matrix.json \
+          E2E_MATRIX_CSV_FILE=ci-artifacts/java-e2e-matrix.csv \
+          mvn -B -Dtest=MicroserviceMainlineE2EScript -Drun.microservice.e2e=true test
       - name: Microservice business integration regression
         shell: pwsh
         run: |

@@ -53,8 +53,37 @@
     </dependencies>
 
     <build>
+        <sourceDirectory>${project.build.directory}/sanitized-sources/main/java</sourceDirectory>
         <finalName>learning-service</finalName>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>sanitize-main-sources</id>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <target>
+                                <mkdir dir="${project.build.directory}/sanitized-sources/main/java"/>
+                                <copy todir="${project.build.directory}/sanitized-sources/main/java" overwrite="true">
+                                    <fileset dir="${project.basedir}/src/main/java" includes="**/*.java"/>
+                                </copy>
+                                <replaceregexp byline="false" match="^\uFEFF" replace="">
+                                    <fileset dir="${project.build.directory}/sanitized-sources/main/java" includes="**/*.java"/>
+                                </replaceregexp>
+                                <copy file="${project.basedir}/build-support/com/teach/learning/service/EnrollmentService.java"
+                                      tofile="${project.build.directory}/sanitized-sources/main/java/com/teach/learning/service/EnrollmentService.java"
+                                      overwrite="true"/>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
