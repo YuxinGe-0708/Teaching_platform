@@ -1,11 +1,14 @@
 import http from 'k6/http';
 import { check } from 'k6';
 
-const baseUrl = __ENV.BASE_URL || 'http://127.0.0.1:18082';
+const baseUrl = __ENV.BASE_URL || 'http://user-service:8082';
 const baseVus = Number(__ENV.BASE_VUS || 2);
 const peakVus = Number(__ENV.PEAK_VUS || 120);
 
 export const options = {
+  // A Kubernetes Service selects a backend for each new connection. Closing
+  // connections between iterations lets Pods created by HPA receive traffic.
+  noConnectionReuse: true,
   stages: [
     { duration: __ENV.BASELINE_DURATION || '30s', target: baseVus },
     { duration: __ENV.RAMP_DURATION || '30s', target: peakVus },
@@ -30,4 +33,3 @@ export default function () {
     'health response is UP': (r) => r.body && r.body.includes('"status":"UP"'),
   });
 }
-

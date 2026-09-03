@@ -82,4 +82,28 @@ $summaryRows = foreach ($runDirectory in Get-ChildItem -LiteralPath $ResultsDire
 
 $summaryPath = Join-Path $ResultsDirectory 'summary.csv'
 $summaryRows | Export-Csv -NoTypeInformation -Encoding utf8 $summaryPath
-$summaryRows | Format-Table -AutoSize
+
+$completedRows = @($summaryRows)
+if ($completedRows.Count -eq 0) {
+    Write-Warning "No completed experiment results were found in $ResultsDirectory"
+    return
+}
+
+Write-Host ''
+Write-Host '=== Key performance metrics ==='
+$completedRows |
+    Select-Object run,throughput_rps,avg_response_ms,p95_response_ms,error_rate_pct |
+    Format-Table -AutoSize | Out-Host
+
+$averages = [pscustomobject]@{
+    completed_runs          = $completedRows.Count
+    avg_throughput_rps      = [math]::Round(($completedRows | Measure-Object throughput_rps -Average).Average, 3)
+    avg_response_ms         = [math]::Round(($completedRows | Measure-Object avg_response_ms -Average).Average, 3)
+    avg_p95_response_ms     = [math]::Round(($completedRows | Measure-Object p95_response_ms -Average).Average, 3)
+    avg_error_rate_pct      = [math]::Round(($completedRows | Measure-Object error_rate_pct -Average).Average, 4)
+}
+
+Write-Host '=== Average across completed runs ==='
+$averages | Format-List | Out-Host
+
+Write-Host "Full summary saved to $summaryPath"

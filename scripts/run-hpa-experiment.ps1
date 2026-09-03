@@ -1,6 +1,5 @@
 [CmdletBinding()]
 param(
-    [string]$K6Path = 'k6',
     [string]$KindPath = 'kind',
     [string]$ClusterName = 'teaching-platform-hpa',
     [string]$ImageTag = 'hpa-experiment',
@@ -9,10 +8,20 @@ param(
     [int]$PeakVus = 120,
     [int]$ScaleDownTimeoutSeconds = 300,
     [switch]$ProvisionOnly,
-    [switch]$SkipProvision
+    [switch]$SkipProvision,
+    [switch]$KeepRawJson
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($env:OS -eq 'Windows_NT') {
+    chcp.com 65001 > $null
+}
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding = $utf8NoBom
+[Console]::OutputEncoding = $utf8NoBom
+$OutputEncoding = $utf8NoBom
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $namespace = 'teaching-platform'
 $resultsRoot = Join-Path $repoRoot 'results\hpa'
@@ -85,22 +94,25 @@ try {
     kubectl apply -f k8s/hpa/user-service-hpa.yaml | Out-Host
     Invoke-Checked { kubectl wait --for=condition=Available deployment/user-service -n $namespace --timeout=5m } 'user-service availability'
     Invoke-Checked { kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes *> $null } 'Metrics API availability (run scripts/install-kind-metrics-server.ps1 first)'
+
+    kubectl -n $namespace create configmap hpa-load-test-script `
+        --from-file=load-test-hpa.js=scripts/load-test-hpa.js `
+        --dry-run=client -o yaml | kubectl apply -f - | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'k6 test script ConfigMap apply failed' }
+
+    # Recreate the disposable Pod so every run mounts the current script and
+    # starts with an empty result volume.
+    kubectl -n $namespace delete pod hpa-load-generator --ignore-not-found --wait=true | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'old k6 load generator Pod cleanup failed' }
+    kubectl apply -f k8s/hpa/k6-load-generator.yaml | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw 'k6 load generator Pod apply failed' }
+    Invoke-Checked {
+        kubectl -n $namespace wait --for=condition=Ready pod/hpa-load-generator --timeout=5m
+    } 'k6 load generator readiness'
+
     if ($ProvisionOnly) { return }
 
-    $portOut = Join-Path $resultsRoot 'port-forward.stdout.log'
-    $portErr = Join-Path $resultsRoot 'port-forward.stderr.log'
-    $portForward = Start-Process kubectl -ArgumentList @('-n', $namespace, 'port-forward', 'service/user-service', '18082:8082') -PassThru -WindowStyle Hidden -RedirectStandardOutput $portOut -RedirectStandardError $portErr
-    try {
-        $ready = $false
-        foreach ($attempt in 1..30) {
-            try {
-                $response = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:18082/actuator/health -TimeoutSec 3
-                if ($response.StatusCode -eq 200) { $ready = $true; break }
-            } catch { Start-Sleep -Seconds 2 }
-        }
-        if (-not $ready) { throw 'user-service port-forward did not become ready' }
-
-        foreach ($runNumber in 1..$Runs) {
+    foreach ($runNumber in 1..$Runs) {
             $runName = 'run-{0:d2}' -f $runNumber
             $runDirectory = Join-Path $resultsRoot $runName
             New-Item -ItemType Directory -Force -Path $runDirectory | Out-Null
@@ -123,18 +135,50 @@ try {
             ) -PassThru -WindowStyle Hidden -RedirectStandardOutput $collectorOut -RedirectStandardError $collectorErr
 
             try {
-                $env:BASE_URL = 'http://127.0.0.1:18082'
-                $env:BASE_VUS = '2'
-                $env:PEAK_VUS = [string]$PeakVus
-                $env:BASELINE_DURATION = '30s'
-                $env:RAMP_DURATION = '30s'
-                $env:PEAK_DURATION = '150s'
-                $env:RAMP_DOWN_DURATION = '15s'
                 $rawPath = Join-Path $runDirectory 'k6-raw.json'
                 $summaryPath = Join-Path $runDirectory 'k6-summary.json'
                 $k6Log = Join-Path $runDirectory 'k6-console.log'
-                & $K6Path run --out "json=$rawPath" --summary-export $summaryPath scripts/load-test-hpa.js *>&1 | Tee-Object -FilePath $k6Log
-                $k6Exit = $LASTEXITCODE
+                # kubectl cp treats the colon in a Windows absolute path as a
+                # remote-path separator, so use paths relative to $repoRoot.
+                $rawCopyPath = Join-Path (Join-Path 'results\hpa' $runName) 'k6-raw.json'
+                $summaryCopyPath = Join-Path (Join-Path 'results\hpa' $runName) 'k6-summary.json'
+                kubectl -n $namespace exec hpa-load-generator -- sh -c 'rm -f /results/k6-raw.json /results/k6-summary.json'
+                if ($LASTEXITCODE -ne 0) { throw "$runName could not clear the k6 result volume" }
+
+                $previousErrorActionPreference = $ErrorActionPreference
+                try {
+                    # k6 writes request-timeout warnings to stderr. Windows
+                    # PowerShell 5.1 turns native stderr into ErrorRecords, so
+                    # temporarily keep them non-terminating and let k6 finish.
+                    $ErrorActionPreference = 'Continue'
+                    kubectl -n $namespace exec hpa-load-generator -- env `
+                        BASE_URL=http://user-service:8082 `
+                        BASE_VUS=2 `
+                        PEAK_VUS=$PeakVus `
+                        BASELINE_DURATION=30s `
+                        RAMP_DURATION=30s `
+                        PEAK_DURATION=150s `
+                        RAMP_DOWN_DURATION=15s `
+                        k6 run `
+                        --out json=/results/k6-raw.json `
+                        --summary-export=/results/k6-summary.json `
+                        /scripts/load-test-hpa.js *>&1 | Tee-Object -FilePath $k6Log
+                    $k6Exit = $LASTEXITCODE
+                }
+                finally {
+                    $ErrorActionPreference = $previousErrorActionPreference
+                }
+
+                kubectl -n $namespace cp 'hpa-load-generator:/results/k6-raw.json' $rawCopyPath
+                if ($LASTEXITCODE -ne 0) { throw "$runName raw k6 result copy failed" }
+                kubectl -n $namespace cp 'hpa-load-generator:/results/k6-summary.json' $summaryCopyPath
+                if ($LASTEXITCODE -ne 0) { throw "$runName k6 summary copy failed" }
+                try {
+                    Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json | Out-Null
+                }
+                catch {
+                    throw "$runName k6 summary is not valid JSON"
+                }
 
                 $deadline = (Get-Date).AddSeconds($ScaleDownTimeoutSeconds)
                 do {
@@ -143,7 +187,9 @@ try {
                     Start-Sleep -Seconds 5
                 } while ((Get-Date) -lt $deadline)
                 Start-Sleep -Seconds 10
-                if ($k6Exit -ne 0) { throw "$runName k6 exited with $k6Exit" }
+                if ($k6Exit -ne 0) {
+                    Write-Warning "$runName k6 exited with $k6Exit; complete results were retained for error-rate analysis"
+                }
             }
             finally {
                 New-Item -ItemType File -Force -Path $stopFile | Out-Null
@@ -153,15 +199,44 @@ try {
                 kubectl -n $namespace describe hpa user-service | Set-Content -Encoding utf8 (Join-Path $runDirectory 'hpa-describe.txt')
                 kubectl -n $namespace get pods -l app=user-service -o wide | Set-Content -Encoding utf8 (Join-Path $runDirectory 'pods-after.txt')
                 kubectl -n $namespace get events --sort-by=.lastTimestamp | Set-Content -Encoding utf8 (Join-Path $runDirectory 'events.txt')
-                Remove-Item Env:BASE_URL,Env:BASE_VUS,Env:PEAK_VUS,Env:BASELINE_DURATION,Env:RAMP_DURATION,Env:PEAK_DURATION,Env:RAMP_DOWN_DURATION -ErrorAction SilentlyContinue
             }
-        }
-    }
-    finally {
-        if ($portForward -and -not $portForward.HasExited) { Stop-Process -Id $portForward.Id -Force }
     }
 
     & (Join-Path $PSScriptRoot 'summarize-hpa-results.ps1') -ResultsDirectory $resultsRoot
+
+    if (-not $KeepRawJson) {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        foreach ($runDirectory in Get-ChildItem -LiteralPath $resultsRoot -Directory | Where-Object Name -Match '^run-\d+$') {
+            $rawPath = Join-Path $runDirectory.FullName 'k6-raw.json'
+            if (-not (Test-Path -LiteralPath $rawPath)) { continue }
+
+            $rawLength = (Get-Item -LiteralPath $rawPath).Length
+            $archivePath = "$rawPath.zip"
+            $temporaryArchivePath = "$rawPath.tmp.zip"
+            Remove-Item -LiteralPath $temporaryArchivePath -Force -ErrorAction SilentlyContinue
+            Compress-Archive -LiteralPath $rawPath -DestinationPath $temporaryArchivePath -CompressionLevel Optimal
+
+            if (-not (Test-Path -LiteralPath $temporaryArchivePath) -or
+                (Get-Item -LiteralPath $temporaryArchivePath).Length -eq 0) {
+                throw "Raw k6 result compression failed for $($runDirectory.Name)"
+            }
+
+            $archive = [System.IO.Compression.ZipFile]::OpenRead($temporaryArchivePath)
+            try {
+                $rawEntry = $archive.Entries | Where-Object Name -EQ 'k6-raw.json' | Select-Object -First 1
+                if ($null -eq $rawEntry -or $rawEntry.Length -ne $rawLength) {
+                    throw "Raw k6 result archive verification failed for $($runDirectory.Name)"
+                }
+            }
+            finally {
+                $archive.Dispose()
+            }
+
+            Move-Item -LiteralPath $temporaryArchivePath -Destination $archivePath -Force
+            Remove-Item -LiteralPath $rawPath -Force
+            Write-Host "Compressed $($runDirectory.Name) raw result to k6-raw.json.zip"
+        }
+    }
 }
 finally {
     Pop-Location

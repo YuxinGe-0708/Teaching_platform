@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hpa-load-generator
+  namespace: teaching-platform
+  labels:
+    app: hpa-load-generator
+spec:
+  restartPolicy: Never
+  containers:
+    - name: k6
+      image: grafana/k6:2.2.0
+      imagePullPolicy: IfNotPresent
+      command: ["sh", "-c", "sleep infinity"]
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: "1"
+          memory: 512Mi
+      volumeMounts:
+        - name: test-script
+          mountPath: /scripts
+          readOnly: true
+        - name: results
+          mountPath: /results
+  volumes:
+    - name: test-script
+      configMap:
+        name: hpa-load-test-script
+    - name: results
+      emptyDir: {}
