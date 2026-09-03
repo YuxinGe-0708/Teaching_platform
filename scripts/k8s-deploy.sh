@@ -18,7 +18,8 @@ for name in "${required[@]}"; do
 done
 
 secret_file="${RUNNER_TEMP:-/tmp}/teaching-platform-secret.yaml"
-frontend_file="${RUNNER_TEMP:-/tmp}/gateway.yaml"
+gateway_file="${RUNNER_TEMP:-/tmp}/gateway.yaml"
+bff_file="${RUNNER_TEMP:-/tmp}/web-bff.yaml"
 port_forward_pids=()
 export AI_API_KEY="${AI_API_KEY:-}"
 export JUDGE0_API_KEY="${JUDGE0_API_KEY:-}"
@@ -116,7 +117,7 @@ collect_artifacts() {
     kubectl -n "$namespace" logs "deployment/$deployment" --all-containers --tail=300 \
       > "$artifact_dir/$deployment.log" 2>&1 || true
   done
-  rm -f "$secret_file" "$frontend_file"
+  rm -f "$secret_file" "$gateway_file" "$bff_file"
   exit "$status"
 }
 trap collect_artifacts EXIT
@@ -238,8 +239,15 @@ sed \
   -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" \
   -e "s|__SWR_ORG__|$SWR_ORG|g" \
   -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" \
-  k8s/frontend.yaml > "$frontend_file"
-kubectl apply -f "$frontend_file"
+  k8s/backend.yaml > "$bff_file"
+kubectl apply -f "$bff_file"
+
+sed \
+  -e "s|__SWR_REGISTRY__|$SWR_REGISTRY|g" \
+  -e "s|__SWR_ORG__|$SWR_ORG|g" \
+  -e "s|__IMAGE_TAG__|$IMAGE_TAG|g" \
+  k8s/frontend.yaml > "$gateway_file"
+kubectl apply -f "$gateway_file"
 
 if [[ "$deploy_target" == "kind" ]]; then
   kubectl -n "$namespace" set env deployment/assessment-service \
