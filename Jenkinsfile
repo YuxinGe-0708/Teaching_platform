@@ -23,7 +23,13 @@ pipeline {
     COMPOSE_PROJECT_NAME = 'teaching-platform-jenkins'
     MICROSERVICES_DB_ROOT_PASSWORD = 'ci-root-password'
     INTERNAL_API_KEY = 'ci-internal-api-key'
-    UNIFIED_PORT = '3000'
+    // Keep Jenkins' disposable Compose test stack isolated from the
+    // persistent demo stack (which uses 3000/8082-8084/3307).
+    UNIFIED_PORT = '3100'
+    MICROSERVICES_MYSQL_PORT = '3310'
+    USER_SERVICE_HOST_PORT = '8182'
+    LEARNING_SERVICE_HOST_PORT = '8183'
+    ASSESSMENT_SERVICE_HOST_PORT = '8184'
     JUDGE0_API_URL = 'http://127.0.0.1:9'
     JUDGE0_TIMEOUT_MS = '1000'
     JUDGE0_LOCAL_FALLBACK = 'true'
@@ -76,10 +82,10 @@ pipeline {
           if not exist ci-artifacts mkdir ci-artifacts
           docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml build || exit /b 1
           docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up -d || exit /b 1
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ready=$false; 1..60 | ForEach-Object { try { if ((Invoke-WebRequest 'http://localhost:3000/healthz' -UseBasicParsing -TimeoutSec 3).Content.Trim() -eq 'ok') { $ready=$true; return } } catch {}; Start-Sleep -Seconds 2 }; if (-not $ready) { exit 1 }" || exit /b 1
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-smoke.ps1 -BaseUrl http://localhost:3000 || exit /b 1
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\e2e-microservices.ps1 -UserUrl http://localhost:8082 -LearningUrl http://localhost:8083 -AssessmentUrl http://localhost:8084 || exit /b 1
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-business-regression.ps1 -BaseUrl http://localhost:3000 || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ready=$false; 1..60 | ForEach-Object { try { if ((Invoke-WebRequest 'http://localhost:3100/healthz' -UseBasicParsing -TimeoutSec 3).Content.Trim() -eq 'ok') { $ready=$true; return } } catch {}; Start-Sleep -Seconds 2 }; if (-not $ready) { exit 1 }" || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-smoke.ps1 -BaseUrl http://localhost:3100 || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\e2e-microservices.ps1 -UserUrl http://localhost:8182 -LearningUrl http://localhost:8183 -AssessmentUrl http://localhost:8184 || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-business-regression.ps1 -BaseUrl http://localhost:3100 || exit /b 1
         '''
       }
       post {

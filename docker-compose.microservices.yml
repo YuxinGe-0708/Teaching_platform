@@ -31,7 +31,7 @@ services:
       DB_USERNAME: root
       DB_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-root123456}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
-    ports: ["8082:8082"]
+    ports: ["${USER_SERVICE_HOST_PORT:-8082}:8082"]
     depends_on: { microservices-mysql: { condition: service_healthy } }
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8082'"]
@@ -61,7 +61,7 @@ services:
       AI_VISION_MODEL: ${AI_VISION_MODEL:-qwen3-vl-plus}
     volumes:
       - microservices-uploads:/app/uploads
-    ports: ["8083:8083"]
+    ports: ["${LEARNING_SERVICE_HOST_PORT:-8083}:8083"]
     depends_on: { microservices-mysql: { condition: service_healthy }, user-service: { condition: service_healthy } }
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8083'"]
@@ -93,7 +93,7 @@ services:
       JUDGE0_LOCAL_FALLBACK: ${JUDGE0_LOCAL_FALLBACK:-true}
     volumes:
       - microservices-uploads:/app/uploads
-    ports: ["8084:8084"]
+    ports: ["${ASSESSMENT_SERVICE_HOST_PORT:-8084}:8084"]
     depends_on: { microservices-mysql: { condition: service_healthy }, learning-service: { condition: service_healthy }, user-service: { condition: service_healthy } }
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8084'"]
