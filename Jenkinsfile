@@ -85,7 +85,7 @@ pipeline {
           powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ready=$false; 1..60 | ForEach-Object { try { if ((Invoke-WebRequest 'http://localhost:3100/healthz' -UseBasicParsing -TimeoutSec 3).Content.Trim() -eq 'ok') { $ready=$true; return } } catch {}; Start-Sleep -Seconds 2 }; if (-not $ready) { exit 1 }" || exit /b 1
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-smoke.ps1 -BaseUrl http://localhost:3100 || exit /b 1
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\e2e-microservices.ps1 -UserUrl http://localhost:8182 -LearningUrl http://localhost:8183 -AssessmentUrl http://localhost:8184 || exit /b 1
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-business-regression.ps1 -BaseUrl http://localhost:3100 || exit /b 1
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\\microservices-business-regression.ps1 -BaseUrl http://localhost:3100 -UserServiceUrl http://localhost:8182 -LearningServiceUrl http://localhost:8183 -AssessmentServiceUrl http://localhost:8184 || exit /b 1
         '''
       }
       post {
