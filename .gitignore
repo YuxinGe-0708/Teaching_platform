@@ -47,6 +47,7 @@ src/main/resources/application-local.yml
 deploy-artifacts/
 /tmp/
 ci-artifacts/
+results/hpa/
 
 ### Python ###
 __pycache__/

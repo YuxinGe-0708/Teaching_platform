@@ -14,9 +14,30 @@ if ($LASTEXITCODE -ne 0) { throw 'Metrics Server manifest apply failed' }
 $deployment = kubectl -n kube-system get deployment metrics-server -o json | ConvertFrom-Json
 $arguments = @($deployment.spec.template.spec.containers[0].args)
 if ($arguments -notcontains '--kubelet-insecure-tls') {
-    kubectl -n kube-system patch deployment metrics-server --type=json `
-        -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]' | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw 'Metrics Server kind TLS patch failed' }
+    $patchPath = Join-Path $env:TEMP "metrics-server-kind-tls-$PID.json"
+    $patch = @'
+[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/args/-",
+    "value": "--kubelet-insecure-tls"
+  }
+]
+'@
+
+    try {
+        # --patch-file avoids native-command JSON quoting differences between
+        # Windows PowerShell 5.1 and PowerShell 7.
+        Set-Content -LiteralPath $patchPath -Value $patch -Encoding Ascii
+        kubectl -n kube-system patch deployment metrics-server --type=json `
+            --patch-file $patchPath | Out-Host
+        $patchExitCode = $LASTEXITCODE
+    }
+    finally {
+        Remove-Item -LiteralPath $patchPath -Force -ErrorAction SilentlyContinue
+    }
+
+    if ($patchExitCode -ne 0) { throw 'Metrics Server kind TLS patch failed' }
 }
 
 kubectl -n kube-system rollout status deployment/metrics-server --timeout=5m | Out-Host
@@ -33,4 +54,3 @@ do {
 } while ((Get-Date) -lt $deadline)
 
 throw 'Metrics API did not become available within two minutes'
-
