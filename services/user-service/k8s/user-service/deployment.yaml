@@ -47,6 +47,10 @@ spec:
                   key: INTERNAL_API_KEY
             - name: LEARNING_SERVICE_URL
               value: "http://learning-service:8083"
+            # Keep the JVM heap below the 512Mi container limit on the
+            # single-node Docker Desktop demo cluster.
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=45 -XX:InitialRAMPercentage=15"
           resources:
             requests:
               cpu: 100m
