@@ -15,6 +15,7 @@ env:
   COMPOSE_PROJECT_NAME: teaching-platform-ci
   IMAGE_TAG: ${{ github.sha }}
   MICROSERVICES_DB_ROOT_PASSWORD: ci-root-password
+  MICROSERVICES_MYSQL_PORT: '3308'
   INTERNAL_API_KEY: ci-internal-api-key
   UNIFIED_PORT: '3000'
   AI_API_URL: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions

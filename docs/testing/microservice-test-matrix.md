@@ -2,6 +2,8 @@
 
 业务名称与编号以《软件详细设计说明书》3 章为准。`public-api-coverage.csv` 是 55 个公开 HTTP 映射的逐接口清单，CI 中的覆盖闸门保证新增公开接口不能漏测。
 
+Java 微服务主线 E2E 的运行输出矩阵已整理为 `docs/testing/java-microservice-mainline-e2e-report.md`，其中包含每条主线的输入、前置条件、预期输出、实际输出、断言结果和 passed 状态。
+
 | 用例 | 主成功流程 | 备选流程 | 异常流程 | 自动化层 |
 |---|---|---|---|---|
 | UC001 访客注册 | 注册后写入 user_db，再登录取得 JWT | 不同学生账号注册 | 重复用户名、非法角色/请求字段 | AuthControllerApiTest；容器业务回归 |
