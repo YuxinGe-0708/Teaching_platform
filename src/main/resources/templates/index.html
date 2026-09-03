@@ -128,15 +128,6 @@
         }
         .announce-item .announce-tag.system { background: var(--accent-green); color: #fff; }
         .announce-item .announce-tag.course { background: var(--accent-yellow); }
-        .announce-item .announce-text {
-            flex: 1;
-            font-weight: 700;
-        }
-        .announce-item .announce-time {
-            color: var(--muted);
-            font-size: 13px;
-            white-space: nowrap;
-        }
         .platform-features {
             padding: 52px 42px;
             background: #fff;
@@ -217,7 +208,8 @@
 
 <!-- 主横幅 -->
 <section class="landing-hero">
-    <h1>????????? ? CI/CD ???</h1>
+    <!-- 修复1：标题乱码修复 -->
+    <h1>教学平台 · CI/CD 验证版</h1>
     <p>整合教学空间、资源广场、帮助中心，提供课程管理、在线作业、在线考试、代码评测与 AI 辅助学习等全方位教学服务，助力高校信息化教学改革。</p>
     <div class="hero-actions" th:if="${user == null}">
         <a class="btn primary" href="/register" style="font-size:16px;padding:14px 36px;">立即注册</a>
@@ -263,13 +255,16 @@
 </section>
 
 <!-- 公告区域 -->
-<section class="announce-section" th:if="${announcements != null and !announcements.isEmpty()}">
+<!-- 修复2：修正 Thymeleaf 条件表达式 -->
+<section class="announce-section" th:if="${announcements != null and !#lists.isEmpty(announcements)}">
     <h2 style="margin-bottom:20px;">平台公告</h2>
     <div class="announce-list">
         <div class="announce-item" th:each="a : ${announcements}">
-            <span class="announce-tag" th:classappend="${a.type}" th:text="${a.type == 'system' ? '系统' : (a.type == 'course' ? '课程' : '通知')}">系统</span>
+            <!-- 修复3：th:classappend 正确用法 -->
+            <span class="announce-tag" th:classappend="${a.type == 'system' ? 'system' : (a.type == 'course' ? 'course' : '')}" th:text="${a.type == 'system' ? '系统' : (a.type == 'course' ? '课程' : '通知')}">系统</span>
             <span class="announce-text" th:text="${a.title}">公告标题</span>
-            <span class="announce-time" th:text="${#dates.format(a.createdAt, 'yyyy-MM-dd')}">2026-01-01</span>
+            <!-- 修复4：处理 createdAt 为 null 的情况 -->
+            <span class="announce-time" th:text="${a.createdAt != null ? #dates.format(a.createdAt, 'yyyy-MM-dd') : '日期未知'}">2026-01-01</span>
         </div>
     </div>
 </section>
