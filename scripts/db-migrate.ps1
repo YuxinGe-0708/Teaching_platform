@@ -1,71 +1,75 @@
-[CmdletBinding()]
 param(
-    [string]$ComposeFile = 'docker-compose.yml',
-    [string]$Service = 'mysql',
-    [string]$Database = 'teaching_platform',
-    [string]$Username = 'tp_dev',
-    [string]$Password = '123456',
-    [string]$MigrationDirectory = 'db/migrations'
+    [Parameter(Mandatory=$false)]
+    [string]$Username = "root",
+
+    [Parameter(Mandatory=$false)]
+    [string]$Password = "123456",
+
+    [Parameter(Mandatory=$false)]
+    [string]$Database = "teaching_platform",
+
+    [Parameter(Mandatory=$false)]
+    [string]$MigrationsPath = "./db"
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = "Stop"
 
-function Invoke-MySqlSql([string]$Sql) {
-    $Sql | docker compose -f $ComposeFile exec -T $Service mysql `
-        "-u$Username" "-p$Password" $Database
-    if ($LASTEXITCODE -ne 0) {
-        throw "MySQL command failed with exit code $LASTEXITCODE"
+Write-Host "==> Starting database migration for database: $Database..."
+
+# 1. 创建迁移版本记录表并初始化基础版本号
+$initLedgerSql = @"
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    version VARCHAR(255) NOT NULL PRIMARY KEY,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT IGNORE INTO schema_migrations (version) VALUES ('000_schema_migrations');
+"@
+
+& docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -e "$initLedgerSql"
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to initialize schema_migrations ledger."
+}
+Write-Host "==> schema_migrations ledger table verified."
+
+# 2. 将 db/init 中的初始 SQL 标记为已应用（避免重复执行冲突）
+$initPath = Join-Path $MigrationsPath "init"
+if (Test-Path $initPath) {
+    $initFiles = Get-ChildItem -Path $initPath -Filter "*.sql"
+    foreach ($file in $initFiles) {
+        $initVersion = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+        $recordSql = "INSERT IGNORE INTO schema_migrations (version) VALUES ('$initVersion');"
+        & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -e "$recordSql"
     }
 }
 
-$migrationFiles = Get-ChildItem -LiteralPath $MigrationDirectory -Filter '*.sql' -File |
-    Sort-Object Name
-if ($migrationFiles.Count -eq 0) {
-    Write-Host "No migration files found in $MigrationDirectory"
-    exit 0
-}
+# 3. 扫描并执行除 init 目录外的所有增量迁移脚本
+if (Test-Path $MigrationsPath) {
+    # 排除 init 目录，仅获取需要增量迁移的文件
+    $sqlFiles = Get-ChildItem -Path $MigrationsPath -Filter "*.sql" -Recurse | Where-Object { $_.DirectoryName -notmatch '[\\/]init$' } | Sort-Object Name
+    foreach ($file in $sqlFiles) {
+        $versionName = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
 
-function Test-MigrationTable {
-    $exists = (& docker compose -f $ComposeFile exec -T $Service mysql `
-        "-u$Username" "-p$Password" -NBe `
-        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$Database' AND table_name='schema_migrations';" 2>$null).Trim()
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to query migration table state"
-    }
-    return $exists -eq '1'
-}
+        # 检查该脚本是否已执行过
+        $checkSql = "SELECT version FROM schema_migrations WHERE version='$versionName';"
+        $appliedResult = & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -NBe "$checkSql"
 
-foreach ($file in $migrationFiles) {
-    $version = $file.BaseName
-    $escapedVersion = $version.Replace("'", "''")
+        $applied = if ($null -ne $appliedResult) { "$appliedResult".Trim() } else { "" }
 
-    # Bootstrap the bookkeeping table before querying it for the first migration.
-    if (-not (Test-MigrationTable)) {
-        if ($version -ne '000_schema_migrations') {
-            throw "Migration bookkeeping table is missing and $version is not the bootstrap migration"
+        if ([string]::IsNullOrWhiteSpace($applied)) {
+            Write-Host "==> Applying incremental migration: $($file.Name)..."
+            Get-Content -Raw -Encoding UTF8 $file.FullName | & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database
+            if ($LASTEXITCODE -ne 0) {
+                throw "Migration failed for file: $($file.FullName)"
+            }
+
+            # 记录迁移版本
+            $recordSql = "INSERT IGNORE INTO schema_migrations (version) VALUES ('$versionName');"
+            & docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$Username" "-p$Password" $Database -e "$recordSql"
+            Write-Host "==> Migration $($file.Name) applied successfully."
+        } else {
+            Write-Host "==> Migration $($file.Name) already applied, skipping."
         }
-        Write-Host "Applying bootstrap migration $version"
-        $sql = Get-Content -LiteralPath $file.FullName -Raw
-        Invoke-MySqlSql $sql
-        Invoke-MySqlSql "INSERT INTO schema_migrations (version) VALUES ('$escapedVersion');"
-        continue
     }
-
-    $alreadyApplied = (& docker compose -f $ComposeFile exec -T $Service mysql `
-        "-u$Username" "-p$Password" $Database -NBe `
-        "SELECT COUNT(*) FROM schema_migrations WHERE version='$escapedVersion';" 2>$null).Trim()
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to query migration state before applying $version"
-    }
-    if ($alreadyApplied -eq '1') {
-        Write-Host "Skipping already applied migration $version"
-        continue
-    }
-
-    Write-Host "Applying migration $version"
-    $sql = Get-Content -LiteralPath $file.FullName -Raw
-    Invoke-MySqlSql $sql
-    Invoke-MySqlSql "INSERT INTO schema_migrations (version) VALUES ('$escapedVersion');"
 }
 
-Write-Host "Database migrations completed successfully."
+Write-Host "==> All database migrations completed successfully!"

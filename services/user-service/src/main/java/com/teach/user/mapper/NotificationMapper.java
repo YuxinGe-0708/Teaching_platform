@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.Delete;
 import com.teach.user.entity.Notification;
 
 import java.util.List;
@@ -19,6 +20,9 @@ public interface NotificationMapper {
     @Select("SELECT * FROM notification WHERE id = #{id}")
     Notification findById(Long id);
 
+    @Select("SELECT * FROM notification ORDER BY created_at DESC LIMIT 200")
+    List<Notification> findRecent();
+
     @Select("SELECT COUNT(*) FROM notification WHERE user_id = #{userId} AND is_read = FALSE")
     int countUnread(Long userId);
 
@@ -30,6 +34,12 @@ public interface NotificationMapper {
     @Update("UPDATE notification SET is_read = TRUE WHERE id = #{id} AND user_id = #{userId}")
     int markAsReadForUser(@Param("id") Long id, @Param("userId") Long userId);
 
+    @Update("UPDATE notification SET is_read = TRUE WHERE id = #{id}")
+    int markAsRead(Long id);
+
     @Update("UPDATE notification SET is_read = TRUE WHERE user_id = #{userId}")
     int markAllAsRead(Long userId);
+
+    @Delete("DELETE FROM notification WHERE id = #{id}")
+    int deleteById(Long id);
 }

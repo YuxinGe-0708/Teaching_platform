@@ -1,4 +1,4 @@
-﻿package com.teach.learning.entity;
+package com.teach.learning.entity;
 import java.sql.Timestamp;
 public class DiscussionReply {
     private Long id; private Long postId; private Long userId; private String content;

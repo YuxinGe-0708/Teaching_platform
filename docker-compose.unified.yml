@@ -1,0 +1,71 @@
+services:
+  web-bff:
+    image: teaching-platform-web-bff:${IMAGE_TAG:-dev}
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.8.8-eclipse-temurin-8}
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:8-jdk-jammy}
+    environment:
+      SERVER_PORT: 8080
+      BFF_ENABLED: "true"
+      USER_SERVICE_URL: http://user-service:8082
+      LEARNING_SERVICE_URL: http://learning-service:8083
+      ASSESSMENT_SERVICE_URL: http://assessment-service:8084
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      APP_UPLOAD_PATH: /app/uploads
+      TZ: ${TZ:-Asia/Shanghai}
+      # 数据库连接配置
+      DB_URL: jdbc:mysql://microservices-mysql:3306/user_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+      DB_USERNAME: root
+      DB_PASSWORD: ${MICROSERVICES_DB_ROOT_PASSWORD:-ci-root-password}
+      # AI 配置
+      AI_API_URL: ${AI_API_URL:-https://api.deepseek.com/v1/chat/completions}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-deepseek-chat}
+      AI_VISION_MODEL: ${AI_VISION_MODEL:-${AI_MODEL:-deepseek-chat}}
+      # Judge0 配置
+      JUDGE0_API_URL: ${JUDGE0_API_URL:-https://ce.judge0.com}
+      JUDGE0_API_KEY: ${JUDGE0_API_KEY:-}
+      JUDGE0_API_HOST: ${JUDGE0_API_HOST:-}
+      JUDGE0_TIMEOUT_MS: ${JUDGE0_TIMEOUT_MS:-15000}
+      JUDGE0_LOCAL_FALLBACK: ${JUDGE0_LOCAL_FALLBACK:-true}
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      microservices-mysql:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      learning-service:
+        condition: service_healthy
+      assessment-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 35s
+
+  gateway:
+    image: teaching-platform-gateway:${IMAGE_TAG:-dev}
+    build:
+      context: ./docker/gateway
+      dockerfile: Dockerfile
+      args:
+        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.27-alpine}
+    ports:
+      - "${UNIFIED_PORT:-3000}:80"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    depends_on:
+      web-bff:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      learning-service:
+        condition: service_healthy
+      assessment-service:
+        condition: service_healthy

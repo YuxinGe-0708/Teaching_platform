@@ -1,4 +1,4 @@
-﻿package com.teach.learning.exception;
+package com.teach.learning.exception;
 import com.teach.learning.dto.ApiResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;

@@ -1,4 +1,4 @@
-﻿package com.teach.learning.mapper;
+package com.teach.learning.mapper;
 import com.teach.learning.entity.DiscussionReply;
 import org.apache.ibatis.annotations.*;
 import java.util.List;

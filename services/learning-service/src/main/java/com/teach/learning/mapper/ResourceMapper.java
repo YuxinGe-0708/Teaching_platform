@@ -1,4 +1,4 @@
-﻿package com.teach.learning.mapper;
+package com.teach.learning.mapper;
 import com.teach.learning.entity.Resource;
 import org.apache.ibatis.annotations.*;
 import java.util.List;
@@ -8,6 +8,10 @@ public interface ResourceMapper {
     Resource findById(Long id);
     @Select("SELECT * FROM resource WHERE course_id = #{courseId} ORDER BY created_at DESC")
     List<Resource> findByCourseId(Long courseId);
+    @Select("<script>SELECT * FROM resource WHERE course_id=#{courseId}<if test='type != null and type != \"\"'> AND type=#{type}</if><if test='chapter != null and chapter != \"\"'> AND chapter=#{chapter}</if> ORDER BY created_at DESC</script>")
+    List<Resource> searchByCourse(@Param("courseId") Long courseId,@Param("type") String type,@Param("chapter") String chapter);
+    @Select("SELECT * FROM resource ORDER BY created_at DESC LIMIT 100")
+    List<Resource> findRecent();
     @Insert("INSERT INTO resource (course_id, title, file_path, type, chapter, file_size, download_count) VALUES (#{courseId}, #{title}, #{filePath}, #{type}, #{chapter}, #{fileSize}, #{downloadCount})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(Resource resource);

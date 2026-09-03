@@ -1,4 +1,4 @@
-﻿package com.teach.learning.controller;
+package com.teach.learning.controller;
 import com.teach.learning.dto.ApiResponse;
 import com.teach.learning.entity.ResourceProgress;
 import com.teach.learning.service.ResourceProgressService;

@@ -22,7 +22,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class CourseServiceUnitTest {
+public class CourseServiceUnitTest {
 
   @Mock
   private CourseMapper courseMapper;

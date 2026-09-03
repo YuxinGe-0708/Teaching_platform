@@ -7,7 +7,6 @@ import org.example.mapper.CourseClassMapper;
 import org.example.mapper.CourseMapper;
 import org.example.mapper.CourseEnrollmentMapper;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,7 +27,6 @@ public class CourseService {
         this.courseClassMapper = courseClassMapper;
     }
 
-    @Transactional
     public Course createCourse(Course course) {
         course.setInviteCode(UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         if (course.getStatus() == null || course.getStatus().trim().isEmpty()) {
@@ -68,7 +66,6 @@ public class CourseService {
         return courseMapper.findAllActive();
     }
 
-    @Transactional
     public boolean enroll(Long studentId, Long courseId) {
         Course course = courseMapper.findById(courseId);
         if (course == null || !"active".equals(course.getStatus()) || !course.getAllowJoin()) return false;
@@ -90,7 +87,6 @@ public class CourseService {
         return true;
     }
 
-    @Transactional
     public boolean enrollByInviteCode(Long studentId, String inviteCode) {
         CourseClass courseClass = courseClassMapper.findByInviteCode(inviteCode);
         Course course = courseClass == null ? courseMapper.findByInviteCode(inviteCode) : courseMapper.findById(courseClass.getCourseId());
@@ -110,7 +106,6 @@ public class CourseService {
         return true;
     }
 
-    @Transactional
     public boolean unenroll(Long studentId, Long courseId) {
         int rows = enrollmentMapper.delete(studentId, courseId);
         if (rows > 0) {

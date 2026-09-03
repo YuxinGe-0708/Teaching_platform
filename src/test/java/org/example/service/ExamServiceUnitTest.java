@@ -18,7 +18,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class ExamServiceUnitTest {
+public class ExamServiceUnitTest {
 
   @Mock
   private ExamRecordMapper examRecordMapper;

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
+  namespace: teaching-platform
   labels:
     app: user-service
 spec:
@@ -14,9 +15,12 @@ spec:
       labels:
         app: user-service
     spec:
+      imagePullSecrets:
+        - name: swr-registry
       containers:
         - name: user-service
-          image: teaching-platform-user-service:latest
+          image: __SWR_REGISTRY__/__SWR_ORG__/teaching-platform-user-service:__IMAGE_TAG__
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8082
           env:
@@ -25,9 +29,19 @@ spec:
             - name: DB_USERNAME
               value: "root"
             - name: DB_PASSWORD
-              value: "root123456"
+              valueFrom:
+                secretKeyRef:
+                  name: teaching-platform-secrets
+                  key: MYSQL_ROOT_PASSWORD
             - name: JWT_SECRET
               value: "ChangeMe_ThisIs_A_32BytePlus_SecretKey_ForHS256_XYZ"
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: teaching-platform-secrets
+                  key: INTERNAL_API_KEY
+            - name: LEARNING_SERVICE_URL
+              value: "http://learning-service:8083"
           resources:
             requests:
               cpu: 100m
@@ -52,6 +66,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: user-service
+  namespace: teaching-platform
   labels:
     app: user-service
 spec:

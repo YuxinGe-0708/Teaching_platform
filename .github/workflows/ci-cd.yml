@@ -14,17 +14,16 @@ permissions:
 env:
   COMPOSE_PROJECT_NAME: teaching-platform-ci
   IMAGE_TAG: ${{ github.sha }}
-  MYSQL_ROOT_PASSWORD: ci-root-password
-  MYSQL_DATABASE: teaching_platform
-  MYSQL_USER: tp_ci
-  MYSQL_PASSWORD: ci-password
-  APP_SEED_TEST_DATA: 'true'
-  FRONTEND_PORT: '3000'
-  BACKEND_PORT: '8081'
+  MICROSERVICES_DB_ROOT_PASSWORD: ci-root-password
+  INTERNAL_API_KEY: ci-internal-api-key
+  UNIFIED_PORT: '3000'
   AI_API_URL: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
   AI_API_KEY: ${{ secrets.AI_API_KEY }}
   AI_MODEL: qwen-plus
   AI_VISION_MODEL: qwen3-vl-plus
+  JUDGE0_API_URL: http://127.0.0.1:9
+  JUDGE0_TIMEOUT_MS: '1000'
+  JUDGE0_LOCAL_FALLBACK: 'true'
 
 jobs:
   ci:
@@ -35,21 +34,72 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
       - name: Set up Java 8
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '8'
           cache: maven
-      - name: Unit tests
-        run: mvn -B test
-      - name: Build application containers
-        run: docker compose -f docker-compose.yml -f docker-compose.app.yml build
+      - name: Set up Python 3
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install E2E dependencies
+        run: python -m pip install -r tests/e2e/requirements.txt
+      - name: Verify every public backend API has an automated test
+        shell: pwsh
+        run: ./scripts/verify-public-api-coverage.ps1
+      - name: Build and test stateless web BFF
+        run: mvn -B test package
+      - name: Build and test user-service
+        working-directory: services/user-service
+        run: mvn -B test package
+      - name: Build and test learning-service
+        working-directory: services/learning-service
+        run: mvn -B test package
+      - name: Build and test assessment-service
+        working-directory: services/assessment-service
+        run: mvn -B test package
+      - name: Upload user-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: user-service-jar-${{ github.run_id }}
+          path: services/user-service/target/user-service.jar
+          if-no-files-found: error
+          retention-days: 2
+      - name: Upload learning-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: learning-service-jar-${{ github.run_id }}
+          path: services/learning-service/target/learning-service.jar
+          if-no-files-found: error
+          retention-days: 2
+      - name: Upload assessment-service JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: assessment-service-jar-${{ github.run_id }}
+          path: services/assessment-service/target/assessment-service.jar
+          if-no-files-found: error
+          retention-days: 2
+      - name: Build microservice application containers
+        run: docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml build
       - name: Prepare integration upload storage
         run: |
           mkdir -p uploads
           chmod -R a+rwX uploads
       - name: Start integration environment
-        run: docker compose -f docker-compose.yml -f docker-compose.app.yml up -d
+        shell: bash
+        run: |
+          set +e
+          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml up -d
+          UP_STATUS=$?
+          if [ $UP_STATUS -ne 0 ]; then
+            echo "========================================================"
+            echo "❌ 容器启动失败！打印所有容器日志以定位问题："
+            echo "========================================================"
+            docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml logs --no-color
+            echo "========================================================"
+            exit $UP_STATUS
+          fi
       - name: Wait for frontend health
         shell: bash
         run: |
@@ -58,25 +108,20 @@ jobs:
             if curl --fail --silent --show-error http://localhost:3000/healthz | grep -qx 'ok'; then exit 0; fi
             sleep 2
           done
-          docker compose -f docker-compose.yml -f docker-compose.app.yml ps
+          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml ps
           exit 1
-      - name: Run database migrations
-        shell: pwsh
-        run: ./scripts/db-migrate.ps1 -Username "$env:MYSQL_USER" -Password "$env:MYSQL_PASSWORD" -Database "$env:MYSQL_DATABASE"
-      - name: Verify migration ledger
-        shell: pwsh
-        run: |
-          $version = (& docker compose -f docker-compose.yml -f docker-compose.app.yml exec -T mysql mysql "-u$env:MYSQL_USER" "-p$env:MYSQL_PASSWORD" $env:MYSQL_DATABASE -NBe "SELECT version FROM schema_migrations WHERE version='000_schema_migrations';").Trim()
-          if ($LASTEXITCODE -ne 0 -or $version -ne '000_schema_migrations') { throw 'Database migration ledger verification failed.' }
       - name: Container smoke test
         shell: pwsh
-        run: ./scripts/container-smoke.ps1 -BaseUrl http://localhost:3000 -BackendUrl http://localhost:8081
-      - name: Business integration regression
+        run: ./scripts/microservices-smoke.ps1 -BaseUrl http://localhost:3000
+      - name: Microservice E2E baseline
+        shell: pwsh
+        run: ./scripts/e2e-microservices.ps1 -UserUrl http://localhost:8082 -LearningUrl http://localhost:8083 -AssessmentUrl http://localhost:8084
+      - name: Microservice business integration regression
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force ci-artifacts | Out-Null
           try {
-            ./scripts/container-business-regression.ps1 -BaseUrl http://localhost:3000 *>&1 | Tee-Object ci-artifacts/business-regression.log
+            ./scripts/microservices-business-regression.ps1 -BaseUrl http://localhost:3000 *>&1 | Tee-Object ci-artifacts/business-regression.log
           } catch {
             $_ | Out-String | Tee-Object -Append ci-artifacts/business-regression.log
             throw
@@ -90,8 +135,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p ci-artifacts
-          docker compose -f docker-compose.yml -f docker-compose.app.yml ps > ci-artifacts/compose-ps.txt || true
-          docker compose -f docker-compose.yml -f docker-compose.app.yml logs --no-color > ci-artifacts/compose.log || true
+          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml ps > ci-artifacts/compose-ps.txt || true
+          docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml logs --no-color > ci-artifacts/compose.log || true
       - name: Upload test and runtime records
         if: always()
         uses: actions/upload-artifact@v4
@@ -100,11 +145,14 @@ jobs:
           path: |
             ci-artifacts/
             target/surefire-reports/
+            services/user-service/target/surefire-reports/
+            services/learning-service/target/surefire-reports/
+            services/assessment-service/target/surefire-reports/
           if-no-files-found: ignore
           retention-days: 14
       - name: Stop integration environment
         if: always()
-        run: docker compose -f docker-compose.yml -f docker-compose.app.yml down -v --remove-orphans
+        run: docker compose -f docker-compose.microservices.yml -f docker-compose.unified.yml down -v --remove-orphans
 
   publish:
     name: Publish versioned images
@@ -134,7 +182,22 @@ jobs:
           password: ${{ secrets.SWR_PASSWORD }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build and push backend image
+      - name: Download user-service JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: user-service-jar-${{ github.run_id }}
+          path: services/user-service/target
+      - name: Download learning-service JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: learning-service-jar-${{ github.run_id }}
+          path: services/learning-service/target
+      - name: Download assessment-service JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: assessment-service-jar-${{ github.run_id }}
+          path: services/assessment-service/target
+      - name: Build and push web BFF image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -146,25 +209,58 @@ jobs:
             MAVEN_IMAGE=${{ vars.MAVEN_IMAGE || 'maven:3.8.8-eclipse-temurin-8' }}
             JAVA_IMAGE=${{ vars.JAVA_IMAGE || 'eclipse-temurin:8-jdk-jammy' }}
           tags: |
-            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-backend:${{ steps.meta.outputs.image_tag }}
-            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-backend:sha-${{ github.sha }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-      - name: Build and push frontend image
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-web-bff:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-web-bff:sha-${{ github.sha }}
+          cache-from: type=gha,scope=web-bff
+          cache-to: type=gha,mode=max,scope=web-bff
+      - name: Build and push gateway image
         uses: docker/build-push-action@v6
         with:
-          context: docker/frontend
-          file: docker/frontend/Dockerfile
+          context: docker/gateway
+          file: docker/gateway/Dockerfile
           push: true
           provenance: false
           sbom: false
           build-args: |
             NGINX_IMAGE=${{ vars.NGINX_IMAGE || 'nginx:1.27-alpine' }}
           tags: |
-            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-frontend:${{ steps.meta.outputs.image_tag }}
-            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-frontend:sha-${{ github.sha }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-gateway:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-gateway:sha-${{ github.sha }}
+          cache-from: type=gha,scope=gateway
+          cache-to: type=gha,mode=max,scope=gateway
+      - name: Build and push user-service image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/user-service
+          file: services/user-service/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-user-service:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-user-service:sha-${{ github.sha }}
+      - name: Build and push learning-service image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/learning-service
+          file: services/learning-service/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-learning-service:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-learning-service:sha-${{ github.sha }}
+      - name: Build and push assessment-service image
+        uses: docker/build-push-action@v6
+        with:
+          context: services/assessment-service
+          file: services/assessment-service/Dockerfile
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-assessment-service:${{ steps.meta.outputs.image_tag }}
+            ${{ secrets.SWR_REGISTRY }}/${{ secrets.SWR_ORG }}/teaching-platform-assessment-service:sha-${{ github.sha }}
       - name: Upload publish records
         if: always()
         uses: actions/upload-artifact@v4
@@ -179,7 +275,7 @@ jobs:
     needs: publish
     if: github.event_name == 'push' && (github.ref == 'refs/heads/dev_dockerfile' || github.ref == 'refs/heads/codex/dev-dockerfile-work' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -193,10 +289,6 @@ jobs:
           wait: 120s
       - name: Install deployment tooling
         run: sudo apt-get update && sudo apt-get install -y gettext-base
-      - name: Load MySQL image into kind
-        run: |
-          docker pull mysql:8.0.43
-          kind load docker-image mysql:8.0.43 --name teaching-platform-demo
       - name: Deploy immutable image version
         shell: bash
         env:
@@ -207,7 +299,6 @@ jobs:
           SWR_ORG: ${{ secrets.SWR_ORG }}
           SWR_USERNAME: ${{ secrets.SWR_USERNAME }}
           SWR_PASSWORD: ${{ secrets.SWR_PASSWORD }}
-          DB_PASSWORD: kind-demo-password
           DB_ROOT_PASSWORD: kind-demo-root-password
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
         run: bash scripts/k8s-deploy.sh

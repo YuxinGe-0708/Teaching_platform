@@ -1,0 +1,22 @@
+﻿{
+    "experiment_id":  "perf-20260902-03",
+    "target":  "monolith",
+    "base_url":  "http://localhost:8081",
+    "username":  "perf_student",
+    "password":  "\u003credacted\u003e",
+    "course_id":  "900001",
+    "judge_task_id":  "",
+    "runs":  3,
+    "concurrency":  10,
+    "warmup_seconds":  10,
+    "duration_seconds":  20,
+    "dataset":  "seed-v1-logical-equivalent",
+    "git_commit":  "e7e32cc",
+    "git_branch":  "baseline-e7e32cc",
+    "host":  {
+                 "os":  "Microsoft Windows NT 10.0.26200.0",
+                 "processor_count":  32
+             },
+    "scenario":  "login",
+    "run_number":  1
+}

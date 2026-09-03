@@ -2,6 +2,10 @@
 -- 仅 user / notification / operation_log 三张表，且只保留同库外键。
 -- 注意：不再有指向其它服务库（course/task 等）的任何外键或联查。
 
+SET NAMES utf8mb4;
+CREATE DATABASE IF NOT EXISTS user_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE user_db;
+
 CREATE TABLE IF NOT EXISTS `user` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `username` VARCHAR(50) NOT NULL UNIQUE,

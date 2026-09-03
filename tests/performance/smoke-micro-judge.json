@@ -1,0 +1,53 @@
+{
+  "target": "microservices",
+  "scenario": "judge_submit",
+  "run_number": 0,
+  "base_url": "http://localhost:3000",
+  "concurrency": 1,
+  "warmup_seconds": 0,
+  "duration_seconds": 2,
+  "data": {
+    "username": "ms_student",
+    "course_id": "1001",
+    "judge_task_id": "",
+    "judge_payload": {
+      "language": "python",
+      "code": "print('Hello World')"
+    }
+  },
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.13",
+    "cpu_count": 32
+  },
+  "started_at_utc": "2026-09-02T06:17:51.651529+00:00",
+  "finished_at_utc": "2026-09-02T06:17:54.532119+00:00",
+  "actual_duration_seconds": 2.735,
+  "metrics": {
+    "requests": 1,
+    "successful_requests": 1,
+    "errors": 0,
+    "error_rate_pct": 0.0,
+    "throughput_rps": 0.3657,
+    "average_response_ms": 2733.673,
+    "p95_response_ms": 2733.673,
+    "p99_response_ms": 2733.673,
+    "min_response_ms": 2733.673,
+    "max_response_ms": 2733.673
+  },
+  "status_counts": {
+    "200": 1
+  },
+  "error_counts": {
+    "none": 1
+  },
+  "requests_raw": [
+    {
+      "started_at": "2026-09-02T06:17:51.651529+00:00",
+      "elapsed_ms": 2733.6726000030467,
+      "status_code": 200,
+      "success": true,
+      "error": ""
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-﻿package com.teach.learning.mapper;
+package com.teach.learning.mapper;
 import com.teach.learning.entity.CourseEnrollment;
 import org.apache.ibatis.annotations.*;
 import java.util.List;
@@ -21,4 +21,6 @@ public interface CourseEnrollmentMapper {
     int updateClass(@Param("id") Long id, @Param("classId") Long classId);
     @Delete("DELETE FROM course_enrollment WHERE student_id = #{studentId} AND course_id = #{courseId}")
     int deleteByStudentAndCourse(@Param("studentId") Long studentId, @Param("courseId") Long courseId);
+    @Select("SELECT * FROM course_enrollment WHERE class_id = #{classId} AND student_id = #{studentId}")
+    CourseEnrollment findByClassAndStudent(@Param("classId") Long classId, @Param("studentId") Long studentId);
 }

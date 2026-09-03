@@ -1,4 +1,4 @@
-﻿package com.teach.learning.controller;
+package com.teach.learning.controller;
 import com.teach.learning.dto.ApiResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

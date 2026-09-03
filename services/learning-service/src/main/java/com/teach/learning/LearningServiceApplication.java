@@ -1,4 +1,4 @@
-﻿package com.teach.learning;
+package com.teach.learning;
 
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;

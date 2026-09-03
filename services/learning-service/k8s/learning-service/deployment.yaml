@@ -31,10 +31,27 @@ spec:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: teaching-platform-secret
-                  key: db-password
+                  name: teaching-platform-secrets
+                  key: MYSQL_ROOT_PASSWORD
             - name: USER_SERVICE_URL
               value: "http://user-service:8082"
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: teaching-platform-secrets
+                  key: INTERNAL_API_KEY
+            - name: APP_UPLOAD_PATH
+              value: "/app/uploads"
+            - name: AI_API_URL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_API_URL } }
+            - name: AI_API_KEY
+              valueFrom: { secretKeyRef: { name: teaching-platform-secrets, key: AI_API_KEY, optional: true } }
+            - name: AI_MODEL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_MODEL } }
+            - name: AI_VISION_MODEL
+              valueFrom: { configMapKeyRef: { name: teaching-platform-config, key: AI_VISION_MODEL } }
+          volumeMounts:
+            - { name: learning-uploads, mountPath: /app/uploads }
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
@@ -49,6 +66,20 @@ spec:
             periodSeconds: 10
       imagePullSecrets:
         - name: swr-registry
+      volumes:
+        - name: learning-uploads
+          persistentVolumeClaim: { claimName: learning-uploads-data }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: learning-uploads-data
+  namespace: teaching-platform
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: v1
 kind: Service

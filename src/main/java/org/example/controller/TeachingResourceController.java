@@ -10,7 +10,8 @@ import org.example.mapper.ResourceProgressMapper;
 import org.example.mapper.TeachingResourceMapper;
 import org.example.dto.ApiResponse;
 import org.example.entity.ResourceProgress;
-import org.example.service.AiService;
+import org.example.bff.MicroserviceClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.example.service.CourseService;
 import org.example.util.DownloadUtils;
 import org.springframework.core.io.Resource;
@@ -26,6 +27,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.servlet.http.HttpSession;
 import java.nio.file.Paths;
@@ -37,19 +41,22 @@ public class TeachingResourceController {
     private final CourseService courseService;
     private final TeachingResourceMapper resourceMapper;
     private final CourseEnrollmentMapper enrollmentMapper;
-    private final AiService aiService;
     private final ResourceProgressMapper progressMapper;
+    private final MicroserviceClient microservices;
+    private final boolean bffEnabled;
 
     public TeachingResourceController(CourseService courseService,
                                       TeachingResourceMapper resourceMapper,
                                       CourseEnrollmentMapper enrollmentMapper,
-                                      AiService aiService,
-                                      ResourceProgressMapper progressMapper) {
+                                      ResourceProgressMapper progressMapper,
+                                      MicroserviceClient microservices,
+                                      @Value("${app.bff.enabled:false}") boolean bffEnabled) {
         this.courseService = courseService;
         this.resourceMapper = resourceMapper;
         this.enrollmentMapper = enrollmentMapper;
-        this.aiService = aiService;
         this.progressMapper = progressMapper;
+        this.microservices = microservices;
+        this.bffEnabled = bffEnabled;
     }
 
     @GetMapping("/teacher/resource/manage/{courseId}")
@@ -173,7 +180,7 @@ public class TeachingResourceController {
             return ResponseEntity.status(403).build();
         }
         resourceMapper.incrementDownloadCount(resourceId);
-        return DownloadUtils.attachment(resource.getFilePath());
+        return bffEnabled ? remoteFile(resource.getFilePath(), false) : DownloadUtils.attachment(resource.getFilePath());
     }
 
     @GetMapping("/resource-square/download/{resourceId}")
@@ -181,7 +188,7 @@ public class TeachingResourceController {
         TeachingResource resource = resourceMapper.findById(resourceId);
         if (resource == null) return ResponseEntity.notFound().build();
         resourceMapper.incrementDownloadCount(resourceId);
-        return DownloadUtils.attachment(resource.getFilePath());
+        return bffEnabled ? remoteFile(resource.getFilePath(), false) : DownloadUtils.attachment(resource.getFilePath());
     }
 
     @GetMapping("/student/resource/video/{resourceId}")
@@ -202,6 +209,7 @@ public class TeachingResourceController {
         if (resource == null || !resource.isVideo()) {
             return ResponseEntity.status(403).build();
         }
+        if (bffEnabled) return remoteFile(resource.getFilePath(), true);
         return DownloadUtils.inline(resource.getFilePath(), videoType(DownloadUtils.resolvePath(resource.getFilePath()).getFileName().toString()));
     }
 
@@ -267,6 +275,11 @@ public class TeachingResourceController {
     private String saveFile(Long courseId, MultipartFile file) {
         if (file == null || file.isEmpty()) return null;
         try {
+            if (bffEnabled) {
+                org.springframework.util.MultiValueMap<String,Object> fields = new org.springframework.util.LinkedMultiValueMap<>();
+                fields.add("courseId", String.valueOf(courseId));
+                return microservices.upload(microservices.learning("/internal/files/resources"), file, "file", fields);
+            }
             return DownloadUtils.store(file, "resources", String.valueOf(courseId));
         } catch (Exception e) {
             return null;
@@ -299,12 +312,32 @@ public class TeachingResourceController {
     }
 
     private String generatePdfNotes(TeachingResource resource) {
-        try (PDDocument document = PDDocument.load(DownloadUtils.resolvePath(resource.getFilePath()).toFile())) {
+        try (PDDocument document = bffEnabled
+                ? PDDocument.load(microservices.file(microservices.uri(microservices.learning("/internal/files")).queryParam("path", resource.getFilePath()).toUriString()).getBody())
+                : PDDocument.load(DownloadUtils.resolvePath(resource.getFilePath()).toFile())) {
             String text = new PDFTextStripper().getText(document);
-            return aiService.summarizePdfText(resource.getCourseName(), resource.getTitle(), text);
+            java.util.Map<String, String> request = new java.util.LinkedHashMap<>();
+            request.put("courseName", resource.getCourseName());
+            request.put("resourceTitle", resource.getTitle());
+            request.put("text", text);
+            return microservices.post(microservices.learning("/api/v2/ai/summarize"), request, String.class);
         } catch (Exception e) {
             return "PDF 读取或 AI 笔记生成失败：" + e.getMessage();
         }
+    }
+
+    private ResponseEntity<Resource> remoteFile(String filePath, boolean inline) {
+        String url = microservices.uri(microservices.learning("/internal/files")).queryParam("path", filePath).toUriString();
+        ResponseEntity<byte[]> response = microservices.file(url);
+        byte[] body = response.getBody();
+        if (body == null || body.length == 0) return ResponseEntity.status(response.getStatusCode()).build();
+        ByteArrayResource resource = new ByteArrayResource(body);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(response.getStatusCode());
+        MediaType contentType = response.getHeaders().getContentType();
+        if (contentType != null) builder.contentType(contentType);
+        String disposition = response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
+        if (disposition != null) builder.header(HttpHeaders.CONTENT_DISPOSITION, disposition);
+        return builder.body(resource);
     }
 
     private Long toLong(Object value) {

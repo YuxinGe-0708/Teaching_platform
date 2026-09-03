@@ -1,4 +1,4 @@
-﻿package com.teach.learning.mapper;
+package com.teach.learning.mapper;
 import com.teach.learning.entity.StudyNote;
 import org.apache.ibatis.annotations.*;
 import java.util.List;
@@ -15,6 +15,8 @@ public interface StudyNoteMapper {
     int insert(StudyNote note);
     @Update("UPDATE study_note SET title=#{title}, content=#{content}, ai_summary=#{aiSummary}, mind_map=#{mindMap} WHERE id=#{id}")
     int update(StudyNote note);
+    @Update("UPDATE study_note SET mind_map=#{mindMap} WHERE id=#{id}")
+    int updateMindMap(StudyNote note);
     @Delete("DELETE FROM study_note WHERE id=#{id}")
     int deleteById(Long id);
 }
