@@ -26,7 +26,8 @@
                 <a th:if="${user != null}" class="btn green" th:href="${user.role == 'teacher' ? '/teacher/ai' : '/student/ai'}">AI 答疑</a>
             </div>
             <h2 th:text="${user != null and user.role == 'teacher' ? '我创建的课程' : '我的课程'}">我的课程</h2>
-            <div class="course-grid" th:if="${!#lists.isEmpty(courses)}">
+            <!-- 修复点：将 ${!#lists.isEmpty(courses)} 改为 ${! #lists.isEmpty(courses)} -->
+            <div class="course-grid" th:if="${! #lists.isEmpty(courses)}">
                 <article class="item-card" th:each="course : ${courses}">
                     <span class="status-badge" th:text="${course.status}">进行中</span>
                     <h3 th:text="${course.courseName}">课程名称</h3>
