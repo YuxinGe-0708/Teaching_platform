@@ -50,7 +50,7 @@ spec:
             # Keep the JVM heap below the 512Mi container limit on the
             # single-node Docker Desktop demo cluster.
             - name: JAVA_TOOL_OPTIONS
-              value: "-XX:MaxRAMPercentage=45 -XX:InitialRAMPercentage=15"
+              value: "-Xms128m -Xmx256m"
           resources:
             requests:
               cpu: 100m
