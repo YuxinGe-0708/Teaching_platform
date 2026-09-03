@@ -58,13 +58,16 @@ services/
 仅启动三个微服务和三个独立数据库 Schema：
 
 ```powershell
-docker compose -f docker-compose.microservices.yml up --build -d
+powershell -ExecutionPolicy Bypass -File .\scripts\start-e2e-microservices.ps1
 ```
 
 如果本机已有程序占用 3307，可在 `.env` 中设置
 `MICROSERVICES_MYSQL_PORT=3308`（容器内部服务仍连接 3306）；无法访问
 Docker Hub 时同时设置 `MICROSERVICES_MYSQL_IMAGE`、`MAVEN_IMAGE` 和
 `JAVA_IMAGE` 为可访问的镜像源。
+
+微服务 Dockerfile 使用 Maven 生成的 `target/*.jar` 作为运行时镜像输入；
+上面的启动脚本会先完成三个服务的打包，再构建并启动容器。
 
 服务地址分别为 `http://localhost:8082`、`http://localhost:8083`、`http://localhost:8084`。
 
@@ -175,7 +178,7 @@ docker compose -f docker-compose.microservices.yml up -d microservices-mysql
 - 数据库：`user_db`、`learning_service_db`、`assessment_db`
 - 用户：`root`
 - 密码：`root123456`（用环境变量覆盖）
-- 主机端口：`3307`
+- 主机端口：`3308`
 
 常用命令：
 

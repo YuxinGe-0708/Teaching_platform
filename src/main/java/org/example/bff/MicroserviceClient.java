@@ -28,10 +28,10 @@ public class MicroserviceClient {
     private final String assessmentUrl;
 
     public MicroserviceClient(RestTemplateBuilder builder, ObjectMapper json,
-                              @Value("${app.internal-api-key:dev-internal-key}") String internalKey,
-                              @Value("${app.services.user-url:http://localhost:8082}") String userUrl,
-                              @Value("${app.services.learning-url:http://localhost:8083}") String learningUrl,
-                              @Value("${app.services.assessment-url:http://localhost:8084}") String assessmentUrl) {
+        @Value("${app.internal-api-key:dev-internal-key}") String internalKey,
+        @Value("${app.services.user-url:http://localhost:8082}") String userUrl,
+        @Value("${app.services.learning-url:http://localhost:8083}") String learningUrl,
+        @Value("${app.services.assessment-url:http://localhost:8084}") String assessmentUrl) {
         this.http = builder.setConnectTimeout(Duration.ofSeconds(5)).setReadTimeout(Duration.ofSeconds(60)).build();
         this.json=json; this.internalKey=internalKey; this.userUrl=trim(userUrl); this.learningUrl=trim(learningUrl); this.assessmentUrl=trim(assessmentUrl);
     }
@@ -42,12 +42,19 @@ public class MicroserviceClient {
     public UriComponentsBuilder uri(String base){return UriComponentsBuilder.fromHttpUrl(base);}
 
     public <T> T get(String url,Class<T> type){return exchange(url,HttpMethod.GET,null,type);}
-    public <T> List<T> getList(String url,Class<T> type){
-        JsonNode data=data(url,HttpMethod.GET,null);
-        if(data==null||data.isNull())return Collections.emptyList();
-        JavaType listType=json.getTypeFactory().constructCollectionType(List.class,type);
-        return json.convertValue(data,listType);
+
+    public <T> List<T> getList(String url, Class<T> type) {
+        try {
+            JsonNode data = data(url, HttpMethod.GET, null);
+            if (data == null || data.isNull()) return Collections.emptyList();
+            JavaType listType = json.getTypeFactory().constructCollectionType(List.class, type);
+            return json.convertValue(data, listType);
+        } catch (Exception e) {
+            // 熔断降级：当微服务不可用时，返回空列表，不抛异常
+            return Collections.emptyList();
+        }
     }
+
     public <T> T post(String url,Object body,Class<T> type){return exchange(url,HttpMethod.POST,body,type);}
     public <T> T put(String url,Object body,Class<T> type){return exchange(url,HttpMethod.PUT,body,type);}
     public <T> T delete(String url,Class<T> type){return exchange(url,HttpMethod.DELETE,null,type);}

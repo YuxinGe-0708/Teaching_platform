@@ -48,6 +48,12 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.27</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -68,6 +74,7 @@
                         <include>**/*TestCase.java</include>
                         <include>**/*UnitTest.java</include>
                         <include>**/*IntegrationTest.java</include>
+                        <include>**/*E2EScript.java</include>
                     </includes>
                 </configuration>
             </plugin>
